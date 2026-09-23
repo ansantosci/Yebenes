@@ -14,3 +14,8 @@ Prototipo responsive para pruebas internas y demostraciones.
 ## Importante
 
 Este prototipo no debe utilizarse aun para almacenar datos reales de menores, DNI/NIE ni documentacion personal. La persistencia segura, autenticacion y almacenamiento privado se incorporaran en una fase posterior.
+
+## Versión 2
+- Las altas realizadas en la vista de familias aparecen inmediatamente en la vista del club.
+- Los jugadores añadidos se conservan en `localStorage` del navegador para las pruebas.
+- Los contadores del panel se actualizan con los datos visibles del prototipo.
