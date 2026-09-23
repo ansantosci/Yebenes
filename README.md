@@ -1,28 +1,13 @@
-# Los Yebenes San Bruno - Prototipo web app
+# Los Yébenes San Bruno - Prototipo web app V4
 
-Prototipo responsive para pruebas internas y demostraciones.
+Versión de pruebas para familias y club.
 
-## Publicar con GitHub Pages
+## Novedades V4
+- Las altas de familias aparecen en el panel del club.
+- El club puede abrir la ficha de un jugador desde la tabla.
+- El club puede avanzar el estado de tramitación o seleccionar un estado concreto.
+- El club puede devolver una ficha a la familia indicando el motivo.
+- La familia recibe el aviso, puede abrir la ficha, modificarla y reenviarla al club.
+- Los cambios quedan guardados localmente en el navegador para pruebas.
 
-1. Crea un repositorio publico, por ejemplo `los-yebenes-app`.
-2. Sube todos los archivos de esta carpeta a la raiz del repositorio.
-3. En GitHub abre Settings > Pages.
-4. En Build and deployment selecciona `Deploy from a branch`.
-5. Selecciona la rama `main` y la carpeta `/ (root)`.
-6. Guarda. GitHub mostrara la URL publica cuando termine el despliegue.
-
-## Importante
-
-Este prototipo no debe utilizarse aun para almacenar datos reales de menores, DNI/NIE ni documentacion personal. La persistencia segura, autenticacion y almacenamiento privado se incorporaran en una fase posterior.
-
-## Versión 2
-- Las altas realizadas en la vista de familias aparecen inmediatamente en la vista del club.
-- Los jugadores añadidos se conservan en `localStorage` del navegador para las pruebas.
-- Los contadores del panel se actualizan con los datos visibles del prototipo.
-
-
-## V3
-- Alta de familias y panel del club comparten la misma fuente local.
-- Al entrar en Club se recarga el almacenamiento y se limpian filtros.
-- Corregido el submit del formulario en Safari/iOS.
-- Cache versionada para evitar servir JS antiguo.
+> Prototipo sin backend. No introducir datos reales de menores.

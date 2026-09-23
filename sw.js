@@ -1,5 +1,5 @@
-const CACHE='los-yebenes-v3';
-const ASSETS=['./','./index.html','./styles.css?v=3','./app.js?v=3','./manifest.webmanifest'];
+const CACHE='los-yebenes-v4';
+const ASSETS=['./','./index.html','./styles.css?v=4','./app.js?v=4','./manifest.webmanifest'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
 self.addEventListener('fetch',e=>{

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c51230" />
   <title>Los Yébenes San Bruno · Área de Familias</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <div class="app-shell">
@@ -103,7 +103,7 @@
       <div class="modal-head">
         <div>
           <span class="eyebrow dark">Nueva inscripción</span>
-          <h2>Datos del jugador</h2>
+          <h2 id="playerModalTitle">Datos del jugador</h2>
         </div>
         <button type="button" class="icon-button" value="cancel">✕</button>
       </div>
@@ -135,6 +135,52 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=3"></script>
+
+  <dialog id="adminPlayerModal">
+    <div class="admin-detail">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow dark">Ficha del club</span>
+          <h2 id="adminPlayerName">Jugador</h2>
+          <div class="meta" id="adminPlayerCategory"></div>
+        </div>
+        <button type="button" class="icon-button" id="closeAdminModal">✕</button>
+      </div>
+
+      <div class="detail-source" id="adminPlayerSource"></div>
+      <div class="detail-grid">
+        <div><span>Datos personales</span><strong id="adminPlayerData"></strong></div>
+        <div><span>Documentación</span><strong id="adminPlayerDocs"></strong></div>
+        <div class="span-2"><span>Estado federativo</span><strong id="adminPlayerFed"></strong></div>
+      </div>
+
+      <section class="workflow-box">
+        <span class="eyebrow dark">Tramitación</span>
+        <label>Estado de la ficha
+          <select id="adminWorkflow">
+            <option value="review">Pendiente de revisión</option>
+            <option value="data_ok">Datos validados</option>
+            <option value="docs_ok">Documentación validada</option>
+            <option value="ready">Listo para federar</option>
+            <option value="federated">Ficha tramitada</option>
+          </select>
+        </label>
+        <div class="workflow-actions">
+          <button class="secondary" id="saveWorkflow" type="button">Guardar estado</button>
+          <button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button>
+        </div>
+      </section>
+
+      <section class="return-box">
+        <span class="eyebrow dark">Solicitar cambios a la familia</span>
+        <p>Indica exactamente qué información debe corregir o completar.</p>
+        <textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea>
+        <div class="meta" id="returnHint"></div>
+        <button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button>
+      </section>
+    </div>
+  </dialog>
+
+  <script src="app.js?v=4"></script>
 </body>
 </html>
