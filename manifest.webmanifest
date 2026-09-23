@@ -1,0 +1,9 @@
+{
+  "name":"CD Los Yébenes San Bruno",
+  "short_name":"Los Yébenes",
+  "start_url":"./index.html",
+  "display":"standalone",
+  "background_color":"#f5f6f8",
+  "theme_color":"#c51230",
+  "icons":[]
+}

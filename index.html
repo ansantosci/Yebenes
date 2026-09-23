@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#c51230" />
+  <title>Los Yébenes San Bruno · Área de Familias</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark">LY</div>
+      <div>
+        <div class="club-name">C.D. Los Yébenes San Bruno</div>
+        <div class="season">Temporada 2026/2027</div>
+      </div>
+      <button class="icon-button" id="roleSwitch" title="Cambiar vista">↔</button>
+    </header>
+
+    <main>
+      <section id="familyView" class="view active">
+        <div class="hero-card">
+          <span class="eyebrow">Área de familias</span>
+          <h1>Gestiona la ficha de tus hijos desde el móvil</h1>
+          <p>Completa datos, adjunta documentación y consulta el estado de cada inscripción.</p>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow dark">Mis jugadores</span>
+              <h2>Familia Santos</h2>
+            </div>
+            <button class="primary small" data-open="playerModal">+ Añadir</button>
+          </div>
+
+          <div id="playersList" class="cards-grid"></div>
+        </section>
+
+        <section class="section compact">
+          <div class="progress-card">
+            <div>
+              <span class="eyebrow dark">Estado familiar</span>
+              <h3>2 jugadores registrados</h3>
+            </div>
+            <div class="progress-ring" style="--p:82"><span>82%</span></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="adminView" class="view">
+        <div class="hero-card admin-hero">
+          <span class="eyebrow">Panel del club</span>
+          <h1>Control de fichas federativas</h1>
+          <p>Revisa documentación, detecta incidencias y prepara los datos para la RFFM.</p>
+        </div>
+
+        <section class="stats-grid">
+          <article class="stat"><strong>237</strong><span>Jugadores</span></article>
+          <article class="stat"><strong>198</strong><span>Completos</span></article>
+          <article class="stat"><strong>21</strong><span>Documentos pendientes</span></article>
+          <article class="stat"><strong>18</strong><span>Por revisar</span></article>
+        </section>
+
+        <section class="section">
+          <div class="section-head stacked-mobile">
+            <div>
+              <span class="eyebrow dark">Gestión</span>
+              <h2>Jugadores de la temporada</h2>
+            </div>
+            <div class="filters">
+              <input id="searchInput" type="search" placeholder="Buscar jugador..." />
+              <select id="statusFilter">
+                <option value="all">Todos los estados</option>
+                <option value="complete">Completos</option>
+                <option value="pending">Pendientes</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Jugador</th><th>Categoría</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead>
+              <tbody id="adminTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" data-tab="home"><span>⌂</span>Inicio</button>
+      <button class="nav-item" data-tab="players"><span>⚽</span>Jugadores</button>
+      <button class="nav-item" data-tab="docs"><span>▣</span>Documentos</button>
+      <button class="nav-item" data-tab="profile"><span>●</span>Perfil</button>
+    </nav>
+  </div>
+
+  <dialog id="playerModal">
+    <form method="dialog" id="playerForm">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow dark">Nueva inscripción</span>
+          <h2>Datos del jugador</h2>
+        </div>
+        <button class="icon-button" value="cancel">✕</button>
+      </div>
+      <div class="form-grid">
+        <label>Nombre<input name="name" required placeholder="Nombre" /></label>
+        <label>Primer apellido<input name="surname1" required /></label>
+        <label>Segundo apellido<input name="surname2" required /></label>
+        <label>Fecha de nacimiento<input name="birth" required type="date" /></label>
+        <label>DNI/NIE<input name="dni" placeholder="Opcional en prototipo" /></label>
+        <label>Categoría
+          <select name="category" required>
+            <option value="">Seleccionar</option>
+            <option>Chupetín</option><option>Prebenjamín</option><option>Benjamín</option><option>Alevín</option><option>Infantil</option><option>Cadete</option><option>Juvenil</option><option>Senior</option>
+          </select>
+        </label>
+        <label class="span-2">Correo del tutor<input name="email" type="email" required placeholder="familia@ejemplo.com" /></label>
+        <label class="span-2">Teléfono del tutor<input name="phone" type="tel" required /></label>
+      </div>
+      <div class="upload-box">
+        <strong>Documentación</strong>
+        <p>En la versión segura podrás subir DNI/NIE, fotografía y otros documentos.</p>
+        <button type="button" class="secondary" disabled>Adjuntar archivos</button>
+      </div>
+      <label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label>
+      <div class="modal-actions">
+        <button value="cancel" class="secondary">Cancelar</button>
+        <button value="default" class="primary" id="savePlayer">Guardar jugador</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
