@@ -19,3 +19,10 @@ Este prototipo no debe utilizarse aun para almacenar datos reales de menores, DN
 - Las altas realizadas en la vista de familias aparecen inmediatamente en la vista del club.
 - Los jugadores añadidos se conservan en `localStorage` del navegador para las pruebas.
 - Los contadores del panel se actualizan con los datos visibles del prototipo.
+
+
+## V3
+- Alta de familias y panel del club comparten la misma fuente local.
+- Al entrar en Club se recarga el almacenamiento y se limpian filtros.
+- Corregido el submit del formulario en Safari/iOS.
+- Cache versionada para evitar servir JS antiguo.

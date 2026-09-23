@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c51230" />
   <title>Los Yébenes San Bruno · Área de Familias</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <div class="app-shell">
@@ -99,13 +99,13 @@
   </div>
 
   <dialog id="playerModal">
-    <form method="dialog" id="playerForm">
+    <form id="playerForm">
       <div class="modal-head">
         <div>
           <span class="eyebrow dark">Nueva inscripción</span>
           <h2>Datos del jugador</h2>
         </div>
-        <button class="icon-button" value="cancel">✕</button>
+        <button type="button" class="icon-button" value="cancel">✕</button>
       </div>
       <div class="form-grid">
         <label>Nombre<input name="name" required placeholder="Nombre" /></label>
@@ -129,12 +129,12 @@
       </div>
       <label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label>
       <div class="modal-actions">
-        <button value="cancel" class="secondary">Cancelar</button>
-        <button value="default" class="primary" id="savePlayer">Guardar jugador</button>
+        <button type="button" value="cancel" class="secondary">Cancelar</button>
+        <button type="submit" class="primary" id="savePlayer">Guardar jugador</button>
       </div>
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
