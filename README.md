@@ -1,25 +1,30 @@
-# Los Yébenes San Bruno - Prototipo web app V16
+# Los Yébenes San Bruno - Prototipo web app V17
 
 Versión de pruebas de la aplicación responsive del C.D. Los Yébenes San Bruno.
 
-## Cambio principal de V16
+## Cambio técnico principal de V17
 
-Se refuerza la actualización de la PWA para evitar que Chrome mantenga versiones antiguas:
+Durante la fase de desarrollo se desactiva temporalmente el Service Worker para evitar que Chrome mantenga versiones antiguas de la aplicación.
 
-- Service Worker con estrategia **network first** y `cache: no-store` para los recursos del mismo origen.
-- Registro con `updateViaCache: 'none'`.
-- Comprobación de actualizaciones al arrancar, recuperar el foco y volver a una pestaña visible.
-- Eliminación automática de cachés antiguas.
-- Migración automática desde la estrategia de caché de V14 y anteriores.
-- Aviso discreto **Nueva versión disponible** con botón **Actualizar ahora** para las siguientes actualizaciones.
-- Recarga con parámetro de cache-busting al aplicar una actualización.
+- La aplicación ya no registra un Service Worker nuevo.
+- Al arrancar intenta desregistrar Service Workers anteriores del sitio.
+- Se eliminan las cachés PWA antiguas sin borrar los datos de prueba almacenados en `localStorage`.
+- `styles.css` y `app.js` se cargan con parámetro de versión (`?v=17`) para forzar la actualización de recursos.
+- Se mantiene intacta la funcionalidad de negocio de V16.
+- La pantalla de acceso muestra discretamente `v17`.
 
-La lógica funcional de negocio de V14 se mantiene sin cambios.
+## Funcionalidad heredada de V16
 
-
-## V16 - Identidad única y deduplicación P0
-- Nueva entidad lógica Persona vinculada a usuarios y jugadores.
+- Entidad lógica Persona vinculada a usuarios y jugadores.
 - Detección de posibles duplicados por correo, DNI/NIE y nombre + fecha de nacimiento.
 - Bloqueo preventivo de altas duplicadas de jugadores.
 - Pantalla Administrador > Personas con directorio maestro y posibles duplicados.
 - Fusión administrativa que conserva perfiles e histórico cuando no existen conflictos de inscripción en una misma temporada.
+
+## Nota sobre versiones internas
+
+La versión visible de la aplicación es **V17**. El esquema de claves de datos locales sigue siendo **13** para conservar los datos de prueba existentes entre versiones.
+
+## Service Worker
+
+Se reactivará cuando la aplicación alcance una versión más estable, con una estrategia de actualización controlada.

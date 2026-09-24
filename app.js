@@ -1,10 +1,11 @@
-const VERSION='13';
+const APP_VERSION='17';
+const DATA_VERSION='13';
 const K={
-  users:`yebenes-users-v${VERSION}`,session:`yebenes-session-v${VERSION}`,players:`yebenes-players-v${VERSION}`,
-  seasons:`yebenes-seasons-v${VERSION}`,categories:`yebenes-categories-v${VERSION}`,teams:`yebenes-teams-v${VERSION}`,
-  inscriptions:`yebenes-inscriptions-v${VERSION}`,reps:`yebenes-representations-v${VERSION}`,playerTeams:`yebenes-player-teams-v${VERSION}`,
-  medicals:`yebenes-medicals-v${VERSION}`,coaches:`yebenes-coaches-v${VERSION}`,statusHistory:`yebenes-status-history-v${VERSION}`,
-  audit:`yebenes-audit-v${VERSION}`,currentSeason:`yebenes-current-season-v${VERSION}`,sessionRole:`yebenes-session-role-v${VERSION}`,persons:'yebenes-persons-v1'
+  users:`yebenes-users-v${DATA_VERSION}`,session:`yebenes-session-v${DATA_VERSION}`,players:`yebenes-players-v${DATA_VERSION}`,
+  seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
+  inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
+  medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1'
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
