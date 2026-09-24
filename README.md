@@ -1,21 +1,20 @@
-# Los Yébenes San Bruno – Prototipo web app V7
+# Los Yébenes San Bruno - Prototipo web app V8
 
-Versión de pruebas para la temporada 2026/2027.
+Versión de demostración para pruebas internas. No usar datos personales reales.
 
-## Novedades V7
-- Control de reconocimientos médicos por jugador.
-- Fecha del último reconocimiento y fecha de validez/próxima renovación.
-- Aviso automático de reconocimientos que vencen en los próximos 90 días.
-- Filtros por en vigor, próximos a vencer, vencidos y sin datos.
-- Inventario de entrenadores por categoría.
-- Rol de primer o segundo entrenador.
-- Control de licencia de entrenador y nivel/tipo.
-- Control de curso de delegado.
-- Filtros por categoría, rol, licencia y curso de delegado.
-- Alta y edición de entrenadores desde el área del club.
+## Novedades V8
+- Equipos concretos por categoría (por ejemplo, Prebenjamín A / B).
+- Nuevo rol interno **Entrenador**, creado exclusivamente por un administrador.
+- Al crear un entrenador se asigna uno o varios equipos y se registran función, licencia y curso de delegado.
+- El entrenador solo puede consultar los jugadores asignados a sus equipos.
+- Los jugadores nacen desde el alta realizada por la familia sin equipo asignado.
+- El club valida primero la inscripción inicial y, a partir de ese estado, puede asignar al jugador a un equipo.
+- Flujo: inscripción familiar -> revisión inicial -> asignación de equipo -> reconocimiento médico -> listo para federar -> ficha tramitada.
 
-## Importante
-Este entorno sigue usando almacenamiento local del navegador (localStorage). No debe utilizarse todavía con datos reales ni contraseñas reales. En la versión de producción se conectará a autenticación, base de datos y almacenamiento seguro.
+### Usuarios demo
+- Administrador: `admin@yebenes.demo` / `demo123`
+- Club: `club@yebenes.demo` / `demo123`
+- Entrenador: `entrenador@yebenes.demo` / `demo123`
+- Familia: `familia@yebenes.demo` / `demo123`
 
-## Reconocimientos médicos
-La app almacena explícitamente la fecha de validez/próxima renovación que figure en el control federativo del jugador y calcula sobre esa fecha el aviso de 90 días. Esto evita asumir una periodicidad fija mientras se valida la regla exacta aplicable en RFFM para cada supuesto.
+El prototipo usa `localStorage`; todavía no existe sincronización real entre dispositivos.
