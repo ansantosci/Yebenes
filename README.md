@@ -11,3 +11,8 @@ Versión de pruebas para familias y club.
 - Los cambios quedan guardados localmente en el navegador para pruebas.
 
 > Prototipo sin backend. No introducir datos reales de menores.
+
+
+## V5
+- Sustituido el marcador “LY” de la cabecera por el escudo oficial actual del C.D. Los Yébenes San Bruno publicado en la web oficial del club.
+- Actualizada la caché del service worker a v5.
