@@ -1,4 +1,4 @@
-const APP_VERSION='18';
+const APP_VERSION='19';
 const DATA_VERSION='13';
 const K={
   users:`yebenes-users-v${DATA_VERSION}`,session:`yebenes-session-v${DATA_VERSION}`,players:`yebenes-players-v${DATA_VERSION}`,
@@ -336,7 +336,7 @@ $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonFor
 window.addEventListener('storage',()=>{reload();applyAgeTransitions();if(currentUser)showApp()});
 initData();reload();if(currentUser){if(currentRole)showApp();else showRoleChooser()}else showAuth('login');
 
-// V17 development update strategy: deliberately disable Service Workers.
+// V19 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.
 // Existing localStorage application data is intentionally preserved.
 async function disableLegacyServiceWorkers(){

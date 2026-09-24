@@ -4,16 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#c51230" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <script>
+    window.YEBENES_APP_VERSION = '19';
+    (async function checkRemoteVersion(){
+      try {
+        const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
+        if (!response.ok) return;
+        const info = await response.json();
+        const remote = String(info.version || '');
+        const local = String(window.YEBENES_APP_VERSION || '');
+        if (remote && remote !== local) {
+          const url = new URL(window.location.href);
+          if (url.searchParams.get('appVersion') !== remote) {
+            url.searchParams.set('appVersion', remote);
+            url.searchParams.set('_reload', Date.now().toString());
+            window.location.replace(url.toString());
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo comprobar la versión remota', e);
+      }
+    })();
+  </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v18</div>
+      <div class="version-badge" aria-label="Versión de prueba">v19</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -214,6 +239,6 @@
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

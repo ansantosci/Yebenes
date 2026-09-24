@@ -1,4 +1,4 @@
-# Los Yébenes San Bruno — Prototipo web app · V18
+# Los Yébenes San Bruno — Prototipo web app · V19
 
 Versión de pruebas del área de familias y gestión del C.D. Los Yébenes San Bruno.
 
@@ -16,3 +16,8 @@ Versión de pruebas del área de familias y gestión del C.D. Los Yébenes San B
 ## Publicación
 
 GitHub Pages debe desplegar la rama `main` desde `/(root)`.
+
+
+## Actualización en desarrollo
+
+La V19 mantiene el Service Worker desactivado e incorpora `version.json` como comprobador remoto de versión. La aplicación consulta ese archivo con una URL única y, si detecta una versión superior, fuerza la recarga del HTML con un parámetro de versión para evitar la caché de Chrome.
