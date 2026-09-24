@@ -196,4 +196,4 @@ $('#clubUserRole').onchange=syncCoachUserFields;
 const oldOpenUser=$('#openClubUserModal').onclick;$('#openClubUserModal').onclick=()=>{syncCoachUserFields();$('#clubUserModal').showModal();};
 
 initData();reload();if(currentUser)showApp();else showAuth('login');
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=8').catch(()=>{});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js?v=9').catch(()=>{});

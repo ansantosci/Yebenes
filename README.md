@@ -18,3 +18,7 @@ Versión de demostración para pruebas internas. No usar datos personales reales
 - Familia: `familia@yebenes.demo` / `demo123`
 
 El prototipo usa `localStorage`; todavía no existe sincronización real entre dispositivos.
+
+
+## V9
+- Añadido el usuario demo de Entrenador en la pantalla de inicio: entrenador@yebenes.demo / demo123.
