@@ -61,3 +61,7 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .update-banner span{font-size:.78rem;color:#667085}
 .update-banner button{border:0;border-radius:10px;background:#c8102e;color:#fff;font-weight:800;padding:9px 12px;white-space:nowrap;cursor:pointer}
 @media(max-width:520px){.update-banner{bottom:12px;align-items:flex-start}.update-banner button{padding:8px 10px}}
+
+/* V16 · identidad única, detección y fusión de personas */
+.duplicate-list{display:grid;gap:10px}.duplicate-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #f0c36b;background:#fff8e6;border-radius:12px}.duplicate-card div{display:grid;gap:3px}.duplicate-card strong{font-size:.88rem}.duplicate-card span{font-size:.76rem;color:#7a5b16}.empty-note{padding:14px;border:1px dashed #d0d5dd;border-radius:12px;color:#667085;background:#fafafa;font-size:.82rem}.count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:.75rem;vertical-align:middle}
+@media(max-width:620px){.duplicate-card{align-items:flex-start;flex-direction:column}.duplicate-card button{width:100%}}

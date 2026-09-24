@@ -1,4 +1,4 @@
-const APP_VERSION = '15';
+const APP_VERSION = '16';
 const CACHE_PREFIX = 'yebenes-runtime-v';
 const CACHE = `${CACHE_PREFIX}${APP_VERSION}`;
 const LEGACY_CACHE_PREFIX = 'yebenes-v';

@@ -1,8 +1,8 @@
-# Los Yébenes San Bruno - Prototipo web app V15
+# Los Yébenes San Bruno - Prototipo web app V16
 
 Versión de pruebas de la aplicación responsive del C.D. Los Yébenes San Bruno.
 
-## Cambio principal de V15
+## Cambio principal de V16
 
 Se refuerza la actualización de la PWA para evitar que Chrome mantenga versiones antiguas:
 
@@ -15,3 +15,11 @@ Se refuerza la actualización de la PWA para evitar que Chrome mantenga versione
 - Recarga con parámetro de cache-busting al aplicar una actualización.
 
 La lógica funcional de negocio de V14 se mantiene sin cambios.
+
+
+## V16 - Identidad única y deduplicación P0
+- Nueva entidad lógica Persona vinculada a usuarios y jugadores.
+- Detección de posibles duplicados por correo, DNI/NIE y nombre + fecha de nacimiento.
+- Bloqueo preventivo de altas duplicadas de jugadores.
+- Pantalla Administrador > Personas con directorio maestro y posibles duplicados.
+- Fusión administrativa que conserva perfiles e histórico cuando no existen conflictos de inscripción en una misma temporada.

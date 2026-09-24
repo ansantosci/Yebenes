@@ -13,7 +13,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v15</div>
+      <div class="version-badge" aria-label="Versión de prueba">v16</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -147,6 +147,16 @@
         <section class="section compact"><div class="info-card"><strong>Modelo histórico</strong><p>Los jugadores y entrenadores no pertenecen permanentemente a un equipo. Las asignaciones se guardan con temporada y periodo de vigencia, por lo que los cambios no borran el histórico.</p></div></section>
       </section>
 
+      <section id="personsView" class="view">
+        <div class="hero-card admin-hero"><span class="eyebrow">Identidad única</span><h1>Personas</h1><p>Controla que una misma persona no se duplique cuando actúa como jugador, tutor, entrenador o miembro del club.</p></div>
+        <section class="section">
+          <div class="section-head"><div><span class="eyebrow dark">Calidad del dato</span><h2>Posibles duplicados <span class="count-pill" id="duplicateCount">0</span></h2></div></div>
+          <div id="duplicateList" class="duplicate-list"></div>
+        </section>
+        <section class="section"><div class="section-head"><div><span class="eyebrow dark">Directorio maestro</span><h2>Personas registradas</h2></div></div><div class="table-wrap"><table><thead><tr><th>Persona</th><th>Correo(s)</th><th>DNI/NIE</th><th>Perfiles</th><th>Jugadores</th><th>Cuentas</th></tr></thead><tbody id="personsTable"></tbody></table></div></section>
+        <section class="section compact"><div class="info-card"><strong>Regla P0 de identidad</strong><p>La aplicación bloquea nuevas altas cuando detecta el mismo DNI/NIE o el mismo nombre y fecha de nacimiento. El administrador puede fusionar duplicados conservando roles, inscripciones, equipos, reconocimientos y trazabilidad.</p></div></section>
+      </section>
+
       <section id="usersView" class="view">
         <div class="hero-card admin-hero">
           <span class="eyebrow">Administración</span>
@@ -169,6 +179,7 @@
       <button class="nav-item" id="medicalNavButton" data-club-view="medicalView"><span>♥</span>RRMM</button>
       <button class="nav-item" id="coachesNavButton" data-club-view="coachesView"><span>🧑‍🏫</span>Entrenadores</button>
       <button class="nav-item" id="structureNavButton" data-club-view="structureView"><span>▦</span>Estructura</button>
+      <button class="nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
       <button class="nav-item" id="usersNavButton" data-club-view="usersView"><span>👤</span>Usuarios</button>
       <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
@@ -199,6 +210,6 @@
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>
