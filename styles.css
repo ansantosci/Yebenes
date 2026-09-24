@@ -65,3 +65,8 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 /* Identidad única, detección y fusión de personas (incorporado en V16) */
 .duplicate-list{display:grid;gap:10px}.duplicate-card{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:1px solid #f0c36b;background:#fff8e6;border-radius:12px}.duplicate-card div{display:grid;gap:3px}.duplicate-card strong{font-size:.88rem}.duplicate-card span{font-size:.76rem;color:#7a5b16}.empty-note{padding:14px;border:1px dashed #d0d5dd;border-radius:12px;color:#667085;background:#fafafa;font-size:.82rem}.count-pill{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:.75rem;vertical-align:middle}
 @media(max-width:620px){.duplicate-card{align-items:flex-start;flex-direction:column}.duplicate-card button{width:100%}}
+
+/* V18 · documento propio del tutor y DNI opcional del menor */
+.optional-label{font-size:.72rem;font-weight:600;color:var(--muted)}
+#guardianDniField small{font-size:.72rem;font-weight:500;color:var(--muted);line-height:1.35}
+#guardianDniField input[readonly]{background:#f5f7fa;color:#475467}

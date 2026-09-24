@@ -1,30 +1,18 @@
-# Los Yébenes San Bruno - Prototipo web app V17
+# Los Yébenes San Bruno — Prototipo web app · V18
 
-Versión de pruebas de la aplicación responsive del C.D. Los Yébenes San Bruno.
+Versión de pruebas del área de familias y gestión del C.D. Los Yébenes San Bruno.
 
-## Cambio técnico principal de V17
+## Novedades V18
 
-Durante la fase de desarrollo se desactiva temporalmente el Service Worker para evitar que Chrome mantenga versiones antiguas de la aplicación.
+- El alta de una cuenta **Tutor/Familia exige DNI/NIE propio del tutor**.
+- El DNI/NIE se guarda en la persona del tutor y se reutiliza automáticamente al dar de alta menores.
+- En el alta de jugador se muestra el **DNI/NIE del tutor** recuperado de la cuenta.
+- El **DNI/NIE del menor es opcional**.
+- Si el menor no tiene documento propio, la inscripción conserva una referencia y una instantánea del documento del tutor utilizado.
+- El DNI del tutor **no interviene en la deduplicación de jugadores**, por lo que varios hermanos pueden compartir legítimamente el mismo documento de representante.
+- Si una cuenta antigua de tutor no tiene DNI/NIE, se solicita una sola vez al realizar la siguiente alta y queda guardado para futuras inscripciones.
+- Se mantiene desactivado el Service Worker durante la fase de desarrollo para evitar versiones obsoletas en caché.
 
-- La aplicación ya no registra un Service Worker nuevo.
-- Al arrancar intenta desregistrar Service Workers anteriores del sitio.
-- Se eliminan las cachés PWA antiguas sin borrar los datos de prueba almacenados en `localStorage`.
-- `styles.css` y `app.js` se cargan con parámetro de versión (`?v=17`) para forzar la actualización de recursos.
-- Se mantiene intacta la funcionalidad de negocio de V16.
-- La pantalla de acceso muestra discretamente `v17`.
+## Publicación
 
-## Funcionalidad heredada de V16
-
-- Entidad lógica Persona vinculada a usuarios y jugadores.
-- Detección de posibles duplicados por correo, DNI/NIE y nombre + fecha de nacimiento.
-- Bloqueo preventivo de altas duplicadas de jugadores.
-- Pantalla Administrador > Personas con directorio maestro y posibles duplicados.
-- Fusión administrativa que conserva perfiles e histórico cuando no existen conflictos de inscripción en una misma temporada.
-
-## Nota sobre versiones internas
-
-La versión visible de la aplicación es **V17**. El esquema de claves de datos locales sigue siendo **13** para conservar los datos de prueba existentes entre versiones.
-
-## Service Worker
-
-Se reactivará cuando la aplicación alcance una versión más estable, con una estrategia de actualización controlada.
+GitHub Pages debe desplegar la rama `main` desde `/(root)`.

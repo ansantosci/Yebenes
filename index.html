@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#c51230" />
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v17</div>
+      <div class="version-badge" aria-label="Versión de prueba">v18</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -42,6 +42,10 @@
         <label>Nombre y apellidos<input name="name" required /></label>
         <label>Correo electrónico<input name="email" type="email" required autocomplete="email" /></label>
         <label>Teléfono<input name="phone" type="tel" required /></label>
+        <div id="guardianSignupFields" class="signup-extra">
+          <label>DNI/NIE del tutor<input name="tutorDni" autocomplete="off" /></label>
+          <div class="role-lock">El documento debe ser propio del tutor. Se guardará en su ficha de persona y se reutilizará automáticamente al inscribir menores.</div>
+        </div>
         <div id="selfSignupFields" class="hidden signup-extra">
           <label>Fecha de nacimiento<input name="birth" type="date" /></label>
           <label>Categoría calculada<input data-category-calculated readonly value="Indica fecha de nacimiento" /></label>
@@ -187,7 +191,7 @@
 
   <dialog id="roleChooserModal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Perfiles de acceso</span><h2>¿Cómo quieres acceder?</h2><div class="meta">Tu cuenta tiene varios perfiles. Puedes cambiar de perfil en cualquier momento sin cerrar sesión.</div></div><button type="button" class="icon-button" id="closeRoleChooser">✕</button></div><div id="roleChooserList" class="role-chooser-list"></div></div></dialog>
 
-  <dialog id="playerModal"><form id="playerForm"><div class="modal-head"><div><span class="eyebrow dark">Nueva inscripción</span><h2 id="playerModalTitle">Datos del jugador</h2></div><button type="button" class="icon-button" value="cancel">✕</button></div><div class="form-grid"><label>Nombre<input name="name" required /></label><label>Primer apellido<input name="surname1" required /></label><label>Segundo apellido<input name="surname2" required /></label><label>Fecha de nacimiento<input name="birth" required type="date" /></label><label>DNI/NIE<input name="dni" /></label><label>Categoría calculada<input data-category-calculated readonly value="Indica fecha de nacimiento" /></label><label class="span-2">Correo del tutor<input name="email" type="email" required /></label><label class="span-2">Teléfono del tutor<input name="phone" type="tel" required /></label></div><div class="upload-box"><strong>Documentación</strong><p>En la versión segura podrás subir DNI/NIE, fotografía y otros documentos.</p><button type="button" class="secondary" disabled>Adjuntar archivos</button></div><label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label><div class="modal-actions"><button type="button" value="cancel" class="secondary">Cancelar</button><button type="submit" class="primary" id="savePlayer">Guardar jugador</button></div></form></dialog>
+  <dialog id="playerModal"><form id="playerForm"><div class="modal-head"><div><span class="eyebrow dark">Nueva inscripción</span><h2 id="playerModalTitle">Datos del jugador</h2></div><button type="button" class="icon-button" value="cancel">✕</button></div><div class="form-grid"><label>Nombre<input name="name" required /></label><label>Primer apellido<input name="surname1" required /></label><label>Segundo apellido<input name="surname2" required /></label><label>Fecha de nacimiento<input name="birth" required type="date" /></label><label>DNI/NIE del jugador <span class="optional-label">(opcional)</span><input name="dni" /></label><label>Categoría calculada<input data-category-calculated readonly value="Indica fecha de nacimiento" /></label><label id="guardianDniField" class="span-2">DNI/NIE del tutor<input name="guardianDni" autocomplete="off" /><small id="guardianDniHint">Se obtiene automáticamente del tutor activo.</small></label><label class="span-2">Correo del tutor<input name="email" type="email" required /></label><label class="span-2">Teléfono del tutor<input name="phone" type="tel" required /></label></div><div class="upload-box"><strong>Documentación</strong><p>En la versión segura podrás subir DNI/NIE, fotografía y otros documentos.</p><button type="button" class="secondary" disabled>Adjuntar archivos</button></div><label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label><div class="modal-actions"><button type="button" value="cancel" class="secondary">Cancelar</button><button type="submit" class="primary" id="savePlayer">Guardar jugador</button></div></form></dialog>
 
   <dialog id="adminPlayerModal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Ficha del club</span><h2 id="adminPlayerName">Jugador</h2><div class="meta" id="adminPlayerCategory"></div></div><button type="button" class="icon-button" id="closeAdminModal">✕</button></div><div class="detail-source" id="adminPlayerSource"></div><div class="detail-grid"><div><span>Datos personales</span><strong id="adminPlayerData"></strong></div><div><span>Documentación</span><strong id="adminPlayerDocs"></strong></div><div class="span-2"><span>Estado federativo</span><strong id="adminPlayerFed"></strong></div></div><section class="workflow-box"><span class="eyebrow dark">Estado del jugador</span><div class="representation-summary"><div><strong id="playerOperationalStatus">Activo</strong><div class="meta">Los jugadores inactivos se conservan en el histórico pero quedan fuera de la operación diaria por defecto.</div></div><button type="button" class="return-button" id="togglePlayerActive">Marcar como inactivo</button></div></section><section class="workflow-box"><span class="eyebrow dark">Representación</span><div id="representationSummary" class="representation-summary"></div><div class="workflow-actions"><button class="secondary" id="changeTutorButton" type="button">Cambiar tutor</button><button class="primary" id="selfRepresentationButton" type="button">Preparar autorrepresentación</button></div></section><section class="workflow-box"><span class="eyebrow dark">Asignación deportiva</span><label>Equipo<select id="adminTeam"><option value="">Sin equipo asignado</option></select></label><div class="meta" id="teamAssignHint"></div><div class="workflow-actions"><button class="primary" id="saveTeamAssignment" type="button">Guardar equipo</button></div><div id="teamAssignmentHistory" class="mini-history"></div></section><section class="workflow-box"><span class="eyebrow dark">Tramitación</span><label>Estado de la ficha<select id="adminWorkflow"><option value="review">Pendiente de revisión inicial</option><option value="initial_ok">Inscripción inicial validada</option><option value="medical">Pendiente de reconocimiento médico</option><option value="ready">Listo para federar</option><option value="federated">Ficha tramitada</option></select></label><div class="workflow-actions"><button class="secondary" id="saveWorkflow" type="button">Guardar estado</button><button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button></div></section><section class="workflow-box"><span class="eyebrow dark">Histórico y auditoría</span><div id="playerHistory" class="history-list"></div></section><section class="return-box"><span class="eyebrow dark">Solicitar cambios a la familia</span><p>Indica exactamente qué información debe corregir o completar.</p><textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea><div class="meta" id="returnHint"></div><button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button></section></div></dialog>
 
@@ -210,6 +214,6 @@
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>
