@@ -6,13 +6,14 @@
   <meta name="theme-color" content="#c51230" />
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
+      <div class="version-badge" aria-label="Versión de prueba">v14</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -193,6 +194,6 @@
   <dialog id="teamModal"><form id="teamForm"><div class="modal-head"><div><span class="eyebrow dark">Estructura deportiva</span><h2 id="teamModalTitle">Nuevo equipo</h2></div><button type="button" class="icon-button" id="closeTeamModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre del equipo<input name="name" required placeholder="Prebenjamín A" /></label><label>Categoría<select name="categoryId" id="teamCategorySelect" required></select></label><label>Estado<select name="active"><option value="yes">Activo</option><option value="no">Inactivo</option></select></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelTeam">Cancelar</button><button type="submit" class="primary">Guardar equipo</button></div></form></dialog>
 
   <dialog id="seasonModal"><form id="seasonForm"><div class="modal-head"><div><span class="eyebrow dark">Temporadas</span><h2>Nueva temporada</h2></div><button type="button" class="icon-button" id="closeSeasonModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre<input name="name" required placeholder="2027/2028" /></label><label>Fecha inicio<input name="startDate" type="date" required /></label><label>Fecha fin<input name="endDate" type="date" required /></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSeason">Cancelar</button><button type="submit" class="primary">Crear temporada</button></div></form></dialog>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>
