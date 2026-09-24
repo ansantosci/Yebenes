@@ -25,3 +25,13 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 @media (min-width:760px){.stats-grid{grid-template-columns:repeat(5,1fr)}.medical-stats{grid-template-columns:repeat(4,1fr)}}
 @media (max-width:700px){.coach-filters{grid-template-columns:1fr 1fr}.club-nav .nav-item{font-size:.64rem;padding-left:1px;padding-right:1px}.club-nav .nav-item span{font-size:1rem}}
 .team-chip{display:inline-flex;padding:5px 8px;margin:2px;border-radius:999px;background:#eef2ff;color:#344054;font-size:.72rem;font-weight:800}.coach-user-fields{padding:12px;border:1px solid #e3e6ea;border-radius:12px;background:#f8f9fb}.coach-user-fields>label{display:grid;gap:6px;font-size:.82rem;font-weight:800}.coach-user-fields select[multiple],#coachTeamIds{min-height:118px;border:1px solid #d5dae0;border-radius:10px;padding:8px;background:white}.workflow-pill.initial_ok{background:#e0f2fe;color:#075985}.workflow-pill.medical{background:#fef3c7;color:#92400e}
+
+/* V10 · vigencia de asignaciones de entrenadores */
+.assignment-editor{border:1px solid #e5e7eb;border-radius:16px;padding:14px;background:#fafafa}
+.assignment-add{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+.assignment-add label{margin:0}
+.assignment-list{display:grid;gap:8px;margin-top:12px}
+.assignment-card,.assignment-inline{display:flex;gap:12px;align-items:center;justify-content:space-between;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;background:white}
+.assignment-inline{margin:4px 0;min-width:300px}
+.assignment-card .status,.assignment-inline .status{white-space:nowrap}
+@media(max-width:760px){.assignment-add{grid-template-columns:1fr 1fr}.assignment-add button{grid-column:1/-1}.assignment-card{align-items:flex-start;flex-wrap:wrap}.assignment-inline{min-width:240px;align-items:flex-start;flex-direction:column;gap:6px}}
