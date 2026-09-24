@@ -1,18 +1,17 @@
-# Los Yébenes San Bruno - Prototipo web app V14
+# Los Yébenes San Bruno - Prototipo web app V15
 
-Novedades V14:
-- Filtro de fichas del club por categoría.
-- Categoría calculada automáticamente a partir de la fecha de nacimiento y la temporada activa.
-- Recalculo de categoría al cambiar de temporada.
-- Estado operativo Activo/Inactivo de jugadores sin borrado de histórico.
-- Las fichas del club muestran solo jugadores activos por defecto, con filtro para consultar inactivos o todos.
-- El club puede desactivar o reactivar un jugador desde su ficha.
+Versión de pruebas de la aplicación responsive del C.D. Los Yébenes San Bruno.
 
-La lógica de categorías para 2026/2027 usa los grupos de nacimiento definidos para el club y se desplaza automáticamente con el año de inicio de cada temporada.
+## Cambio principal de V15
 
-Prototipo de demostración: no usar datos personales reales hasta disponer de backend, autenticación y almacenamiento seguros.
+Se refuerza la actualización de la PWA para evitar que Chrome mantenga versiones antiguas:
 
+- Service Worker con estrategia **network first** y `cache: no-store` para los recursos del mismo origen.
+- Registro con `updateViaCache: 'none'`.
+- Comprobación de actualizaciones al arrancar, recuperar el foco y volver a una pestaña visible.
+- Eliminación automática de cachés antiguas.
+- Migración automática desde la estrategia de caché de V14 y anteriores.
+- Aviso discreto **Nueva versión disponible** con botón **Actualizar ahora** para las siguientes actualizaciones.
+- Recarga con parámetro de cache-busting al aplicar una actualización.
 
-## V14
-
-Único cambio funcional visible: se muestra la versión de prueba `v14` de forma discreta en la esquina superior derecha de la pantalla de acceso.
+La lógica funcional de negocio de V14 se mantiene sin cambios.

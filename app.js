@@ -309,4 +309,52 @@ $('#openTeamModal').onclick=()=>{if(currentRole!=='admin')return;editingTeamId=n
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 window.addEventListener('storage',()=>{reload();applyAgeTransitions();if(currentUser)showApp()});
-initData();reload();if(currentUser){if(currentRole)showApp();else showRoleChooser()}else showAuth('login');if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js?v=14').catch(()=>{});
+initData();reload();if(currentUser){if(currentRole)showApp();else showRoleChooser()}else showAuth('login');
+
+// PWA update strategy (v15+): always check the network for the service worker,
+// surface a visible update action, and never depend on Chrome's HTTP cache.
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  const showUpdateBanner = () => $('#updateBanner')?.classList.remove('hidden');
+  const hideUpdateBanner = () => $('#updateBanner')?.classList.add('hidden');
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'APP_UPDATE_READY') showUpdateBanner();
+  });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    // Do not reload automatically from v15 onward: the banner lets the user decide.
+    showUpdateBanner();
+  });
+
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(registration => {
+    // Force an update check at startup and whenever the tab becomes active again.
+    registration.update().catch(() => {});
+    const check = () => registration.update().catch(() => {});
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+
+    registration.addEventListener('updatefound', () => {
+      const worker = registration.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner();
+      });
+    });
+
+    $('#applyUpdateButton')?.addEventListener('click', async () => {
+      refreshing = true;
+      hideUpdateBanner();
+      try {
+        await registration.update();
+        if (registration.waiting) registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } catch {}
+      // Reload with a one-use cache-busting query so index.html is guaranteed fresh.
+      const url = new URL(window.location.href);
+      url.searchParams.set('_v', Date.now().toString());
+      window.location.replace(url.toString());
+    });
+  }).catch(() => {});
+}
+
