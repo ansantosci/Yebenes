@@ -1,18 +1,13 @@
-# Los Yébenes San Bruno - Prototipo web app V4
+# Los Yébenes San Bruno - Prototipo web app V6
 
-Versión de pruebas para familias y club.
+## Novedades V6
+- Pantalla de acceso realista con inicio de sesión.
+- Alta autónoma de familias: toda cuenta creada desde la web obtiene exclusivamente el rol Familia.
+- Pantalla exclusiva de Administrador para crear, activar o desactivar usuarios internos del club.
+- Roles separados: Administrador, Usuario del club y Familia.
+- Los usuarios del club ven las fichas; solo Administrador ve la gestión de usuarios.
+- Cada familia solo ve sus propios jugadores.
+- El panel del club ve jugadores de todas las familias y mantiene el flujo de revisión/devolución.
 
-## Novedades V4
-- Las altas de familias aparecen en el panel del club.
-- El club puede abrir la ficha de un jugador desde la tabla.
-- El club puede avanzar el estado de tramitación o seleccionar un estado concreto.
-- El club puede devolver una ficha a la familia indicando el motivo.
-- La familia recibe el aviso, puede abrir la ficha, modificarla y reenviarla al club.
-- Los cambios quedan guardados localmente en el navegador para pruebas.
-
-> Prototipo sin backend. No introducir datos reales de menores.
-
-
-## V5
-- Sustituido el marcador “LY” de la cabecera por el escudo oficial actual del C.D. Los Yébenes San Bruno publicado en la web oficial del club.
-- Actualizada la caché del service worker a v5.
+## Importante
+Es un prototipo de demostración basado en localStorage. No usar datos reales de menores, documentos ni contraseñas reales. La versión de producción necesitará backend, autenticación segura, base de datos y control de permisos en servidor.

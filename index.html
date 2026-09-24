@@ -4,185 +4,126 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#c51230" />
-  <title>Los Yébenes San Bruno · Área de Familias</title>
+  <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
-  <div class="app-shell">
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
+        <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada 2026/2027</span></div>
+      </div>
+      <div class="auth-tabs">
+        <button id="showLogin" class="auth-tab active" type="button">Iniciar sesión</button>
+        <button id="showFamilySignup" class="auth-tab" type="button">Alta de familia</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <h1>Acceso a la plataforma</h1>
+        <p>Familias y personal autorizado del club acceden desde aquí.</p>
+        <label>Correo electrónico<input name="email" type="email" required autocomplete="username" /></label>
+        <label>Contraseña<input name="password" type="password" required autocomplete="current-password" /></label>
+        <button class="primary" type="submit">Entrar</button>
+        <div class="demo-box"><strong>Usuarios de prueba</strong><span>Administrador: admin@yebenes.demo · demo123</span><span>Club: club@yebenes.demo · demo123</span><span>Familia: familia@yebenes.demo · demo123</span></div>
+      </form>
+
+      <form id="familySignupForm" class="auth-form hidden">
+        <h1>Crear cuenta familiar</h1>
+        <p>Las cuentas creadas desde esta pantalla tendrán siempre perfil <strong>Familia</strong>.</p>
+        <div class="role-lock">Perfil asignado automáticamente: <strong>Familia</strong></div>
+        <label>Nombre y apellidos del tutor<input name="name" required /></label>
+        <label>Correo electrónico<input name="email" type="email" required autocomplete="email" /></label>
+        <label>Teléfono<input name="phone" type="tel" required /></label>
+        <label>Contraseña<input name="password" type="password" minlength="6" required /></label>
+        <label>Repetir contraseña<input name="password2" type="password" minlength="6" required /></label>
+        <label class="consent"><input type="checkbox" required /> Acepto las condiciones de uso del entorno de pruebas.</label>
+        <button class="primary" type="submit">Crear cuenta familiar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-shell hidden" id="appShell">
     <header class="topbar">
       <div class="brand-mark"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /></div>
-      <div>
+      <div class="brand-copy">
         <div class="club-name">C.D. Los Yébenes San Bruno</div>
-        <div class="season">Temporada 2026/2027</div>
+        <div class="season">Temporada 2026/2027 · <span id="currentRoleLabel"></span></div>
       </div>
-      <button class="icon-button" id="roleSwitch" title="Cambiar vista">↔</button>
+      <button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
     </header>
 
     <main>
-      <section id="familyView" class="view active">
+      <section id="familyView" class="view">
         <div class="hero-card">
           <span class="eyebrow">Área de familias</span>
           <h1>Gestiona la ficha de tus hijos desde el móvil</h1>
           <p>Completa datos, adjunta documentación y consulta el estado de cada inscripción.</p>
         </div>
-
         <section class="section">
           <div class="section-head">
-            <div>
-              <span class="eyebrow dark">Mis jugadores</span>
-              <h2>Familia Santos</h2>
-            </div>
+            <div><span class="eyebrow dark">Mis jugadores</span><h2 id="familyTitle">Mi familia</h2></div>
             <button class="primary small" data-open="playerModal">+ Añadir</button>
           </div>
-
           <div id="playersList" class="cards-grid"></div>
         </section>
-
         <section class="section compact">
-          <div class="progress-card">
-            <div>
-              <span class="eyebrow dark">Estado familiar</span>
-              <h3 id="familyPlayerCount">2 jugadores registrados</h3>
-            </div>
-            <div class="progress-ring" style="--p:82"><span>82%</span></div>
-          </div>
+          <div class="progress-card"><div><span class="eyebrow dark">Estado familiar</span><h3 id="familyPlayerCount">0 jugadores registrados</h3></div><div class="progress-ring" style="--p:82"><span>82%</span></div></div>
         </section>
       </section>
 
-      <section id="adminView" class="view">
+      <section id="clubView" class="view">
         <div class="hero-card admin-hero">
           <span class="eyebrow">Panel del club</span>
           <h1>Control de fichas federativas</h1>
           <p>Revisa documentación, detecta incidencias y prepara los datos para la RFFM.</p>
         </div>
-
         <section class="stats-grid">
           <article class="stat"><strong id="statPlayers">0</strong><span>Jugadores</span></article>
           <article class="stat"><strong id="statComplete">0</strong><span>Completos</span></article>
           <article class="stat"><strong id="statDocs">0</strong><span>Documentos pendientes</span></article>
           <article class="stat"><strong id="statReview">0</strong><span>Por revisar</span></article>
         </section>
-
         <section class="section">
           <div class="section-head stacked-mobile">
-            <div>
-              <span class="eyebrow dark">Gestión</span>
-              <h2>Jugadores de la temporada</h2>
-            </div>
-            <div class="filters">
-              <input id="searchInput" type="search" placeholder="Buscar jugador..." />
-              <select id="statusFilter">
-                <option value="all">Todos los estados</option>
-                <option value="complete">Completos</option>
-                <option value="pending">Pendientes</option>
-              </select>
-            </div>
+            <div><span class="eyebrow dark">Gestión</span><h2>Jugadores de la temporada</h2></div>
+            <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
-
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Jugador</th><th>Categoría</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead>
-              <tbody id="adminTable"></tbody>
-            </table>
-          </div>
+          <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
         </section>
+      </section>
+
+      <section id="usersView" class="view">
+        <div class="hero-card admin-hero">
+          <span class="eyebrow">Administración</span>
+          <h1>Usuarios del club</h1>
+          <p>Solo un administrador puede dar de alta, modificar o desactivar usuarios internos del club.</p>
+        </div>
+        <section class="section">
+          <div class="section-head"><div><span class="eyebrow dark">Accesos internos</span><h2>Personal autorizado</h2></div><button class="primary small" id="openClubUserModal">+ Nuevo usuario</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="clubUsersTable"></tbody></table></div>
+        </section>
+        <section class="section compact"><div class="info-card"><strong>Regla de acceso</strong><p>Las familias no pueden convertirse en usuarios del club desde su propio perfil. Solo un administrador puede crear cuentas internas.</p></div></section>
       </section>
     </main>
 
-    <nav class="bottom-nav" id="bottomNav">
-      <button class="nav-item active" data-tab="home"><span>⌂</span>Inicio</button>
-      <button class="nav-item" data-tab="players"><span>⚽</span>Jugadores</button>
-      <button class="nav-item" data-tab="docs"><span>▣</span>Documentos</button>
-      <button class="nav-item" data-tab="profile"><span>●</span>Perfil</button>
+    <nav class="bottom-nav" id="familyNav">
+      <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="players"><span>⚽</span>Jugadores</button><button class="nav-item" data-family-tab="docs"><span>▣</span>Documentos</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
+    </nav>
+    <nav class="bottom-nav club-nav hidden" id="clubNav">
+      <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button><button class="nav-item" id="usersNavButton" data-club-view="usersView"><span>👤</span>Usuarios</button><button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
   </div>
 
-  <dialog id="playerModal">
-    <form id="playerForm">
-      <div class="modal-head">
-        <div>
-          <span class="eyebrow dark">Nueva inscripción</span>
-          <h2 id="playerModalTitle">Datos del jugador</h2>
-        </div>
-        <button type="button" class="icon-button" value="cancel">✕</button>
-      </div>
-      <div class="form-grid">
-        <label>Nombre<input name="name" required placeholder="Nombre" /></label>
-        <label>Primer apellido<input name="surname1" required /></label>
-        <label>Segundo apellido<input name="surname2" required /></label>
-        <label>Fecha de nacimiento<input name="birth" required type="date" /></label>
-        <label>DNI/NIE<input name="dni" placeholder="Opcional en prototipo" /></label>
-        <label>Categoría
-          <select name="category" required>
-            <option value="">Seleccionar</option>
-            <option>Chupetín</option><option>Prebenjamín</option><option>Benjamín</option><option>Alevín</option><option>Infantil</option><option>Cadete</option><option>Juvenil</option><option>Senior</option>
-          </select>
-        </label>
-        <label class="span-2">Correo del tutor<input name="email" type="email" required placeholder="familia@ejemplo.com" /></label>
-        <label class="span-2">Teléfono del tutor<input name="phone" type="tel" required /></label>
-      </div>
-      <div class="upload-box">
-        <strong>Documentación</strong>
-        <p>En la versión segura podrás subir DNI/NIE, fotografía y otros documentos.</p>
-        <button type="button" class="secondary" disabled>Adjuntar archivos</button>
-      </div>
-      <label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label>
-      <div class="modal-actions">
-        <button type="button" value="cancel" class="secondary">Cancelar</button>
-        <button type="submit" class="primary" id="savePlayer">Guardar jugador</button>
-      </div>
-    </form>
-  </dialog>
+  <dialog id="playerModal"><form id="playerForm"><div class="modal-head"><div><span class="eyebrow dark">Nueva inscripción</span><h2 id="playerModalTitle">Datos del jugador</h2></div><button type="button" class="icon-button" value="cancel">✕</button></div><div class="form-grid"><label>Nombre<input name="name" required /></label><label>Primer apellido<input name="surname1" required /></label><label>Segundo apellido<input name="surname2" required /></label><label>Fecha de nacimiento<input name="birth" required type="date" /></label><label>DNI/NIE<input name="dni" /></label><label>Categoría<select name="category" required><option value="">Seleccionar</option><option>Chupetín</option><option>Prebenjamín</option><option>Benjamín</option><option>Alevín</option><option>Infantil</option><option>Cadete</option><option>Juvenil</option><option>Senior</option></select></label><label class="span-2">Correo del tutor<input name="email" type="email" required /></label><label class="span-2">Teléfono del tutor<input name="phone" type="tel" required /></label></div><div class="upload-box"><strong>Documentación</strong><p>En la versión segura podrás subir DNI/NIE, fotografía y otros documentos.</p><button type="button" class="secondary" disabled>Adjuntar archivos</button></div><label class="consent"><input type="checkbox" required /> Confirmo que soy padre, madre o tutor legal y que los datos facilitados son correctos.</label><div class="modal-actions"><button type="button" value="cancel" class="secondary">Cancelar</button><button type="submit" class="primary" id="savePlayer">Guardar jugador</button></div></form></dialog>
 
+  <dialog id="adminPlayerModal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Ficha del club</span><h2 id="adminPlayerName">Jugador</h2><div class="meta" id="adminPlayerCategory"></div></div><button type="button" class="icon-button" id="closeAdminModal">✕</button></div><div class="detail-source" id="adminPlayerSource"></div><div class="detail-grid"><div><span>Datos personales</span><strong id="adminPlayerData"></strong></div><div><span>Documentación</span><strong id="adminPlayerDocs"></strong></div><div class="span-2"><span>Estado federativo</span><strong id="adminPlayerFed"></strong></div></div><section class="workflow-box"><span class="eyebrow dark">Tramitación</span><label>Estado de la ficha<select id="adminWorkflow"><option value="review">Pendiente de revisión</option><option value="data_ok">Datos validados</option><option value="docs_ok">Documentación validada</option><option value="ready">Listo para federar</option><option value="federated">Ficha tramitada</option></select></label><div class="workflow-actions"><button class="secondary" id="saveWorkflow" type="button">Guardar estado</button><button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button></div></section><section class="return-box"><span class="eyebrow dark">Solicitar cambios a la familia</span><p>Indica exactamente qué información debe corregir o completar.</p><textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea><div class="meta" id="returnHint"></div><button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button></section></div></dialog>
 
-  <dialog id="adminPlayerModal">
-    <div class="admin-detail">
-      <div class="modal-head">
-        <div>
-          <span class="eyebrow dark">Ficha del club</span>
-          <h2 id="adminPlayerName">Jugador</h2>
-          <div class="meta" id="adminPlayerCategory"></div>
-        </div>
-        <button type="button" class="icon-button" id="closeAdminModal">✕</button>
-      </div>
+  <dialog id="clubUserModal"><form id="clubUserForm"><div class="modal-head"><div><span class="eyebrow dark">Usuario interno</span><h2>Alta de usuario del club</h2></div><button type="button" class="icon-button" id="closeClubUserModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre y apellidos<input name="name" required /></label><label class="span-2">Correo electrónico<input name="email" type="email" required /></label><label>Rol<select name="role" required><option value="club">Usuario del club</option><option value="admin">Administrador</option></select></label><label>Contraseña inicial<input name="password" type="password" minlength="6" required /></label></div><div class="warning-box">Esta contraseña es solo para el prototipo. En la versión real enviaremos una invitación segura al correo del usuario.</div><div class="modal-actions"><button type="button" class="secondary" id="cancelClubUser">Cancelar</button><button type="submit" class="primary">Crear usuario</button></div></form></dialog>
 
-      <div class="detail-source" id="adminPlayerSource"></div>
-      <div class="detail-grid">
-        <div><span>Datos personales</span><strong id="adminPlayerData"></strong></div>
-        <div><span>Documentación</span><strong id="adminPlayerDocs"></strong></div>
-        <div class="span-2"><span>Estado federativo</span><strong id="adminPlayerFed"></strong></div>
-      </div>
-
-      <section class="workflow-box">
-        <span class="eyebrow dark">Tramitación</span>
-        <label>Estado de la ficha
-          <select id="adminWorkflow">
-            <option value="review">Pendiente de revisión</option>
-            <option value="data_ok">Datos validados</option>
-            <option value="docs_ok">Documentación validada</option>
-            <option value="ready">Listo para federar</option>
-            <option value="federated">Ficha tramitada</option>
-          </select>
-        </label>
-        <div class="workflow-actions">
-          <button class="secondary" id="saveWorkflow" type="button">Guardar estado</button>
-          <button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button>
-        </div>
-      </section>
-
-      <section class="return-box">
-        <span class="eyebrow dark">Solicitar cambios a la familia</span>
-        <p>Indica exactamente qué información debe corregir o completar.</p>
-        <textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea>
-        <div class="meta" id="returnHint"></div>
-        <button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button>
-      </section>
-    </div>
-  </dialog>
-
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
