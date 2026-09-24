@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#c51230" />
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -85,7 +85,7 @@
           <article class="stat"><strong id="statPlayers">0</strong><span>Jugadores</span></article>
           <article class="stat"><strong id="statComplete">0</strong><span>Completos</span></article>
           <article class="stat"><strong id="statDocs">0</strong><span>Documentos pendientes</span></article>
-          <article class="stat"><strong id="statReview">0</strong><span>Por revisar</span></article>
+          <article class="stat"><strong id="statReview">0</strong><span>Por revisar</span></article><article class="stat alert-stat"><strong id="statMedical90">0</strong><span>RRMM vence ≤ 90 días</span></article>
         </section>
         <section class="section">
           <div class="section-head stacked-mobile">
@@ -93,6 +93,34 @@
             <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
           <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section id="medicalView" class="view">
+        <div class="hero-card admin-hero">
+          <span class="eyebrow">Control sanitario</span>
+          <h1>Reconocimientos médicos</h1>
+          <p>Controla la fecha del último reconocimiento, su validez y los vencimientos próximos.</p>
+        </div>
+        <section class="stats-grid medical-stats">
+          <article class="stat"><strong id="medicalTotal">0</strong><span>Jugadores</span></article>
+          <article class="stat"><strong id="medicalOk">0</strong><span>En vigor</span></article>
+          <article class="stat alert-stat"><strong id="medicalSoon">0</strong><span>Vence ≤ 90 días</span></article>
+          <article class="stat danger-stat"><strong id="medicalExpired">0</strong><span>Vencidos / sin fecha</span></article>
+        </section>
+        <section class="section">
+          <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Seguimiento</span><h2>Reconocimientos de jugadores</h2></div><div class="filters"><input id="medicalSearch" type="search" placeholder="Buscar jugador..." /><select id="medicalFilter"><option value="all">Todos</option><option value="soon">Vence en 90 días</option><option value="expired">Vencidos</option><option value="missing">Sin datos</option><option value="ok">En vigor</option></select></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Último RRMM</th><th>Válido hasta</th><th>Estado</th></tr></thead><tbody id="medicalTable"></tbody></table></div>
+        </section>
+        <section class="section compact"><div class="info-card"><strong>Regla del aviso</strong><p>La app marca en ámbar los reconocimientos que vencen en los próximos 90 días y en rojo los ya vencidos. La fecha de validez se guarda por jugador para ajustarse al dato oficial de RFFM.</p></div></section>
+      </section>
+
+      <section id="coachesView" class="view">
+        <div class="hero-card admin-hero"><span class="eyebrow">Estructura deportiva</span><h1>Entrenadores</h1><p>Inventario de técnicos por categoría, función y formación.</p></div>
+        <section class="section">
+          <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Cuerpo técnico</span><h2>Entrenadores de la temporada</h2></div><button class="primary small" id="openCoachModal">+ Añadir entrenador</button></div>
+          <div class="coach-filters"><select id="coachCategoryFilter"><option value="all">Todas las categorías</option></select><select id="coachRoleFilter"><option value="all">Primer y segundo entrenador</option><option value="first">Primer entrenador</option><option value="second">Segundo entrenador</option></select><select id="coachLicenseFilter"><option value="all">Licencia: todos</option><option value="yes">Con licencia</option><option value="no">Sin licencia</option></select><select id="coachDelegateFilter"><option value="all">Delegado: todos</option><option value="yes">Curso delegado hecho</option><option value="no">Curso delegado pendiente</option></select></div>
+          <div class="table-wrap"><table><thead><tr><th>Entrenador</th><th>Categoría</th><th>Rol</th><th>Licencia entrenador</th><th>Curso delegado</th><th></th></tr></thead><tbody id="coachesTable"></tbody></table></div>
         </section>
       </section>
 
@@ -114,7 +142,11 @@
       <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="players"><span>⚽</span>Jugadores</button><button class="nav-item" data-family-tab="docs"><span>▣</span>Documentos</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
     </nav>
     <nav class="bottom-nav club-nav hidden" id="clubNav">
-      <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button><button class="nav-item" id="usersNavButton" data-club-view="usersView"><span>👤</span>Usuarios</button><button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
+      <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button>
+      <button class="nav-item" data-club-view="medicalView"><span>♥</span>RRMM</button>
+      <button class="nav-item" data-club-view="coachesView"><span>🧑‍🏫</span>Entrenadores</button>
+      <button class="nav-item" id="usersNavButton" data-club-view="usersView"><span>👤</span>Usuarios</button>
+      <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
   </div>
 
@@ -124,6 +156,10 @@
 
   <dialog id="clubUserModal"><form id="clubUserForm"><div class="modal-head"><div><span class="eyebrow dark">Usuario interno</span><h2>Alta de usuario del club</h2></div><button type="button" class="icon-button" id="closeClubUserModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre y apellidos<input name="name" required /></label><label class="span-2">Correo electrónico<input name="email" type="email" required /></label><label>Rol<select name="role" required><option value="club">Usuario del club</option><option value="admin">Administrador</option></select></label><label>Contraseña inicial<input name="password" type="password" minlength="6" required /></label></div><div class="warning-box">Esta contraseña es solo para el prototipo. En la versión real enviaremos una invitación segura al correo del usuario.</div><div class="modal-actions"><button type="button" class="secondary" id="cancelClubUser">Cancelar</button><button type="submit" class="primary">Crear usuario</button></div></form></dialog>
 
-  <script src="app.js?v=6"></script>
+
+  <dialog id="medicalModal"><form id="medicalForm"><div class="modal-head"><div><span class="eyebrow dark">Reconocimiento médico</span><h2 id="medicalPlayerName">Jugador</h2><div class="meta" id="medicalPlayerMeta"></div></div><button type="button" class="icon-button" id="closeMedicalModal">✕</button></div><div class="form-grid"><label>Fecha último reconocimiento<input name="medicalDate" type="date" /></label><label>Válido hasta / próxima renovación<input name="medicalExpiry" type="date" required /></label></div><div class="warning-box">Introduce la fecha de validez que figure en el control federativo/RFFM. La app calculará automáticamente los avisos de 90 días.</div><div class="modal-actions"><button type="button" class="secondary" id="cancelMedical">Cancelar</button><button type="submit" class="primary">Guardar reconocimiento</button></div></form></dialog>
+
+  <dialog id="coachModal"><form id="coachForm"><div class="modal-head"><div><span class="eyebrow dark">Cuerpo técnico</span><h2 id="coachModalTitle">Nuevo entrenador</h2></div><button type="button" class="icon-button" id="closeCoachModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre y apellidos<input name="name" required /></label><label>Categoría<select name="category" required><option value="">Seleccionar</option><option>Chupetín</option><option>Prebenjamín</option><option>Benjamín</option><option>Alevín</option><option>Infantil</option><option>Cadete</option><option>Juvenil</option><option>Senior</option></select></label><label>Rol<select name="coachRole" required><option value="first">Primer entrenador</option><option value="second">Segundo entrenador</option></select></label><label>¿Tiene licencia de entrenador?<select name="hasLicense" required><option value="yes">Sí</option><option value="no">No</option></select></label><label>Tipo / nivel de licencia<input name="licenseType" placeholder="UEFA C, UEFA B, UEFA A..." /></label><label>¿Curso de delegado realizado?<select name="delegateCourse" required><option value="yes">Sí</option><option value="no">No</option></select></label><label>Estado<select name="active" required><option value="yes">Activo</option><option value="no">Inactivo</option></select></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelCoach">Cancelar</button><button type="submit" class="primary">Guardar entrenador</button></div></form></dialog>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
