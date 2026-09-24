@@ -35,3 +35,13 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .assignment-inline{margin:4px 0;min-width:300px}
 .assignment-card .status,.assignment-inline .status{white-space:nowrap}
 @media(max-width:760px){.assignment-add{grid-template-columns:1fr 1fr}.assignment-add button{grid-column:1/-1}.assignment-card{align-items:flex-start;flex-wrap:wrap}.assignment-inline{min-width:240px;align-items:flex-start;flex-direction:column;gap:6px}}
+
+/* V11 · temporadas, inscripción separada, representación y trazabilidad */
+.representation-summary{display:grid;gap:4px;padding:10px 0}.representation-summary strong{font-size:.95rem}.representation-summary span{font-size:.82rem;color:var(--muted)}
+.adult-transition{margin-top:8px;padding:8px 10px;border-radius:10px;background:#fff3cd;color:#8a6116;font-size:.8rem;font-weight:800}.adult-transition.danger{background:#ffe4e6;color:#9f1239}.adult-alert{color:#9a6700;font-weight:800;margin-top:3px}
+.history-list,.mini-history{display:grid;gap:8px;margin-top:10px}.history-item{display:grid;gap:3px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:11px;background:white}.history-item strong{font-size:.82rem}.history-item span{font-size:.75rem;color:var(--muted);line-height:1.35}
+.representation-line{margin-top:8px;padding:7px 9px;border-radius:9px;background:#f8f9fb}.form-grid textarea{width:100%;border:1px solid #d5dae0;border-radius:10px;padding:11px;background:white;resize:vertical;font:inherit}
+.club-nav{overflow-x:auto;grid-auto-flow:column;grid-auto-columns:minmax(76px,1fr)}
+.club-nav .nav-item{min-width:76px}.stats-grid{grid-template-columns:repeat(2,1fr)}
+@media(min-width:900px){.stats-grid{grid-template-columns:repeat(6,1fr)}}
+@media(max-width:700px){.club-nav{display:flex;justify-content:flex-start}.club-nav .nav-item{flex:1 0 82px}.workflow-actions{align-items:stretch}}
