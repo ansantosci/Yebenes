@@ -1,8 +1,8 @@
-# CD Los Yébenes San Bruno - Prototipo web app V22
+# CD Los Yébenes San Bruno - Prototipo web app V23
 
 ## Novedad principal
 
-V22 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
+V23 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
 
 - Inicio de sesión real mediante email/contraseña de Supabase Auth.
 - La identidad se resuelve desde `public.personas`.
@@ -21,12 +21,17 @@ El frontend utiliza únicamente la **Publishable key** de Supabase. No contiene 
 El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` mantiene la comprobación de versiones desplegadas.
 
 
-## Correccion V22
+## Correccion V23
 - Corrige el login asíncrono en Chrome: el formulario se conserva antes del `await`, evitando `Cannot read properties of null (reading reset)`.
 
 
-## V22
+## V23
 - La pestaña Estructura lee temporadas, categorías y equipos reales desde Supabase/PostgreSQL.
 - Se muestran los 23 equipos de la temporada 2026/2027 cargados en la migración 005.
 - La edición de estructura queda temporalmente deshabilitada en la UI mientras se completa el CRUD remoto.
 - El resto de datos deportivos continúa temporalmente en localStorage.
+
+
+## Corrección V23
+
+Restaura las funciones de gestión de **Usuarios** y **Personas** que faltaban en V22 y provocaban el error `renderClubUsers is not defined` al iniciar sesión como Administrador. No cambia el modelo de datos ni la integración con Supabase.
