@@ -1,23 +1,21 @@
-# Los Yébenes San Bruno — Prototipo web app · V19
+# CD Los Yébenes San Bruno - Prototipo web app V20
 
-Versión de pruebas del área de familias y gestión del C.D. Los Yébenes San Bruno.
+## Novedad principal
 
-## Novedades V18
+V20 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
 
-- El alta de una cuenta **Tutor/Familia exige DNI/NIE propio del tutor**.
-- El DNI/NIE se guarda en la persona del tutor y se reutiliza automáticamente al dar de alta menores.
-- En el alta de jugador se muestra el **DNI/NIE del tutor** recuperado de la cuenta.
-- El **DNI/NIE del menor es opcional**.
-- Si el menor no tiene documento propio, la inscripción conserva una referencia y una instantánea del documento del tutor utilizado.
-- El DNI del tutor **no interviene en la deduplicación de jugadores**, por lo que varios hermanos pueden compartir legítimamente el mismo documento de representante.
-- Si una cuenta antigua de tutor no tiene DNI/NIE, se solicita una sola vez al realizar la siguiente alta y queda guardado para futuras inscripciones.
-- Se mantiene desactivado el Service Worker durante la fase de desarrollo para evitar versiones obsoletas en caché.
+- Inicio de sesión real mediante email/contraseña de Supabase Auth.
+- La identidad se resuelve desde `public.personas`.
+- Los perfiles activos se obtienen desde `public.persona_roles` + `public.roles`.
+- Una persona puede seguir teniendo varios perfiles y cambiar entre ellos.
+- El logout cierra la sesión real de Supabase.
+- La operación deportiva (jugadores, equipos, fichas, etc.) continúa temporalmente en `localStorage`; se migrará por fases a PostgreSQL.
+- El autorregistro real de nuevas familias/jugadores se deja temporalmente deshabilitado hasta implementar el flujo seguro de alta.
 
-## Publicación
+## Seguridad
 
-GitHub Pages debe desplegar la rama `main` desde `/(root)`.
+El frontend utiliza únicamente la **Publishable key** de Supabase. No contiene `service_role`, secret keys ni contraseña PostgreSQL. Las tablas están protegidas mediante RLS.
 
+## Desarrollo
 
-## Actualización en desarrollo
-
-La V19 mantiene el Service Worker desactivado e incorpora `version.json` como comprobador remoto de versión. La aplicación consulta ese archivo con una URL única y, si detecta una versión superior, fuerza la recarga del HTML con un parámetro de versión para evitar la caché de Chrome.
+El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` mantiene la comprobación de versiones desplegadas.

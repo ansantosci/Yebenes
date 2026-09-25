@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '19';
+    window.YEBENES_APP_VERSION = '20';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,21 +31,21 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=20" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v19</div>
+      <div class="version-badge" aria-label="Versión de prueba">v20</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
       </div>
       <div class="auth-tabs">
         <button id="showLogin" class="auth-tab active" type="button">Iniciar sesión</button>
-        <button id="showFamilySignup" class="auth-tab" type="button">Crear cuenta</button>
+        <button id="showFamilySignup" class="auth-tab" type="button" hidden>Crear cuenta</button>
       </div>
 
       <form id="loginForm" class="auth-form">
@@ -54,7 +54,7 @@
         <label>Correo electrónico<input name="email" type="email" required autocomplete="username" /></label>
         <label>Contraseña<input name="password" type="password" required autocomplete="current-password" /></label>
         <button class="primary" type="submit">Entrar</button>
-        <div class="demo-box"><strong>Usuarios de prueba</strong><span>Administrador: admin@yebenes.demo · demo123</span><span>Club: club@yebenes.demo · demo123</span><span>Entrenador: entrenador@yebenes.demo · demo123</span><span>Familia: familia@yebenes.demo · demo123</span><span>Jugador: jugador@yebenes.demo · demo123</span><span>Multirol: multi@yebenes.demo · demo123</span></div>
+        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con el usuario creado en Supabase Auth.</span><span>En V20 los datos operativos siguen siendo de prueba/locales; autenticación y perfiles ya proceden de Supabase.</span></div>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -239,6 +239,7 @@
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
-  <script src="app.js?v=19"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

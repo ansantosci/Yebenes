@@ -1,2 +1,1 @@
-// V19 development stub.
-// Service Worker intentionally disabled during rapid prototyping.
+// V20: Service Worker intentionally disabled during rapid development.
