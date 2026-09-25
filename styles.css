@@ -87,3 +87,8 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .card-actions{display:flex;justify-content:flex-end;margin-top:12px}
 .return-button.tiny,.primary.tiny,.secondary.tiny{width:auto;padding:7px 10px;font-size:12px}
 @media(max-width:720px){.doc-upload{grid-template-columns:1fr}.doc-upload .primary{width:100%}}
+
+/* V34 - circuito documental más claro */
+.document-delivered{margin-top:12px;padding:12px;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #dfe5ea;background:#f8fafb}
+.document-delivered.is-review{background:#fff9e8;border-color:#f1d99a}.document-delivered.is-valid{background:#eefcf3;border-color:#bfe8cd}.document-delivered strong{font-size:.86rem}.document-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.replacement-panel{margin-top:10px;padding-top:10px;border-top:1px dashed #d8dde3}.replacement-panel[hidden]{display:none}.doc-file-name{margin-top:4px}.document-rejection{margin-top:12px}.document-rejection p{margin-bottom:0}
+@media(max-width:720px){.document-delivered{align-items:flex-start;flex-direction:column}.document-actions{width:100%}.document-actions button{flex:1}.federation-requirement .workflow-actions .secondary{width:auto}}

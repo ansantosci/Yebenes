@@ -1,4 +1,4 @@
-const APP_VERSION='33';
+const APP_VERSION='34';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -446,23 +446,32 @@ function renderFamilyDocumentsSummary(){
   box.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>{const valid=p.requirements?.filter(r=>r.estado==='validado').length||0,total=p.requirements?.filter(r=>r.obligatorio).length||0;return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${valid}/${total} requisitos validados</div></div><span class="status ${federationDocsComplete(p)?'complete':'pending'}">${federationDocsComplete(p)?'✓ Completa':'Pendiente'}</span></div><button class="secondary small manage-docs-summary" data-id="${esc(p.id)}">Abrir documentación</button></article>`}).join(''):'<div class="empty-card">No hay jugadores con inscripción activa.</div>';
   $$('.manage-docs-summary').forEach(b=>b.onclick=()=>openDocumentManager(b.dataset.id));
 }
+function federationUploadForm(player,req,labelText){
+  const subtype=req.codigo==='identidad_rffm'?`<label>Tipo de documento<select class="doc-subtype" data-req="${req.id}"><option value="dni">DNI</option><option value="nie">NIE</option><option value="pasaporte">Pasaporte</option><option value="partida_nacimiento">Partida de nacimiento</option><option value="libro_familia">Libro de Familia</option></select></label>`:'';
+  const accept=req.codigo==='foto_jugador'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf';
+  return `<div class="doc-upload replacement-upload" data-replacement="${req.id}">${subtype}<label>${esc(labelText)}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
+}
 function documentRequirementHtml(player,req,mode='family'){
   const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado';
   let action='';
-  if(mode==='family'&&req.requiere_archivo&&req.estado!=='validado'){
-    const subtype=req.codigo==='identidad_rffm'?`<label>Tipo de documento<select class="doc-subtype" data-req="${req.id}"><option value="dni">DNI</option><option value="nie">NIE</option><option value="pasaporte">Pasaporte</option><option value="partida_nacimiento">Partida de nacimiento</option><option value="libro_familia">Libro de Familia</option></select></label>`:'';
-    const accept=req.codigo==='foto_jugador'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf';
-    action=`<div class="doc-upload">${subtype}<label>${req.estado==='rechazado'?'Sustituir documento':'Adjuntar archivo'}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
+  if(mode==='family'&&req.requiere_archivo){
+    if(!doc){
+      action=federationUploadForm(player,req,'Adjuntar archivo');
+    }else if(rejected){
+      action=federationUploadForm(player,req,'Aportar documento corregido');
+    }else{
+      action=`<div class="document-delivered ${req.estado==='validado'?'is-valid':'is-review'}"><div><strong>${req.estado==='validado'?'✓ Validado por el club':'✓ Documento aportado'}</strong><div class="meta">${req.estado==='validado'?'Documento aceptado para este requisito.':'Pendiente de revisión por el club.'}</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button><button type="button" class="secondary tiny replace-fed-doc" data-req="${req.id}">${req.estado==='validado'?'Sustituir documento':'Sustituir'}</button></div></div><div class="replacement-panel" data-replacement-panel="${req.id}" hidden>${federationUploadForm(player,req,'Seleccionar nuevo archivo')}</div>`;
+    }
   }else if(mode==='family'&&!req.requiere_archivo&&req.estado!=='validado') action='<div class="meta">Este requisito se confirma desde el club/RFFM.</div>';
-  const fileLine=doc?`<div class="meta">Archivo: ${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''} <button type="button" class="link-button view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver</button></div>`:'';
-  const reason=rejected&&req.motivo_rechazo?`<div class="family-alert"><strong>Debe corregirse</strong><p>${esc(req.motivo_rechazo)}</p></div>`:'';
+  const fileLine=doc?`<div class="meta doc-file-name">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:'';
+  const reason=rejected&&req.motivo_rechazo?`<div class="family-alert document-rejection"><strong>Documento rechazado</strong><p>${esc(req.motivo_rechazo)}</p></div>`:'';
   return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${fileLine}</div><span class="status ${cls}">${esc(label)}</span></div>${reason}${action}</div>`;
 }
 async function openDocumentManager(playerId){
   const p=remoteFamilyPlayers.find(x=>x.id===playerId);if(!p)return;
   $('#documentPlayerName').textContent=p.name;$('#documentPlayerMeta').textContent=`${p.categoryName} · ${dbActiveSeason()?.name||''}`;
   $('#documentRequirementsList').innerHTML=(p.requirements||[]).map(r=>documentRequirementHtml(p,r,'family')).join('')||'<div class="empty-card">No se han inicializado requisitos documentales.</div>';
-  $$('.upload-fed-doc').forEach(b=>b.onclick=()=>uploadFederationDocument(p,b.dataset.req,b));$$('.view-family-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});$('#documentModal').showModal();
+  $$('.upload-fed-doc').forEach(b=>b.onclick=()=>uploadFederationDocument(p,b.dataset.req,b));$$('.replace-fed-doc').forEach(b=>b.onclick=()=>{const panel=document.querySelector(`[data-replacement-panel="${b.dataset.req}"]`);if(panel)panel.hidden=!panel.hidden});$$('.view-family-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});$('#documentModal').showModal();
 }
 async function uploadFederationDocument(player,reqId,button){
   const req=player.requirements.find(r=>r.id===reqId),input=$(`.doc-file[data-req="${reqId}"]`);const file=input?.files?.[0];if(!req||!file){alert('Selecciona un archivo.');return}if(file.size>5*1024*1024){alert('El archivo supera 5 MB.');return}
@@ -477,14 +486,19 @@ async function uploadFederationDocument(player,reqId,button){
 async function openFederationDocument(path){const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(path,300);if(error)throw error;const a=document.createElement('a');a.href=data.signedUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
 function renderAdminFederationRequirements(v){
   const box=$('#adminFederationRequirements');if(!box)return;const can=['admin','club'].includes(currentRole);
-  box.innerHTML=(v.requirements||[]).map(req=>{const [cls,label]=federationReqState(req),doc=currentFedDoc(v,req);const actions=[];if(doc)actions.push(`<button type="button" class="secondary tiny view-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button>`);if(can&&req.estado!=='validado')actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`);if(can&&req.estado!=='rechazado')actions.push(`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${doc?`<div class="meta">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:''}${req.motivo_rechazo?`<div class="meta return-note">${esc(req.motivo_rechazo)}</div>`:''}</div><span class="status ${cls}">${esc(label)}</span></div><div class="workflow-actions">${actions.join('')}</div></div>`}).join('')||'<div class="meta">No hay requisitos inicializados.</div>';
+  box.innerHTML=(v.requirements||[]).map(req=>{const [cls,label]=federationReqState(req),doc=currentFedDoc(v,req);const actions=[];if(doc)actions.push(`<button type="button" class="secondary tiny view-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button>`);if(can&&req.estado!=='validado')actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`);if(can&&req.estado==='validado')actions.push(`<button type="button" class="secondary tiny change-fed-req" data-id="${req.id}">Cambiar validación</button>`);else if(can&&req.estado!=='rechazado')actions.push(`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${doc?`<div class="meta">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:''}${req.motivo_rechazo?`<div class="meta return-note">Motivo: ${esc(req.motivo_rechazo)}</div>`:''}</div><span class="status ${cls}">${esc(label)}</span></div><div class="workflow-actions">${actions.join('')}</div></div>`}).join('')||'<div class="meta">No hay requisitos inicializados.</div>';
   $$('.view-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});
   $$('.validate-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'validado'));
-  $$('.reject-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'rechazado'));
+  $$('.reject-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'rechazado'));$$('.change-fed-req').forEach(b=>b.onclick=()=>changeFederationValidation(v,b.dataset.id));
 }
 async function reviewFederationRequirement(v,reqId,state){
   let reason=null;if(state==='rechazado'){reason=prompt('Indica el motivo del rechazo. La familia lo verá en su ficha:');if(!reason?.trim())return}
   try{const {error}=await sb.rpc('revisar_requisito_federativo',{p_requisito_id:reqId,p_estado:state,p_motivo:reason});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido revisar el requisito: ${err.message||err}`)}
+}
+async function changeFederationValidation(v,reqId){
+  const reason=prompt('Indica el motivo por el que se cambia una validación ya realizada. La familia lo verá en su ficha:');if(!reason?.trim())return;
+  if(!confirm('¿Cambiar este requisito de Validado a Rechazado? Esta acción quedará visible para la familia.'))return;
+  try{const {error}=await sb.rpc('revisar_requisito_federativo',{p_requisito_id:reqId,p_estado:'rechazado',p_motivo:reason.trim()});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido cambiar la validación: ${err.message||err}`)}
 }
 async function loadRemoteClubData(){
   remoteClubPlayers=[];
