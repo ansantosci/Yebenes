@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '21';
+    window.YEBENES_APP_VERSION = '24';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v23</div>
+      <div class="version-badge" aria-label="Versión de prueba">v24</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -171,7 +171,7 @@
         </section>
         <section class="section">
           <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Equipos</span><h2>Equipos de la temporada actual</h2></div><button class="primary small" id="openTeamModal">+ Nuevo equipo</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Categoría</th><th>Jugadores</th><th>Entrenadores</th><th>Estado</th><th></th></tr></thead><tbody id="structureTeamsTable"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Categoría</th><th>Modalidad</th><th>Jugadores</th><th>Entrenadores</th><th>Estado</th><th></th></tr></thead><tbody id="structureTeamsTable"></tbody></table></div>
         </section>
         <section class="section compact"><div class="info-card"><strong>Modelo histórico</strong><p>Los jugadores y entrenadores no pertenecen permanentemente a un equipo. Las asignaciones se guardan con temporada y periodo de vigencia, por lo que los cambios no borran el histórico.</p></div></section>
       </section>
@@ -240,6 +240,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
