@@ -1,8 +1,8 @@
-# CD Los Yébenes San Bruno - Prototipo web app V24
+# CD Los Yébenes San Bruno - Prototipo web app V25
 
 ## Novedad principal
 
-V24 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
+V25 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
 
 - Inicio de sesión real mediante email/contraseña de Supabase Auth.
 - La identidad se resuelve desde `public.personas`.
@@ -21,22 +21,29 @@ El frontend utiliza únicamente la **Publishable key** de Supabase. No contiene 
 El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` mantiene la comprobación de versiones desplegadas.
 
 
-## Correccion V24
+## Correccion V25
 - Corrige el login asíncrono en Chrome: el formulario se conserva antes del `await`, evitando `Cannot read properties of null (reading reset)`.
 
 
-## V24
+## V25
 - La pestaña Estructura lee temporadas, categorías y equipos reales desde Supabase/PostgreSQL.
 - Se muestran los 23 equipos de la temporada 2026/2027 cargados en la migración 005.
 - La edición de estructura queda temporalmente deshabilitada en la UI mientras se completa el CRUD remoto.
 - El resto de datos deportivos continúa temporalmente en localStorage.
 
 
-## Corrección V24
+## Corrección V25
 
 Restaura las funciones de gestión de **Usuarios** y **Personas** que faltaban en V22 y provocaban el error `renderClubUsers is not defined` al iniciar sesión como Administrador. No cambia el modelo de datos ni la integración con Supabase.
 
 
-## V24
+## V25
 - La vista Estructura muestra la modalidad de cada equipo (por ejemplo F7/F11) leída desde Supabase.
 - Sin cambios en autenticación, RLS ni modelo de datos.
+
+
+## V25
+- Alta real de Tutor/Familia y Jugador adulto mediante Supabase Auth.
+- Alta real de menores mediante RPC segura `registrar_menor`.
+- Vista Familia/Jugador alimentada desde PostgreSQL para las nuevas altas.
+- DNI/NIE obligatorio del tutor y documento propio opcional del menor.
