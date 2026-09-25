@@ -1,4 +1,4 @@
-const APP_VERSION='31';
+const APP_VERSION='32';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -608,20 +608,41 @@ async function tryProcessNotifications(){
   try{const {data,error}=await sb.functions.invoke('procesar-notificaciones',{body:{limit:20}});if(error)throw error;return data}catch(err){console.warn('Procesador de notificaciones no disponible',err);return null}
 }
 async function saveRemoteMedicalAppointment(){
-  if(!['admin','club'].includes(currentRole))return;const f=$('#medicalForm');const dt=f.elements.appointmentDateTime.value,place=f.elements.appointmentPlace.value.trim(),address=f.elements.appointmentAddress.value.trim(),notes=f.elements.appointmentNotes.value.trim();if(!dt||!place){alert('Indica fecha/hora y lugar de la cita.');return}
+  if(!['admin','club'].includes(currentRole))return;
+  const button=$('#saveMedicalAppointment');
+  if(button?.disabled)return;
+  const f=$('#medicalForm');
+  const dt=f.elements.appointmentDateTime.value,place=f.elements.appointmentPlace.value.trim(),address=f.elements.appointmentAddress.value.trim(),notes=f.elements.appointmentNotes.value.trim();
+  if(!dt||!place){alert('Indica fecha/hora y lugar de la cita.');return}
+  const previousText=button?.textContent||'Guardar y comunicar cita';
+  if(button){button.disabled=true;button.textContent='Guardando y notificando…';button.setAttribute('aria-busy','true')}
   try{
     const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId),ap=v?.appointment;
     const fn=ap&&editingMedicalAppointment?'modificar_cita_rrmm':'programar_cita_rrmm';
     const args=fn==='modificar_cita_rrmm'?{p_cita_id:ap.id,p_fecha_hora:new Date(dt).toISOString(),p_lugar:place,p_direccion:address||null,p_indicaciones:notes||null}:{p_jugador_id:selectedMedicalPlayerId,p_fecha_hora:new Date(dt).toISOString(),p_lugar:place,p_direccion:address||null,p_indicaciones:notes||null};
     const {error}=await sb.rpc(fn,args);if(error)throw error;
     const sent=await tryProcessNotifications();
-    alert(sent?.sent>0?`Cita guardada y ${sent.sent} notificación${sent.sent===1?'':'es'} enviada${sent.sent===1?'':'s'}.`:'Cita guardada. La notificación ha quedado preparada para su envío.');
+    if(sent?.sent>0){
+      alert(`Cita guardada y ${sent.sent} notificación${sent.sent===1?'':'es'} enviada${sent.sent===1?'':'s'}.`);
+    }else if(sent?.deferred>0){
+      alert('Cita guardada. El envío ha quedado pendiente de reintento automático por límite temporal del proveedor de correo.');
+    }else{
+      alert('Cita guardada. La notificación ha quedado preparada para su envío.');
+    }
     await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.();
-  }catch(err){alert(`No se ha podido guardar la cita: ${err.message||err}`)}
+  }catch(err){
+    alert(`No se ha podido guardar la cita: ${err.message||err}`)
+  }finally{
+    const b=$('#saveMedicalAppointment');
+    if(b){b.disabled=false;b.removeAttribute('aria-busy');if(b.textContent==='Guardando y notificando…')b.textContent=previousText}
+  }
 }
 async function cancelRemoteMedicalAppointment(){
-  if(!['admin','club'].includes(currentRole))return;const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId),ap=v?.appointment;if(!ap)return;if(!confirm('¿Cancelar esta cita? Se conservará en el histórico y se preparará un aviso de cancelación.'))return;
-  try{const {error}=await sb.rpc('cancelar_cita_rrmm',{p_cita_id:ap.id});if(error)throw error;await tryProcessNotifications();await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.()}catch(err){alert(`No se ha podido cancelar la cita: ${err.message||err}`)}
+  if(!['admin','club'].includes(currentRole))return;
+  const button=$('#cancelMedicalAppointment');if(button?.disabled)return;
+  const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId),ap=v?.appointment;if(!ap)return;if(!confirm('¿Cancelar esta cita? Se conservará en el histórico y se preparará un aviso de cancelación.'))return;
+  const previousText=button?.textContent||'Cancelar cita';if(button){button.disabled=true;button.textContent='Cancelando…';button.setAttribute('aria-busy','true')}
+  try{const {error}=await sb.rpc('cancelar_cita_rrmm',{p_cita_id:ap.id});if(error)throw error;await tryProcessNotifications();await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.()}catch(err){alert(`No se ha podido cancelar la cita: ${err.message||err}`)}finally{const b=$('#cancelMedicalAppointment');if(b){b.disabled=false;b.removeAttribute('aria-busy');if(b.textContent==='Cancelando…')b.textContent=previousText}}
 }
 async function saveRemoteMedical(form){
   if(!['admin','club'].includes(currentRole))return;const fd=new FormData(form),date=String(fd.get('medicalDate')||''),expiry=String(fd.get('medicalExpiry')||'');if(!date){alert('Indica la fecha del reconocimiento.');return}const calculated=expiry||addYears(date,2);

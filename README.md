@@ -48,3 +48,12 @@ El Service Worker continúa desactivado durante la fase de desarrollo rápido. `
 - La familia/jugador ve la cita en su ficha.
 - Se prepara una cola de notificaciones para tutor/jugador y entrenadores activos del equipo.
 - Requiere migración 010. El envío efectivo de emails desde la cola requiere backend/Edge Function; no se exponen secretos SMTP en el navegador.
+
+
+## V32
+- Bloqueo inmediato de los botones de guardar/modificar/cancelar cita mientras la operación está en curso.
+- Evita dobles pulsaciones durante latencia y muestra estado `Guardando y notificando…`.
+- Compatible con la migración 012, que hace idempotentes las operaciones de cita repetidas con los mismos datos.
+- El procesador de notificaciones V2 usa el cuerpo completo preparado en PostgreSQL.
+- Los errores 429 de Mailtrap se dejan pendientes de reintento en lugar de marcarlos como fallo definitivo.
+- Los envíos se espacian para respetar el límite del Sandbox gratuito.
