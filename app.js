@@ -1,4 +1,4 @@
-const APP_VERSION='30';
+const APP_VERSION='31';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -442,7 +442,9 @@ async function loadRemoteClubData(){
   const {data:docRows,error:dErr}=await sb.from('documentos').select('id,jugador_id,inscripcion_id,estado,tipo').or(`jugador_id.in.(${playerIds.join(',')}),inscripcion_id.in.(${insIds.join(',')})`);if(dErr&&dErr.code!=='PGRST100')throw dErr;
   const {data:medicalRows,error:mErr}=await sb.from('reconocimientos_medicos').select('id,jugador_id,fecha_reconocimiento,fecha_valido_hasta,fecha_validacion_rffm,centro_medico,observaciones,created_at').in('jugador_id',playerIds).order('fecha_reconocimiento',{ascending:false});if(mErr)throw mErr;
   remoteMedicalRows=medicalRows||[];
-  const {data:appointmentRows,error:apptErr}=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at,created_at').in('jugador_id',playerIds).order('fecha_hora',{ascending:false});if(apptErr)throw apptErr;remoteMedicalAppointments=appointmentRows||[];
+  const {data:appointmentRows,error:apptErr}=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at,created_at,updated_at').in('jugador_id',playerIds).order('fecha_hora',{ascending:false});if(apptErr)throw apptErr;remoteMedicalAppointments=appointmentRows||[];
+  const appointmentIds=(appointmentRows||[]).map(x=>x.id);let notificationRows=[];
+  if(appointmentIds.length&&['admin','club'].includes(currentRole)){const nr=await sb.from('notificaciones_salida').select('id,cita_id,destinatario_tipo,destinatario_email,estado,intentos,enviado_at,ultimo_error,created_at').in('cita_id',appointmentIds).order('created_at',{ascending:false});if(!nr.error)notificationRows=nr.data||[];}
   const personsById=new Map((personRows||[]).map(x=>[x.id,x])),repPersonsById=new Map((repPersons||[]).map(x=>[x.id,x])),insByPlayer=new Map((insRows||[]).map(x=>[x.jugador_id,x]));
   const today=isoToday();
   remoteClubPlayers=(playerRows||[]).map(p=>{
@@ -454,7 +456,7 @@ async function loadRemoteClubData(){
     const docs=(docRows||[]).filter(d=>d.jugador_id===p.id||d.inscripcion_id===ins?.id);const docsComplete=docs.length>0&&docs.every(d=>d.estado==='aceptado');
     const medicalsForPlayer=(medicalRows||[]).filter(m=>m.jugador_id===p.id).sort((a,b)=>String(b.fecha_reconocimiento||'').localeCompare(String(a.fecha_reconocimiento||'')));
     const latestRemoteMedical=medicalsForPlayer[0]||null;
-    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',docs,docsLabel:docsComplete?'Completa':docs.length?'Pendiente':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment};
+    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',docs,docsLabel:docsComplete?'Completa':docs.length?'Pendiente':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications};
   });
   return remoteClubPlayers;
 }
@@ -574,18 +576,52 @@ async function renderRemoteMedical(){
     $('#medicalTotal').textContent=source.length;$('#medicalOk').textContent=source.filter(x=>x.state.key==='ok').length;$('#medicalSoon').textContent=source.filter(x=>x.state.key==='soon').length;$('#medicalExpired').textContent=source.filter(x=>['expired','missing'].includes(x.state.key)).length;
   }catch(err){console.error('Carga RRMM Supabase',err);$('#medicalTable').innerHTML=`<tr><td colspan="5">No se pudieron cargar los reconocimientos: ${esc(err.message||err)}</td></tr>`}
 }
+let editingMedicalAppointment=false;
+function localDateTimeInputValue(v){if(!v)return '';const d=new Date(v);if(Number.isNaN(d.getTime()))return '';const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+function medicalAppointmentNotificationHtml(v){const rows=v?.appointmentNotifications||[];if(!v?.appointment)return '';if(!rows.length)return 'Notificación todavía no generada.';const sent=rows.filter(x=>x.estado==='enviado').length,pending=rows.filter(x=>x.estado==='pendiente').length,errors=rows.filter(x=>x.estado==='error').length;const parts=[];if(sent)parts.push(`✓ ${sent} ${sent===1?'notificación enviada':'notificaciones enviadas'}`);if(pending)parts.push(`⏳ ${pending} pendiente${pending===1?'':'s'}`);if(errors)parts.push(`⚠ ${errors} con error`);return parts.join(' · ')||'Notificaciones canceladas.'}
+function setMedicalAppointmentEditor(v,edit=false){
+  const f=$('#medicalForm'),ap=v?.appointment||null;editingMedicalAppointment=!!(ap&&edit);
+  const editor=$('#medicalAppointmentEditor'),actions=$('#medicalAppointmentActions'),current=$('#medicalAppointmentCurrent'),cancelEdit=$('#cancelMedicalAppointmentEdit'),save=$('#saveMedicalAppointment');
+  if(ap&&!edit){
+    current.innerHTML=`<div class="appointment-summary"><strong>📅 ${esc(formatDateTime(ap.fecha_hora))}</strong><div>${esc(ap.lugar||'')}</div>${ap.direccion?`<div>${esc(ap.direccion)}</div>`:''}${ap.indicaciones?`<div class="meta">${esc(ap.indicaciones)}</div>`:''}</div>`;
+    editor.hidden=true;actions.hidden=false;cancelEdit.hidden=true;
+  }else{
+    current.innerHTML=ap?'<div class="meta">Editando la cita programada.</div>':'<div class="meta">Sin cita programada.</div>';
+    editor.hidden=false;actions.hidden=true;cancelEdit.hidden=!ap;
+    f.elements.appointmentDateTime.value=ap?localDateTimeInputValue(ap.fecha_hora):'';
+    f.elements.appointmentPlace.value=ap?.lugar||'';f.elements.appointmentAddress.value=ap?.direccion||'';f.elements.appointmentNotes.value=ap?.indicaciones||'';
+    save.textContent=ap?'Guardar cambios y comunicar':'Guardar y comunicar cita';
+  }
+  $('#medicalAppointmentNotification').textContent=medicalAppointmentNotificationHtml(v);
+}
 async function openRemoteMedical(id){
   const v=remoteClubPlayers.find(x=>x.id===id);if(!v)return;selectedMedicalPlayerId=id;
   $('#medicalPlayerName').textContent=v.name;$('#medicalPlayerMeta').textContent=v.categoryName;
   const f=$('#medicalForm'),m=v.medical;f.elements.medicalDate.value=m?.fecha_reconocimiento||'';f.elements.medicalExpiry.value=m?.fecha_valido_hasta||'';
-  f.elements.appointmentDateTime.value='';f.elements.appointmentPlace.value='';f.elements.appointmentAddress.value='';f.elements.appointmentNotes.value='';const ap=v.appointment;$('#medicalAppointmentCurrent').innerHTML=ap?`<strong>📅 ${esc(formatDateTime(ap.fecha_hora))}</strong><div>${esc(ap.lugar||'')}</div>${ap.direccion?`<div>${esc(ap.direccion)}</div>`:''}${ap.indicaciones?`<div>${esc(ap.indicaciones)}</div>`:''}`:'Sin cita programada.';
+  setMedicalAppointmentEditor(v,false);
   const hist=(v.medicals||[]).slice().sort((a,b)=>String(b.fecha_reconocimiento||'').localeCompare(String(a.fecha_reconocimiento||'')));
   $('#medicalHistory').innerHTML=hist.length?hist.map(x=>`<div class="history-item"><strong>${fmt(x.fecha_reconocimiento)} → ${fmt(x.fecha_valido_hasta)}</strong><span>${x.fecha_validacion_rffm?'Validado '+fmt(x.fecha_validacion_rffm):'Registrado por el club'}${x.centro_medico?' · '+esc(x.centro_medico):''}</span></div>`).join(''):'<div class="meta">Sin reconocimientos anteriores.</div>';
   $('#medicalModal').showModal();
 }
+async function tryProcessNotifications(){
+  if(!sb||!['admin','club'].includes(currentRole))return null;
+  try{const {data,error}=await sb.functions.invoke('procesar-notificaciones',{body:{limit:20}});if(error)throw error;return data}catch(err){console.warn('Procesador de notificaciones no disponible',err);return null}
+}
 async function saveRemoteMedicalAppointment(){
   if(!['admin','club'].includes(currentRole))return;const f=$('#medicalForm');const dt=f.elements.appointmentDateTime.value,place=f.elements.appointmentPlace.value.trim(),address=f.elements.appointmentAddress.value.trim(),notes=f.elements.appointmentNotes.value.trim();if(!dt||!place){alert('Indica fecha/hora y lugar de la cita.');return}
-  try{const {error}=await sb.rpc('programar_cita_rrmm',{p_jugador_id:selectedMedicalPlayerId,p_fecha_hora:new Date(dt).toISOString(),p_lugar:place,p_direccion:address||null,p_indicaciones:notes||null});if(error)throw error;alert('Cita guardada. Las notificaciones han quedado preparadas para tutor/jugador y entrenadores del equipo.');await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.()}catch(err){alert(`No se ha podido programar la cita: ${err.message||err}`)}
+  try{
+    const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId),ap=v?.appointment;
+    const fn=ap&&editingMedicalAppointment?'modificar_cita_rrmm':'programar_cita_rrmm';
+    const args=fn==='modificar_cita_rrmm'?{p_cita_id:ap.id,p_fecha_hora:new Date(dt).toISOString(),p_lugar:place,p_direccion:address||null,p_indicaciones:notes||null}:{p_jugador_id:selectedMedicalPlayerId,p_fecha_hora:new Date(dt).toISOString(),p_lugar:place,p_direccion:address||null,p_indicaciones:notes||null};
+    const {error}=await sb.rpc(fn,args);if(error)throw error;
+    const sent=await tryProcessNotifications();
+    alert(sent?.sent>0?`Cita guardada y ${sent.sent} notificación${sent.sent===1?'':'es'} enviada${sent.sent===1?'':'s'}.`:'Cita guardada. La notificación ha quedado preparada para su envío.');
+    await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.();
+  }catch(err){alert(`No se ha podido guardar la cita: ${err.message||err}`)}
+}
+async function cancelRemoteMedicalAppointment(){
+  if(!['admin','club'].includes(currentRole))return;const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId),ap=v?.appointment;if(!ap)return;if(!confirm('¿Cancelar esta cita? Se conservará en el histórico y se preparará un aviso de cancelación.'))return;
+  try{const {error}=await sb.rpc('cancelar_cita_rrmm',{p_cita_id:ap.id});if(error)throw error;await tryProcessNotifications();await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.()}catch(err){alert(`No se ha podido cancelar la cita: ${err.message||err}`)}
 }
 async function saveRemoteMedical(form){
   if(!['admin','club'].includes(currentRole))return;const fd=new FormData(form),date=String(fd.get('medicalDate')||''),expiry=String(fd.get('medicalExpiry')||'');if(!date){alert('Indica la fecha del reconocimiento.');return}const calculated=expiry||addYears(date,2);
@@ -735,7 +771,7 @@ $('#closeChangeTutorModal').onclick=$('#cancelChangeTutor').onclick=()=>$('#chan
 $('#selfRepresentationForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const email=String(fd.get('email')).toLowerCase();let pu=currentPlayerUser(p),byEmail=users.find(u=>u.email.toLowerCase()===email);const birthday=eighteenthBirthday(p),adult=ageOn(p.birth)>=18;if(!pu&&byEmail){byEmail=normalizeUser(byEmail);if(!hasRole(byEmail,'player'))byEmail.roles.push('player');byEmail.playerId=p.id;byEmail.pendingActivationDate=adult?'':birthday;pu=byEmail}else if(pu){pu=normalizeUser(pu);if(!hasRole(pu,'player'))pu.roles.push('player');pu.email=email;pu.playerId=p.id;pu.pendingActivationDate=adult?'':birthday}else{pu={id:uid('u-person'),personId:p.personId,name:p.name,email,phone:'',password:fd.get('password'),roles:['player'],active:true,playerId:p.id,pendingActivationDate:adult?'':birthday};users.push(pu)}if(fd.get('password'))pu.password=fd.get('password');if(adult){pu.active=true;pu.pendingActivationDate='';const old=activeRepresentation(p.id);if(old?.type==='guardian'&&!old.legalException)old.endDate=isoToday();if(!activeRepresentation(p.id)||activeRepresentation(p.id)?.type!=='self')representations.push({id:uid('r'),playerId:p.id,userId:pu.id,type:'self',startDate:isoToday(),endDate:'',reason:'Mayoría de edad',legalException:false})}saveUsers();saveReps();recordAudit(adult?'Autorrepresentación activada':'Cuenta de jugador preparada',p.id,pu.email);$('#selfRepresentationModal').close();openAdminPlayer(p.id);renderClub()};
 $('#closeSelfRepresentationModal').onclick=$('#cancelSelfRepresentation').onclick=()=>$('#selfRepresentationModal').close();
 
-$('#medicalSearch').oninput=renderMedical;$('#medicalFilter').onchange=renderMedical;$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addYears(e.target.value,2)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
+$('#medicalSearch').oninput=renderMedical;$('#medicalFilter').onchange=renderMedical;$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addYears(e.target.value,2)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#editMedicalAppointment').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,true)};$('#cancelMedicalAppointmentEdit').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,false)};$('#cancelMedicalAppointment').onclick=cancelRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
 
 $('#openCoachModal').onclick=openCoachForNew;$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachLicenseFilter','coachDelegateFilter'].forEach(id=>$('#'+id).onchange=renderCoaches);$('#coachForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;if(!pendingCoachAssignments.length){alert('Añade al menos una asignación.');return}const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fd.get('name'),assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);if(item.userId){const u=users.find(x=>x.id===item.userId);if(u)u.name=item.name;saveUsers()}saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure();if(currentRole==='admin')renderClubUsers()};
 $('#addCoachAssignment').onclick=()=>addAssignmentFrom('coachAssignment',pendingCoachAssignments,renderCoachAssignments);

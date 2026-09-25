@@ -42,7 +42,7 @@ El Service Worker continúa desactivado durante la fase de desarrollo rápido. `
 - RRMM usa ahora el código real de V28 al cargarse correctamente el JavaScript actualizado.
 - No se modifica el modelo de datos ni Supabase.
 
-## V30
+## V31
 - RRMM con contadores excluyentes: Vigente >90 días, Vence <=90 días, Vencido/sin RRMM.
 - Gestión de citas RRMM con fecha/hora, lugar, dirección e indicaciones.
 - La familia/jugador ve la cita en su ficha.
