@@ -1,8 +1,8 @@
-# CD Los Yébenes San Bruno - Prototipo web app V20
+# CD Los Yébenes San Bruno - Prototipo web app V21
 
 ## Novedad principal
 
-V20 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
+V21 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
 
 - Inicio de sesión real mediante email/contraseña de Supabase Auth.
 - La identidad se resuelve desde `public.personas`.
@@ -19,3 +19,7 @@ El frontend utiliza únicamente la **Publishable key** de Supabase. No contiene 
 ## Desarrollo
 
 El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` mantiene la comprobación de versiones desplegadas.
+
+
+## Correccion V21
+- Corrige el login asíncrono en Chrome: el formulario se conserva antes del `await`, evitando `Cannot read properties of null (reading reset)`.
