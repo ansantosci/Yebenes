@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V34 — 25/09/2026**
+**Versión actual: V35 — 25/09/2026**
 
 ## Estado funcional actual
 
@@ -33,6 +33,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | V32 | 25/09/2026 | Migración 012 + Edge Function v2 | Bloqueo anti-doble clic, notificaciones robustas, cuerpo completo y reintento ante 429. |
 | V33 | 25/09/2026 | Migración 013 | Documentación federativa RFFM en Storage privado; checklist y validación/rechazo. |
 | **V34** | **25/09/2026** | Sin migración nueva | Mejora UX documental: tarjeta de documento aportado/validado, sustitución bajo demanda, rechazo visible con motivo y acción secundaria para cambiar una validación. README acumulativo reconstruido. |
+| **V35** | **25/09/2026** | Migración 014 | Bloqueo de documentos validados, solicitud de nueva versión por Club/Admin, retorno automático a pendiente al aportar corrección y nuevo histórico documental. |
 
 ## V34 — detalle
 
@@ -61,6 +62,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 - 011: edición/cancelación de citas y trazabilidad.
 - 012: robustez/idempotencia de notificaciones RRMM.
 - 013: requisitos y documentos federativos + Storage privado.
+- 014: bloqueo de documentos validados, solicitud de nueva versión e histórico de requisitos.
 
 ## Edge Functions
 
@@ -96,3 +98,29 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Documentación federativa en bucket privado con URLs firmadas temporales.
 - Secretos y envío de correo únicamente en backend/Edge Functions.
 - No exponer `service_role`, JWT secret, contraseña PostgreSQL ni tokens de Mailtrap.
+
+---
+
+## V35 — 25/09/2026 — Migración 014
+
+### Documentación federativa: bloqueo tras validación
+- Un documento **validado por Club/Administrador queda bloqueado para Familia/Jugador**.
+- La familia puede consultar el archivo validado, pero ya no puede sustituirlo unilateralmente.
+- Club/Administrador dispone de **Solicitar nueva versión**, con motivo obligatorio.
+- Mientras existe una solicitud de nueva versión, el documento validado anterior se conserva y sigue siendo consultable como última versión aceptada.
+- Cuando la familia aporta la nueva versión, el requisito pasa automáticamente a **Aportado · pendiente de revisión**.
+- Un documento rechazado que se corrige también vuelve automáticamente a **Aportado · pendiente de revisión**; el rechazo anterior deja de ser el estado vigente.
+- Los documentos pendientes de revisión pueden sustituirse por la familia antes de que el club los valide.
+- Un requisito rechazado no puede ser validado de nuevo sin que exista una nueva versión aportada.
+
+### Trazabilidad
+- Se crea `historial_requisitos_federativos` para conservar las transiciones principales: aportación, corrección, validación, rechazo y solicitud/aportación de nueva versión.
+- La versión validada anterior no se marca como sustituida hasta que se aporta realmente un nuevo archivo.
+
+### UX
+- Familia: documento validado muestra solo `Ver documento` y la indicación de que está bloqueado.
+- Familia: solicitud de nueva versión muestra el motivo del club, permite ver la versión validada anterior y aportar el nuevo archivo.
+- Administrador/Club: documentos validados con archivo muestran `Solicitar nueva versión`; los rechazados quedan a la espera de corrección.
+
+### Base de datos
+- **Migración 014:** `014_documentos_validados_bloqueados.sql`.

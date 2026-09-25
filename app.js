@@ -1,4 +1,4 @@
-const APP_VERSION='34';
+const APP_VERSION='35';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -380,7 +380,7 @@ async function loadRemoteFamilyData(){
   if(insIds.length){const res=await sb.from('asignaciones_jugador_equipo').select('inscripcion_id,equipo_id,fecha_desde,fecha_hasta').in('inscripcion_id',insIds);if(res.error)throw res.error;assignRows=res.data||[];}
   let reqRows=[],fedDocRows=[];
   if(insIds.length){
-    const rr=await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at').in('inscripcion_id',insIds).order('created_at',{ascending:true});if(rr.error)throw rr.error;reqRows=rr.data||[];
+    const rr=await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at,nueva_version_solicitada_at,motivo_nueva_version').in('inscripcion_id',insIds).order('created_at',{ascending:true});if(rr.error)throw rr.error;reqRows=rr.data||[];
     const dr=await sb.from('documentos_federativos').select('id,requisito_id,inscripcion_id,storage_path,nombre_original,mime_type,subtipo,estado,motivo_rechazo,aportado_at,revisado_at').in('inscripcion_id',insIds).order('aportado_at',{ascending:false});if(dr.error)throw dr.error;fedDocRows=dr.data||[];
   }
   let appointmentRows=[];{const res=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at').in('jugador_id',playerIds).eq('estado','programada').order('fecha_hora',{ascending:true});if(!res.error)appointmentRows=res.data||[];}
@@ -394,7 +394,7 @@ async function loadRemoteFamilyData(){
     const requirements=ins?reqRows.filter(r=>r.inscripcion_id===ins.id):[];
     const fedDocs=ins?fedDocRows.filter(d=>d.inscripcion_id===ins.id):[];
     const docsComplete=requirements.length>0&&requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado');
-    const appointment=appointmentRows.find(a=>a.jugador_id===p.id)||null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',teamName:team?.name||'Sin equipo',appointment,requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente'};
+    const appointment=appointmentRows.find(a=>a.jugador_id===p.id)||null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',teamName:team?.name||'Sin equipo',appointment,requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado'||r.estado==='nueva_version_solicitada')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente'};
   });
   return remoteFamilyPlayers;
 }
@@ -436,7 +436,7 @@ async function renderRemoteFamily(){
 
 
 function federationReqState(req){
-  const m={pendiente:['pending','Pendiente'],aportado:['pending','Aportado · pendiente de revisión'],validado:['complete','✓ Validado'],rechazado:['returned','⚠ Rechazado']};return m[req?.estado]||m.pendiente;
+  const m={pendiente:['pending','Pendiente'],aportado:['pending','Aportado · pendiente de revisión'],validado:['complete','✓ Validado'],rechazado:['returned','⚠ Rechazado'],nueva_version_solicitada:['pending','↻ Nueva versión solicitada']};return m[req?.estado]||m.pendiente;
 }
 function currentFedDoc(player,req){return (player?.fedDocs||[]).find(d=>d.id===req?.current_documento_id)||null}
 function identitySubtypeLabel(v){return ({dni:'DNI',nie:'NIE',pasaporte:'Pasaporte',partida_nacimiento:'Partida de nacimiento',libro_familia:'Libro de Familia'})[v]||v||''}
@@ -452,20 +452,25 @@ function federationUploadForm(player,req,labelText){
   return `<div class="doc-upload replacement-upload" data-replacement="${req.id}">${subtype}<label>${esc(labelText)}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
 }
 function documentRequirementHtml(player,req,mode='family'){
-  const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado';
+  const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado',newVersion=req.estado==='nueva_version_solicitada';
   let action='';
   if(mode==='family'&&req.requiere_archivo){
     if(!doc){
       action=federationUploadForm(player,req,'Adjuntar archivo');
     }else if(rejected){
       action=federationUploadForm(player,req,'Aportar documento corregido');
+    }else if(newVersion){
+      action=`<div class="document-delivered is-review"><div><strong>↻ El club solicita una nueva versión</strong><div class="meta">El documento validado anterior permanece disponible hasta que aportes la nueva versión.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver versión validada</button></div></div>${federationUploadForm(player,req,'Aportar nueva versión')}`;
+    }else if(req.estado==='validado'){
+      action=`<div class="document-delivered is-valid"><div><strong>✓ Validado por el club</strong><div class="meta">Documento aceptado y bloqueado. Solo podrá sustituirse si el club solicita una nueva versión.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button></div></div>`;
     }else{
-      action=`<div class="document-delivered ${req.estado==='validado'?'is-valid':'is-review'}"><div><strong>${req.estado==='validado'?'✓ Validado por el club':'✓ Documento aportado'}</strong><div class="meta">${req.estado==='validado'?'Documento aceptado para este requisito.':'Pendiente de revisión por el club.'}</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button><button type="button" class="secondary tiny replace-fed-doc" data-req="${req.id}">${req.estado==='validado'?'Sustituir documento':'Sustituir'}</button></div></div><div class="replacement-panel" data-replacement-panel="${req.id}" hidden>${federationUploadForm(player,req,'Seleccionar nuevo archivo')}</div>`;
+      action=`<div class="document-delivered is-review"><div><strong>✓ Documento aportado</strong><div class="meta">Pendiente de revisión por el club. Puedes sustituirlo mientras no haya sido validado.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button><button type="button" class="secondary tiny replace-fed-doc" data-req="${req.id}">Sustituir</button></div></div><div class="replacement-panel" data-replacement-panel="${req.id}" hidden>${federationUploadForm(player,req,'Seleccionar nuevo archivo')}</div>`;
     }
   }else if(mode==='family'&&!req.requiere_archivo&&req.estado!=='validado') action='<div class="meta">Este requisito se confirma desde el club/RFFM.</div>';
   const fileLine=doc?`<div class="meta doc-file-name">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:'';
   const reason=rejected&&req.motivo_rechazo?`<div class="family-alert document-rejection"><strong>Documento rechazado</strong><p>${esc(req.motivo_rechazo)}</p></div>`:'';
-  return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${fileLine}</div><span class="status ${cls}">${esc(label)}</span></div>${reason}${action}</div>`;
+  const newReason=newVersion&&req.motivo_nueva_version?`<div class="family-alert"><strong>Nueva versión solicitada por el club</strong><p>${esc(req.motivo_nueva_version)}</p></div>`:'';
+  return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${fileLine}</div><span class="status ${cls}">${esc(label)}</span></div>${reason}${newReason}${action}</div>`;
 }
 async function openDocumentManager(playerId){
   const p=remoteFamilyPlayers.find(x=>x.id===playerId);if(!p)return;
@@ -486,10 +491,12 @@ async function uploadFederationDocument(player,reqId,button){
 async function openFederationDocument(path){const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(path,300);if(error)throw error;const a=document.createElement('a');a.href=data.signedUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
 function renderAdminFederationRequirements(v){
   const box=$('#adminFederationRequirements');if(!box)return;const can=['admin','club'].includes(currentRole);
-  box.innerHTML=(v.requirements||[]).map(req=>{const [cls,label]=federationReqState(req),doc=currentFedDoc(v,req);const actions=[];if(doc)actions.push(`<button type="button" class="secondary tiny view-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button>`);if(can&&req.estado!=='validado')actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`);if(can&&req.estado==='validado')actions.push(`<button type="button" class="secondary tiny change-fed-req" data-id="${req.id}">Cambiar validación</button>`);else if(can&&req.estado!=='rechazado')actions.push(`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${doc?`<div class="meta">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:''}${req.motivo_rechazo?`<div class="meta return-note">Motivo: ${esc(req.motivo_rechazo)}</div>`:''}</div><span class="status ${cls}">${esc(label)}</span></div><div class="workflow-actions">${actions.join('')}</div></div>`}).join('')||'<div class="meta">No hay requisitos inicializados.</div>';
+  box.innerHTML=(v.requirements||[]).map(req=>{const [cls,label]=federationReqState(req),doc=currentFedDoc(v,req);const actions=[];if(doc)actions.push(`<button type="button" class="secondary tiny view-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button>`);if(can&&req.estado==='aportado')actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`,`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);if(can&&req.estado==='pendiente'&&!req.requiere_archivo)actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`,`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);if(can&&req.estado==='validado'&&req.requiere_archivo)actions.push(`<button type="button" class="secondary tiny request-new-fed-doc" data-id="${req.id}">Solicitar nueva versión</button>`);if(can&&req.estado==='validado'&&!req.requiere_archivo)actions.push(`<button type="button" class="secondary tiny change-fed-req" data-id="${req.id}">Cambiar validación</button>`);const waiting=req.estado==='rechazado'?'<div class="meta">Esperando documento corregido de la familia.</div>':req.estado==='nueva_version_solicitada'?'<div class="meta">Esperando la nueva versión solicitada.</div>':'';return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${doc?`<div class="meta">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:''}${req.motivo_rechazo?`<div class="meta return-note">Motivo del rechazo: ${esc(req.motivo_rechazo)}</div>`:''}${req.motivo_nueva_version?`<div class="meta return-note">Nueva versión solicitada: ${esc(req.motivo_nueva_version)}</div>`:''}${waiting}</div><span class="status ${cls}">${esc(label)}</span></div><div class="workflow-actions">${actions.join('')}</div></div>`}).join('')||'<div class="meta">No hay requisitos inicializados.</div>';
   $$('.view-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});
   $$('.validate-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'validado'));
-  $$('.reject-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'rechazado'));$$('.change-fed-req').forEach(b=>b.onclick=()=>changeFederationValidation(v,b.dataset.id));
+  $$('.reject-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'rechazado'));
+  $$('.change-fed-req').forEach(b=>b.onclick=()=>changeFederationValidation(v,b.dataset.id));
+  $$('.request-new-fed-doc').forEach(b=>b.onclick=()=>requestNewFederationVersion(v,b.dataset.id));
 }
 async function reviewFederationRequirement(v,reqId,state){
   let reason=null;if(state==='rechazado'){reason=prompt('Indica el motivo del rechazo. La familia lo verá en su ficha:');if(!reason?.trim())return}
@@ -499,6 +506,11 @@ async function changeFederationValidation(v,reqId){
   const reason=prompt('Indica el motivo por el que se cambia una validación ya realizada. La familia lo verá en su ficha:');if(!reason?.trim())return;
   if(!confirm('¿Cambiar este requisito de Validado a Rechazado? Esta acción quedará visible para la familia.'))return;
   try{const {error}=await sb.rpc('revisar_requisito_federativo',{p_requisito_id:reqId,p_estado:'rechazado',p_motivo:reason.trim()});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido cambiar la validación: ${err.message||err}`)}
+}
+async function requestNewFederationVersion(v,reqId){
+  const reason=prompt('Indica por qué el club solicita una nueva versión. La familia verá este motivo:');if(!reason?.trim())return;
+  if(!confirm('¿Solicitar una nueva versión de este documento validado? La versión actual seguirá conservada hasta que la familia aporte la nueva.'))return;
+  try{const {error}=await sb.rpc('solicitar_nueva_version_requisito',{p_requisito_id:reqId,p_motivo:reason.trim()});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido solicitar una nueva versión: ${err.message||err}`)}
 }
 async function loadRemoteClubData(){
   remoteClubPlayers=[];
@@ -515,7 +527,7 @@ async function loadRemoteClubData(){
   const {data:repPersons,error:repPersonErr}=repPersonIds.length?await sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido').in('id',repPersonIds):{data:[],error:null};if(repPersonErr)throw repPersonErr;
   const insIds=(insRows||[]).map(x=>x.id);
   const {data:assignRows,error:aErr}=insIds.length?await sb.from('asignaciones_jugador_equipo').select('id,inscripcion_id,equipo_id,fecha_desde,fecha_hasta,motivo_cambio').in('inscripcion_id',insIds):{data:[],error:null};if(aErr)throw aErr;
-  const {data:reqRows,error:reqErr}=insIds.length?await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at').in('inscripcion_id',insIds).order('created_at',{ascending:true}):{data:[],error:null};if(reqErr)throw reqErr;
+  const {data:reqRows,error:reqErr}=insIds.length?await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at,nueva_version_solicitada_at,motivo_nueva_version').in('inscripcion_id',insIds).order('created_at',{ascending:true}):{data:[],error:null};if(reqErr)throw reqErr;
   const {data:fedDocRows,error:fedDocErr}=insIds.length?await sb.from('documentos_federativos').select('id,requisito_id,inscripcion_id,storage_path,nombre_original,mime_type,subtipo,estado,motivo_rechazo,aportado_at,revisado_at').in('inscripcion_id',insIds).order('aportado_at',{ascending:false}):{data:[],error:null};if(fedDocErr)throw fedDocErr;
   const {data:medicalRows,error:mErr}=await sb.from('reconocimientos_medicos').select('id,jugador_id,fecha_reconocimiento,fecha_valido_hasta,fecha_validacion_rffm,centro_medico,observaciones,created_at').in('jugador_id',playerIds).order('fecha_reconocimiento',{ascending:false});if(mErr)throw mErr;
   remoteMedicalRows=medicalRows||[];
@@ -533,7 +545,7 @@ async function loadRemoteClubData(){
     const requirements=ins?(reqRows||[]).filter(r=>r.inscripcion_id===ins.id):[];const fedDocs=ins?(fedDocRows||[]).filter(d=>d.inscripcion_id===ins.id):[];const docsComplete=requirements.length>0&&requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado');
     const medicalsForPlayer=(medicalRows||[]).filter(m=>m.jugador_id===p.id).sort((a,b)=>String(b.fecha_reconocimiento||'').localeCompare(String(a.fecha_reconocimiento||'')));
     const latestRemoteMedical=medicalsForPlayer[0]||null;
-    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications};
+    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado'||r.estado==='nueva_version_solicitada')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications};
   });
   return remoteClubPlayers;
 }
