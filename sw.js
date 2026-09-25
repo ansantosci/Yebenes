@@ -1,1 +1,1 @@
-// V26: Service Worker intentionally disabled during rapid development.
+// V27: service worker desactivado durante desarrollo.

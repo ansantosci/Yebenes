@@ -1,8 +1,8 @@
-# CD Los Yébenes San Bruno - Prototipo web app V26
+# CD Los Yébenes San Bruno - Prototipo web app V27
 
 ## Novedad principal
 
-V26 mejora el flujo de confirmación de correo de Supabase Auth.
+V27 mejora el flujo de confirmación de correo de Supabase Auth.
 
 - Añade **Reenviar correo de confirmación** en la pantalla de acceso.
 - El reenvío usa explícitamente `https://ansantosci.github.io/Yebenes/` como destino.
@@ -18,3 +18,11 @@ El frontend usa únicamente la Publishable key de Supabase. RLS sigue protegiend
 ## Desarrollo
 
 El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` se usa para comprobar la versión publicada.
+
+
+## V27
+- Fichas del club leídas desde Supabase/PostgreSQL.
+- Apertura de ficha real, cambio de estado, devolución a familia y asignación de equipo.
+- Activación/inactivación real de jugadores.
+- Progreso familiar calculado con datos reales.
+- Edición de menores devueltos mediante RPC segura (requiere migración 009).
