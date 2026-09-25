@@ -1,49 +1,20 @@
-# CD Los Yébenes San Bruno - Prototipo web app V25
+# CD Los Yébenes San Bruno - Prototipo web app V26
 
 ## Novedad principal
 
-V25 conecta por primera vez la aplicación de pruebas con **Supabase Auth + PostgreSQL + RLS**.
+V26 mejora el flujo de confirmación de correo de Supabase Auth.
 
-- Inicio de sesión real mediante email/contraseña de Supabase Auth.
-- La identidad se resuelve desde `public.personas`.
-- Los perfiles activos se obtienen desde `public.persona_roles` + `public.roles`.
-- Una persona puede seguir teniendo varios perfiles y cambiar entre ellos.
-- El logout cierra la sesión real de Supabase.
-- La operación deportiva (jugadores, equipos, fichas, etc.) continúa temporalmente en `localStorage`; se migrará por fases a PostgreSQL.
-- El autorregistro real de nuevas familias/jugadores se deja temporalmente deshabilitado hasta implementar el flujo seguro de alta.
+- Añade **Reenviar correo de confirmación** en la pantalla de acceso.
+- El reenvío usa explícitamente `https://ansantosci.github.io/Yebenes/` como destino.
+- El alta inicial usa también esa URL de redirección.
+- Si existe un alta pendiente, el correo se reutiliza automáticamente para facilitar el reenvío.
+- Si Supabase devuelve un enlace caducado/inválido, la app muestra una indicación específica para solicitar uno nuevo.
+- Mantiene todas las funciones de V25: Auth real, perfiles desde PostgreSQL, altas controladas de Tutor/Jugador adulto y alta de menores mediante RPC.
 
 ## Seguridad
 
-El frontend utiliza únicamente la **Publishable key** de Supabase. No contiene `service_role`, secret keys ni contraseña PostgreSQL. Las tablas están protegidas mediante RLS.
+El frontend usa únicamente la Publishable key de Supabase. RLS sigue protegiendo las tablas. No se incluyen claves `service_role`, secretos JWT ni contraseña de PostgreSQL.
 
 ## Desarrollo
 
-El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` mantiene la comprobación de versiones desplegadas.
-
-
-## Correccion V25
-- Corrige el login asíncrono en Chrome: el formulario se conserva antes del `await`, evitando `Cannot read properties of null (reading reset)`.
-
-
-## V25
-- La pestaña Estructura lee temporadas, categorías y equipos reales desde Supabase/PostgreSQL.
-- Se muestran los 23 equipos de la temporada 2026/2027 cargados en la migración 005.
-- La edición de estructura queda temporalmente deshabilitada en la UI mientras se completa el CRUD remoto.
-- El resto de datos deportivos continúa temporalmente en localStorage.
-
-
-## Corrección V25
-
-Restaura las funciones de gestión de **Usuarios** y **Personas** que faltaban en V22 y provocaban el error `renderClubUsers is not defined` al iniciar sesión como Administrador. No cambia el modelo de datos ni la integración con Supabase.
-
-
-## V25
-- La vista Estructura muestra la modalidad de cada equipo (por ejemplo F7/F11) leída desde Supabase.
-- Sin cambios en autenticación, RLS ni modelo de datos.
-
-
-## V25
-- Alta real de Tutor/Familia y Jugador adulto mediante Supabase Auth.
-- Alta real de menores mediante RPC segura `registrar_menor`.
-- Vista Familia/Jugador alimentada desde PostgreSQL para las nuevas altas.
-- DNI/NIE obligatorio del tutor y documento propio opcional del menor.
+El Service Worker continúa desactivado durante la fase de desarrollo rápido. `version.json` se usa para comprobar la versión publicada.

@@ -1,1 +1,1 @@
-// V20: Service Worker intentionally disabled during rapid development.
+// V26: Service Worker intentionally disabled during rapid development.

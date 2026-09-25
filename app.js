@@ -1,4 +1,4 @@
-const APP_VERSION='25';
+const APP_VERSION='26';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -130,6 +130,7 @@ let users=[],players=[],persons=[],seasons=[],categories=[],teams=[],inscription
 let dbSeasons=[],dbCategories=[],dbTeams=[],dbCategoryRules=[],dbStructureLoaded=false;
 let remoteFamilyPlayers=[];
 const PENDING_SIGNUP_KEY='yebenes-pending-signup-v1';
+const AUTH_REDIRECT_URL='https://ansantosci.github.io/Yebenes/';
 let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,editingCoachId=null,editingTeamId=null,pendingCoachAssignments=[],pendingUserAssignments=[];
 
 function categoryByName(name){return categories.find(c=>c.name===name)}
@@ -520,15 +521,56 @@ $('#familySignupForm').onsubmit=async e=>{
   const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Creando cuenta…'}
   try{
     localStorage.setItem(PENDING_SIGNUP_KEY,JSON.stringify(payload));
-    const redirectTo=`${window.location.origin}${window.location.pathname}`;
-    const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:redirectTo}});if(error)throw error;
+    const {data,error}=await sb.auth.signUp({email,password,options:{emailRedirectTo:AUTH_REDIRECT_URL}});if(error)throw error;
     if(data.session){
       await registerProfileFromPayload(payload);currentUser=await loadSupabaseIdentity(data.user);await loadSupabaseStructure();currentRole=mode==='guardian'?'family':'player';localStorage.setItem(K.sessionRole,currentRole);form.reset();showApp();
     }else{
-      form.reset();showAuth('login');alert('Cuenta creada. Revisa tu correo y confirma la dirección. Después inicia sesión: la aplicación completará automáticamente tu perfil.');
+      form.reset();showAuth('login');const loginEmail=$('#loginForm')?.elements?.email;if(loginEmail)loginEmail.value=email;alert('Cuenta creada. Revisa tu correo y confirma la dirección. Si no recibes el mensaje, usa “Reenviar correo de confirmación”. Después inicia sesión: la aplicación completará automáticamente tu perfil.');
     }
   }catch(err){console.error('Alta Supabase',err);alert(`No se ha podido crear la cuenta: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Crear cuenta'}}
 };
+$('#resendConfirmationButton').onclick=async()=>{
+  if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}
+  const button=$('#resendConfirmationButton');
+  const loginEmail=$('#loginForm')?.elements?.email;
+  const pending=readJSON(PENDING_SIGNUP_KEY,null);
+  const email=String(loginEmail?.value||pending?.email||'').trim().toLowerCase();
+  if(!email){alert('Introduce primero el correo electrónico de la cuenta que quieres confirmar.');loginEmail?.focus();return}
+  if(loginEmail&&!loginEmail.value)loginEmail.value=email;
+  const originalText=button?.textContent||'Reenviar correo de confirmación';
+  if(button){button.disabled=true;button.textContent='Enviando…'}
+  try{
+    const {error}=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:AUTH_REDIRECT_URL}});
+    if(error)throw error;
+    alert(`Correo de confirmación reenviado a ${email}. Usa únicamente el enlace del mensaje más reciente.`);
+  }catch(err){
+    console.error('Reenvío confirmación Supabase',err);
+    const msg=String(err?.message||err||'');
+    if(/rate limit|security purposes|seconds/i.test(msg)){
+      alert('Supabase limita temporalmente los reenvíos por seguridad. Espera unos segundos y vuelve a intentarlo.');
+    }else{
+      alert(`No se ha podido reenviar el correo de confirmación: ${msg}`);
+    }
+  }finally{
+    if(button){button.disabled=false;button.textContent=originalText}
+  }
+};
+
+function showAuthRedirectError(){
+  const url=new URL(window.location.href);
+  const params=new URLSearchParams(url.search);
+  const hashParams=new URLSearchParams((url.hash||'').replace(/^#/,''));
+  const code=params.get('error_code')||hashParams.get('error_code');
+  const description=params.get('error_description')||hashParams.get('error_description');
+  if(!code&&!description)return;
+  const expired=code==='otp_expired'||/expired|invalid/i.test(description||'');
+  setTimeout(()=>alert(expired?'El enlace de confirmación no es válido o ha caducado. Introduce tu correo y pulsa “Reenviar correo de confirmación” para generar uno nuevo.':`No se ha podido completar la confirmación: ${description||code}`),0);
+  ['error','error_code','error_description'].forEach(k=>url.searchParams.delete(k));
+  if(url.hash)url.hash='';
+  history.replaceState({},document.title,url.toString());
+}
+showAuthRedirectError();
+
 $('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await sb.auth.signOut();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();
 
 function refreshCalculatedCategory(form){const birth=form?.elements?.birth?.value||'',cat=(currentUser?.source==='supabase'&&dbStructureLoaded)?dbCategoryForBirth(birth):categoryForBirth(birth,currentSeasonId),out=form?.querySelector?.('[data-category-calculated]');if(out)out.value=cat?cat.name:'Fuera de categorías configuradas'}
@@ -559,7 +601,7 @@ $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonFor
 window.addEventListener('storage',()=>{reload();applyAgeTransitions();if(currentUser)showApp()});
 initData();reload();restoreSupabaseSession();
 
-// V25 development update strategy: deliberately disable Service Workers.
+// V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.
 // Existing localStorage application data is intentionally preserved.
 async function disableLegacyServiceWorkers(){

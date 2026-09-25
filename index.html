@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '25';
+    window.YEBENES_APP_VERSION = '26';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=25" />
+  <link rel="stylesheet" href="styles.css?v=26" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v25</div>
+      <div class="version-badge" aria-label="Versión de prueba">v26</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -54,7 +54,8 @@
         <label>Correo electrónico<input name="email" type="email" required autocomplete="username" /></label>
         <label>Contraseña<input name="password" type="password" required autocomplete="current-password" /></label>
         <button class="primary" type="submit">Entrar</button>
-        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con el usuario creado en Supabase Auth.</span><span>En V25 la autenticación, los perfiles y las altas de familias/jugadores ya se realizan contra Supabase.</span></div>
+        <button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar correo de confirmación</button>
+        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con el usuario creado en Supabase Auth.</span><span>En V26 la autenticación, los perfiles y las altas de familias/jugadores se realizan contra Supabase. Si no recibes el correo de confirmación, puedes reenviarlo desde aquí.</span></div>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -251,6 +252,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>
