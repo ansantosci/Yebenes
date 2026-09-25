@@ -124,3 +124,44 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 
 ### Base de datos
 - **Migración 014:** `014_documentos_validados_bloqueados.sql`.
+
+---
+
+## V36 — 25/09/2026 — Migración 015
+
+### Progreso documental RFFM
+- Se incorpora un indicador gráfico de porcentaje de documentación completada.
+- El porcentaje se calcula **solo con requisitos obligatorios validados por el club**; un documento meramente aportado o un paso comunicado por la familia todavía no suma como completado.
+- Se muestra el porcentaje junto con el detalle `X de Y requisitos validados` en:
+  - resumen de Documentos de Familia/Jugador;
+  - modal de gestión documental;
+  - ficha del Club/Administrador;
+  - listado de Fichas.
+- La documentación se considera completa únicamente al alcanzar el 100% de requisitos obligatorios validados.
+
+### Autorización del tutor y firma online RFFM
+- Se mantiene el criterio de no duplicar en la aplicación procesos de firma que se realizan en el circuito oficial de la RFFM.
+- Para los requisitos sin archivo (`autorizacion_tutor` y `firma_rffm`), Familia/Jugador puede comunicar: **“Ya lo he realizado en RFFM”**.
+- Esa comunicación cambia el requisito a **Comunicado · pendiente de verificación**; no equivale a una validación automática.
+- Club/Administrador dispone entonces de:
+  - **Verificar y validar**;
+  - **No verificado**, con motivo obligatorio.
+- Si el club no puede verificarlo, Familia/Jugador ve el motivo y puede comunicar de nuevo que el paso ha sido subsanado/realizado.
+- Los requisitos ya validados permanecen bloqueados para Familia/Jugador y solo Club/Administrador puede cambiar su validación.
+
+### Seguridad y trazabilidad
+- La transición de “realizado en RFFM” se ejecuta mediante RPC `declarar_requisito_rffm_realizado` con `SECURITY DEFINER` y comprobación de representación activa o autorrepresentación.
+- El backend impide que Club/Administrador valide un requisito externo si Familia/Jugador no lo ha comunicado previamente como realizado.
+- Cada comunicación queda registrada en `historial_requisitos_federativos` con usuario y fecha.
+
+### Base de datos
+- **Migración 015:** `015_declaracion_familia_rffm_y_progreso.sql`.
+- Nuevo estado de requisito: `declarado_realizado`.
+- Nuevos campos:
+  - `declarado_realizado_at`;
+  - `declarado_realizado_por`.
+- Nueva función:
+  - `declarar_requisito_rffm_realizado(uuid)`.
+
+### Pendiente relacionado
+- Si la RFFM habilita en el futuro una API/webhook para consultar autorización/firma de licencia, sustituir la verificación manual por consulta automática manteniendo el mismo modelo de estados.
