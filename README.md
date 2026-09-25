@@ -26,3 +26,12 @@ El Service Worker continúa desactivado durante la fase de desarrollo rápido. `
 - Activación/inactivación real de jugadores.
 - Progreso familiar calculado con datos reales.
 - Edición de menores devueltos mediante RPC segura (requiere migración 009).
+
+
+## V28
+- RRMM real contra Supabase.
+- Histórico de reconocimientos médicos por jugador.
+- Aviso de vencimiento en 90 días.
+- Propuesta automática de caducidad a dos años, editable según la fecha oficial RFFM.
+- Bloqueo de 'Listo para federar' y 'Ficha tramitada' si no hay equipo o RRMM vigente.
+- Pago de inscripción/Cluber queda identificado como requisito P0 futuro antes de producción.
