@@ -1,4 +1,4 @@
-const APP_VERSION='32';
+const APP_VERSION='33';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -378,6 +378,11 @@ async function loadRemoteFamilyData(){
   const insIds=insRows.map(x=>x.id);
   let assignRows=[];
   if(insIds.length){const res=await sb.from('asignaciones_jugador_equipo').select('inscripcion_id,equipo_id,fecha_desde,fecha_hasta').in('inscripcion_id',insIds);if(res.error)throw res.error;assignRows=res.data||[];}
+  let reqRows=[],fedDocRows=[];
+  if(insIds.length){
+    const rr=await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at').in('inscripcion_id',insIds).order('created_at',{ascending:true});if(rr.error)throw rr.error;reqRows=rr.data||[];
+    const dr=await sb.from('documentos_federativos').select('id,requisito_id,inscripcion_id,storage_path,nombre_original,mime_type,subtipo,estado,motivo_rechazo,aportado_at,revisado_at').in('inscripcion_id',insIds).order('aportado_at',{ascending:false});if(dr.error)throw dr.error;fedDocRows=dr.data||[];
+  }
   let appointmentRows=[];{const res=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at').in('jugador_id',playerIds).eq('estado','programada').order('fecha_hora',{ascending:true});if(!res.error)appointmentRows=res.data||[];}
   const personsById=new Map((personRows||[]).map(x=>[x.id,x]));
   const insByPlayer=new Map(insRows.map(x=>[x.jugador_id,x]));
@@ -386,7 +391,10 @@ async function loadRemoteFamilyData(){
     const person=personsById.get(p.persona_id)||{};const ins=insByPlayer.get(p.id)||null;
     const assignment=ins?assignRows.filter(a=>a.inscripcion_id===ins.id&&(!a.fecha_desde||a.fecha_desde<=today)&&(!a.fecha_hasta||a.fecha_hasta>=today)).sort((a,b)=>String(b.fecha_desde||'').localeCompare(String(a.fecha_desde||'')))[0]:null;
     const team=assignment?dbTeams.find(t=>t.id===assignment.equipo_id):null;
-    const appointment=appointmentRows.find(a=>a.jugador_id===p.id)||null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',teamName:team?.name||'Sin equipo',appointment};
+    const requirements=ins?reqRows.filter(r=>r.inscripcion_id===ins.id):[];
+    const fedDocs=ins?fedDocRows.filter(d=>d.inscripcion_id===ins.id):[];
+    const docsComplete=requirements.length>0&&requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado');
+    const appointment=appointmentRows.find(a=>a.jugador_id===p.id)||null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',teamName:team?.name||'Sin equipo',appointment,requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente'};
   });
   return remoteFamilyPlayers;
 }
@@ -415,15 +423,69 @@ async function renderRemoteFamily(){
       if(!i)return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">Sin inscripción en la temporada activa</div></div><span class="status pending">Pendiente</span></div></article>`;
       const [cls,badge,fed]=remoteStateMeta(i.estado);
       const returned=i.estado==='devuelta_familia';
-      return `<article class="player-card ${returned?'needs-action':''}"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${esc(dbActiveSeason()?.name||'')}</div></div><span class="status ${cls}">${esc(badge)}</span></div><div class="meta representation-line">${currentRole==='player'?'Autorrepresentación':'Tutor activo: '+esc(currentUser.name)}</div>${returned?`<div class="family-alert"><strong>El club solicita cambios</strong><p>${esc(i.observaciones||'Revisa la información de la ficha.')}</p><button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar</button></div>`:''}<div class="checklist"><div class="check"><span>Datos personales</span><strong>✓</strong></div><div class="check"><span>Documentación</span><strong>${p.docsLabel?esc(p.docsLabel):'Pendiente'}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Federación</span><strong>${esc(fed)}</strong></div></div>${p.appointment?`<div class="appointment-family"><strong>📅 Próximo reconocimiento médico</strong><div>${esc(formatDateTime(p.appointment.fecha_hora))}</div><div>${esc(p.appointment.lugar||'')}</div>${p.appointment.direccion?`<div>${esc(p.appointment.direccion)}</div>`:''}${p.appointment.indicaciones?`<div class="meta">${esc(p.appointment.indicaciones)}</div>`:''}</div>`:''}</article>`
+      return `<article class="player-card ${returned?'needs-action':''}"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${esc(dbActiveSeason()?.name||'')}</div></div><span class="status ${cls}">${esc(badge)}</span></div><div class="meta representation-line">${currentRole==='player'?'Autorrepresentación':'Tutor activo: '+esc(currentUser.name)}</div>${returned?`<div class="family-alert"><strong>El club solicita cambios</strong><p>${esc(i.observaciones||'Revisa la información de la ficha.')}</p><button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar</button></div>`:''}<div class="checklist"><div class="check"><span>Datos personales</span><strong>✓</strong></div><div class="check"><span>Documentación</span><strong>${p.docsLabel?esc(p.docsLabel):'Pendiente'}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Federación</span><strong>${esc(fed)}</strong></div></div><div class="card-actions"><button class="secondary small manage-docs" data-id="${esc(p.id)}">Gestionar documentación</button></div>${p.appointment?`<div class="appointment-family"><strong>📅 Próximo reconocimiento médico</strong><div>${esc(formatDateTime(p.appointment.fecha_hora))}</div><div>${esc(p.appointment.lugar||'')}</div>${p.appointment.direccion?`<div>${esc(p.appointment.direccion)}</div>`:''}${p.appointment.indicaciones?`<div class="meta">${esc(p.appointment.indicaciones)}</div>`:''}</div>`:''}</article>`
     }).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
     $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));
+    $$('.manage-docs').forEach(b=>b.onclick=()=>openDocumentManager(b.dataset.id));
+    renderFamilyDocumentsSummary();
     $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
     const progress=remoteFamilyPlayers.length?remoteFamilyPlayers.reduce((a,p)=>a+remoteStateProgress(p.inscription?.estado),0)/remoteFamilyPlayers.length:0;
     setFamilyProgress(progress);
   }catch(err){console.error('Carga familia Supabase',err);$('#playersList').innerHTML=`<div class="empty-card">No se pudieron cargar los jugadores: ${esc(err.message||err)}</div>`;setFamilyProgress(0)}
 }
 
+
+function federationReqState(req){
+  const m={pendiente:['pending','Pendiente'],aportado:['pending','Aportado · pendiente de revisión'],validado:['complete','✓ Validado'],rechazado:['returned','⚠ Rechazado']};return m[req?.estado]||m.pendiente;
+}
+function currentFedDoc(player,req){return (player?.fedDocs||[]).find(d=>d.id===req?.current_documento_id)||null}
+function identitySubtypeLabel(v){return ({dni:'DNI',nie:'NIE',pasaporte:'Pasaporte',partida_nacimiento:'Partida de nacimiento',libro_familia:'Libro de Familia'})[v]||v||''}
+function federationDocsComplete(player){return !!(player?.requirements?.length&&player.requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado'))}
+function renderFamilyDocumentsSummary(){
+  const box=$('#familyDocumentsList');if(!box)return;
+  box.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>{const valid=p.requirements?.filter(r=>r.estado==='validado').length||0,total=p.requirements?.filter(r=>r.obligatorio).length||0;return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${valid}/${total} requisitos validados</div></div><span class="status ${federationDocsComplete(p)?'complete':'pending'}">${federationDocsComplete(p)?'✓ Completa':'Pendiente'}</span></div><button class="secondary small manage-docs-summary" data-id="${esc(p.id)}">Abrir documentación</button></article>`}).join(''):'<div class="empty-card">No hay jugadores con inscripción activa.</div>';
+  $$('.manage-docs-summary').forEach(b=>b.onclick=()=>openDocumentManager(b.dataset.id));
+}
+function documentRequirementHtml(player,req,mode='family'){
+  const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado';
+  let action='';
+  if(mode==='family'&&req.requiere_archivo&&req.estado!=='validado'){
+    const subtype=req.codigo==='identidad_rffm'?`<label>Tipo de documento<select class="doc-subtype" data-req="${req.id}"><option value="dni">DNI</option><option value="nie">NIE</option><option value="pasaporte">Pasaporte</option><option value="partida_nacimiento">Partida de nacimiento</option><option value="libro_familia">Libro de Familia</option></select></label>`:'';
+    const accept=req.codigo==='foto_jugador'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf';
+    action=`<div class="doc-upload">${subtype}<label>${req.estado==='rechazado'?'Sustituir documento':'Adjuntar archivo'}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
+  }else if(mode==='family'&&!req.requiere_archivo&&req.estado!=='validado') action='<div class="meta">Este requisito se confirma desde el club/RFFM.</div>';
+  const fileLine=doc?`<div class="meta">Archivo: ${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''} <button type="button" class="link-button view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver</button></div>`:'';
+  const reason=rejected&&req.motivo_rechazo?`<div class="family-alert"><strong>Debe corregirse</strong><p>${esc(req.motivo_rechazo)}</p></div>`:'';
+  return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${fileLine}</div><span class="status ${cls}">${esc(label)}</span></div>${reason}${action}</div>`;
+}
+async function openDocumentManager(playerId){
+  const p=remoteFamilyPlayers.find(x=>x.id===playerId);if(!p)return;
+  $('#documentPlayerName').textContent=p.name;$('#documentPlayerMeta').textContent=`${p.categoryName} · ${dbActiveSeason()?.name||''}`;
+  $('#documentRequirementsList').innerHTML=(p.requirements||[]).map(r=>documentRequirementHtml(p,r,'family')).join('')||'<div class="empty-card">No se han inicializado requisitos documentales.</div>';
+  $$('.upload-fed-doc').forEach(b=>b.onclick=()=>uploadFederationDocument(p,b.dataset.req,b));$$('.view-family-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});$('#documentModal').showModal();
+}
+async function uploadFederationDocument(player,reqId,button){
+  const req=player.requirements.find(r=>r.id===reqId),input=$(`.doc-file[data-req="${reqId}"]`);const file=input?.files?.[0];if(!req||!file){alert('Selecciona un archivo.');return}if(file.size>5*1024*1024){alert('El archivo supera 5 MB.');return}
+  const subtype=req.codigo==='identidad_rffm'?($(`.doc-subtype[data-req="${reqId}"]`)?.value||'dni'):null;const ext=(file.name.split('.').pop()||'bin').replace(/[^a-z0-9]/gi,'').toLowerCase();const path=`${player.inscription.id}/${req.codigo}/${crypto.randomUUID()}.${ext}`;
+  const old=button.textContent;button.disabled=true;button.textContent='Subiendo…';
+  try{
+    const up=await sb.storage.from('documentacion-federativa').upload(path,file,{contentType:file.type||undefined,upsert:false});if(up.error)throw up.error;
+    const {error}=await sb.rpc('registrar_documento_federativo',{p_requisito_id:reqId,p_storage_path:path,p_nombre_original:file.name,p_mime_type:file.type||null,p_subtipo:subtype});if(error){await sb.storage.from('documentacion-federativa').remove([path]);throw error}
+    await loadRemoteFamilyData();renderRemoteFamily();const fresh=remoteFamilyPlayers.find(x=>x.id===player.id);if(fresh)await openDocumentManager(fresh.id);alert('Documento aportado. Queda pendiente de revisión por el club.');
+  }catch(err){alert(`No se ha podido subir el documento: ${err.message||err}`)}finally{button.disabled=false;button.textContent=old}
+}
+async function openFederationDocument(path){const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(path,300);if(error)throw error;const a=document.createElement('a');a.href=data.signedUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
+function renderAdminFederationRequirements(v){
+  const box=$('#adminFederationRequirements');if(!box)return;const can=['admin','club'].includes(currentRole);
+  box.innerHTML=(v.requirements||[]).map(req=>{const [cls,label]=federationReqState(req),doc=currentFedDoc(v,req);const actions=[];if(doc)actions.push(`<button type="button" class="secondary tiny view-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button>`);if(can&&req.estado!=='validado')actions.push(`<button type="button" class="primary tiny validate-fed-req" data-id="${req.id}">Validar</button>`);if(can&&req.estado!=='rechazado')actions.push(`<button type="button" class="return-button tiny reject-fed-req" data-id="${req.id}">Rechazar</button>`);return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${doc?`<div class="meta">${esc(doc.nombre_original)}${doc.subtipo?' · '+esc(identitySubtypeLabel(doc.subtipo)):''}</div>`:''}${req.motivo_rechazo?`<div class="meta return-note">${esc(req.motivo_rechazo)}</div>`:''}</div><span class="status ${cls}">${esc(label)}</span></div><div class="workflow-actions">${actions.join('')}</div></div>`}).join('')||'<div class="meta">No hay requisitos inicializados.</div>';
+  $$('.view-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});
+  $$('.validate-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'validado'));
+  $$('.reject-fed-req').forEach(b=>b.onclick=()=>reviewFederationRequirement(v,b.dataset.id,'rechazado'));
+}
+async function reviewFederationRequirement(v,reqId,state){
+  let reason=null;if(state==='rechazado'){reason=prompt('Indica el motivo del rechazo. La familia lo verá en su ficha:');if(!reason?.trim())return}
+  try{const {error}=await sb.rpc('revisar_requisito_federativo',{p_requisito_id:reqId,p_estado:state,p_motivo:reason});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido revisar el requisito: ${err.message||err}`)}
+}
 async function loadRemoteClubData(){
   remoteClubPlayers=[];
   if(!sb||!currentUser||!['admin','club','coach'].includes(currentRole))return remoteClubPlayers;
@@ -439,7 +501,8 @@ async function loadRemoteClubData(){
   const {data:repPersons,error:repPersonErr}=repPersonIds.length?await sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido').in('id',repPersonIds):{data:[],error:null};if(repPersonErr)throw repPersonErr;
   const insIds=(insRows||[]).map(x=>x.id);
   const {data:assignRows,error:aErr}=insIds.length?await sb.from('asignaciones_jugador_equipo').select('id,inscripcion_id,equipo_id,fecha_desde,fecha_hasta,motivo_cambio').in('inscripcion_id',insIds):{data:[],error:null};if(aErr)throw aErr;
-  const {data:docRows,error:dErr}=await sb.from('documentos').select('id,jugador_id,inscripcion_id,estado,tipo').or(`jugador_id.in.(${playerIds.join(',')}),inscripcion_id.in.(${insIds.join(',')})`);if(dErr&&dErr.code!=='PGRST100')throw dErr;
+  const {data:reqRows,error:reqErr}=insIds.length?await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at').in('inscripcion_id',insIds).order('created_at',{ascending:true}):{data:[],error:null};if(reqErr)throw reqErr;
+  const {data:fedDocRows,error:fedDocErr}=insIds.length?await sb.from('documentos_federativos').select('id,requisito_id,inscripcion_id,storage_path,nombre_original,mime_type,subtipo,estado,motivo_rechazo,aportado_at,revisado_at').in('inscripcion_id',insIds).order('aportado_at',{ascending:false}):{data:[],error:null};if(fedDocErr)throw fedDocErr;
   const {data:medicalRows,error:mErr}=await sb.from('reconocimientos_medicos').select('id,jugador_id,fecha_reconocimiento,fecha_valido_hasta,fecha_validacion_rffm,centro_medico,observaciones,created_at').in('jugador_id',playerIds).order('fecha_reconocimiento',{ascending:false});if(mErr)throw mErr;
   remoteMedicalRows=medicalRows||[];
   const {data:appointmentRows,error:apptErr}=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at,created_at,updated_at').in('jugador_id',playerIds).order('fecha_hora',{ascending:false});if(apptErr)throw apptErr;remoteMedicalAppointments=appointmentRows||[];
@@ -453,10 +516,10 @@ async function loadRemoteClubData(){
     const repPerson=rep?repPersonsById.get(rep.representante_persona_id):null;
     const assignment=ins?(assignRows||[]).filter(a=>a.inscripcion_id===ins.id&&(!a.fecha_desde||a.fecha_desde<=today)&&(!a.fecha_hasta||a.fecha_hasta>=today)).sort((a,b)=>String(b.fecha_desde||'').localeCompare(String(a.fecha_desde||'')))[0]:null;
     const team=assignment?dbTeams.find(t=>t.id===assignment.equipo_id):null;
-    const docs=(docRows||[]).filter(d=>d.jugador_id===p.id||d.inscripcion_id===ins?.id);const docsComplete=docs.length>0&&docs.every(d=>d.estado==='aceptado');
+    const requirements=ins?(reqRows||[]).filter(r=>r.inscripcion_id===ins.id):[];const fedDocs=ins?(fedDocRows||[]).filter(d=>d.inscripcion_id===ins.id):[];const docsComplete=requirements.length>0&&requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado');
     const medicalsForPlayer=(medicalRows||[]).filter(m=>m.jugador_id===p.id).sort((a,b)=>String(b.fecha_reconocimiento||'').localeCompare(String(a.fecha_reconocimiento||'')));
     const latestRemoteMedical=medicalsForPlayer[0]||null;
-    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',docs,docsLabel:docsComplete?'Completa':docs.length?'Pendiente':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications};
+    const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada'&&new Date(a.fecha_hora)>=new Date())||appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):'Sin representante',assignment,teamName:team?.name||'Sin equipo',requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado')?'Revisar':requirements.some(r=>r.estado==='aportado')?'En revisión':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications};
   });
   return remoteClubPlayers;
 }
@@ -494,6 +557,7 @@ async function openRemoteAdminPlayer(id){
   $('#teamAssignmentHistory').innerHTML=v.assignment?`<div class="history-item"><strong>${esc(v.teamName)}</strong><span>Desde ${fmt(v.assignment.fecha_desde)}</span></div>`:'<div class="meta">Sin asignación deportiva.</div>';
   const states=[['pendiente_revision_inicial','Pendiente de revisión inicial'],['devuelta_familia','Devuelta a la familia'],['datos_validados','Datos validados'],['documentacion_validada','Documentación validada'],['lista_para_federar','Listo para federar'],['ficha_tramitada','Ficha tramitada']];$('#adminWorkflow').innerHTML=states.map(([k,l])=>`<option value="${k}">${l}</option>`).join('');$('#adminWorkflow').value=state;$('#adminWorkflow').disabled=currentRole==='coach';$('#saveWorkflow').disabled=currentRole==='coach';$('#advanceStatus').disabled=currentRole==='coach'||['ficha_tramitada','cancelada'].includes(state);
   $('#returnMessage').value=state==='devuelta_familia'?(v.inscription?.observaciones||''):'';$('#returnToFamily').disabled=currentRole==='coach';$('#returnHint').textContent=v.representation?'La familia verá este mensaje en su ficha.':'No hay un tutor activo al que devolver la inscripción.';
+  renderAdminFederationRequirements(v);
   try{const hist=await loadRemoteHistory(v.inscription.id);$('#playerHistory').innerHTML=hist.length?hist.map(h=>`<div class="history-item"><strong>${esc(remoteStateLabel(h.estado_nuevo))}</strong><span>${fmt(String(h.fecha||'').slice(0,10))}${h.comentario?' · '+esc(h.comentario):''}</span></div>`).join(''):'<div class="meta">Sin movimientos registrados.</div>'}catch(err){$('#playerHistory').innerHTML='<div class="meta">No se pudo cargar el histórico.</div>'}
   $('#adminPlayerModal').showModal();
 }
@@ -654,8 +718,10 @@ async function saveRemoteMedical(form){
 }
 function remoteMedicalIsValid(v){const state=medicalState(v?.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null);return ['ok','soon'].includes(state.key)}
 function validateRemoteFederationGate(v,targetState){
+  if(targetState==='documentacion_validada'&&!(v.requirements?.length&&v.requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado')))return 'Valida todos los requisitos documentales obligatorios antes de marcar la documentación como validada.';
   if(!['lista_para_federar','ficha_tramitada'].includes(targetState))return null;
   if(!v.assignment)return 'Asigna primero un equipo al jugador.';
+  if(!(v.requirements?.length&&v.requirements.filter(r=>r.obligatorio).every(r=>r.estado==='validado')))return 'Falta validar documentación obligatoria de la RFFM.';
   if(!remoteMedicalIsValid(v))return 'El jugador necesita un reconocimiento médico en vigor antes de quedar listo para federar.';
   return null;
 }
@@ -784,7 +850,13 @@ $('#addPlayerButton').onclick=openPlayerForNew;$('#playerForm').onsubmit=async e
 
 $('#searchInput').oninput=renderClub;['statusFilter','clubCategoryFilter','clubActiveFilter'].forEach(id=>$('#'+id).onchange=renderClub);$('#saveTeamAssignment').onclick=()=>currentUser?.source==='supabase'?saveRemoteTeamAssignment():saveTeamAssignment();$('#advanceStatus').onclick=()=>currentUser?.source==='supabase'?advanceRemoteSelected():advanceSelected();$('#saveWorkflow').onclick=()=>currentUser?.source==='supabase'?setRemoteWorkflowSelected():setWorkflowSelected();$('#returnToFamily').onclick=()=>currentUser?.source==='supabase'?returnRemoteSelected():returnSelected();$('#closeAdminModal').onclick=()=>$('#adminPlayerModal').close();$('#changeTutorButton').onclick=openChangeTutor;$('#selfRepresentationButton').onclick=openSelfRepresentation;
 $$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;setView(b.dataset.clubView);if(b.dataset.clubView==='clubView')renderClub();if(b.dataset.clubView==='medicalView')renderMedical();if(b.dataset.clubView==='coachesView')renderCoaches();if(b.dataset.clubView==='structureView')renderStructure();if(b.dataset.clubView==='usersView')renderClubUsers();if(b.dataset.clubView==='personsView')renderPersons()});
-$$('[data-family-tab]').forEach(b=>b.onclick=()=>{$$('[data-family-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');if(b.dataset.familyTab==='players')$('.section').scrollIntoView({behavior:'smooth'})});
+$$('[data-family-tab]').forEach(b=>b.onclick=()=>{
+  $$('[data-family-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  const docs=$('#familyDocumentsSection'),playersSec=$('#familyPlayersSection');
+  if(b.dataset.familyTab==='docs'){if(docs){docs.hidden=false;renderFamilyDocumentsSummary();docs.scrollIntoView({behavior:'smooth'});}return;}
+  if(b.dataset.familyTab==='players'){if(playersSec)playersSec.scrollIntoView({behavior:'smooth'});return;}
+  if(b.dataset.familyTab==='home'){if(docs)docs.hidden=true;window.scrollTo({top:0,behavior:'smooth'});}
+});
 
 $('#togglePlayerActive').onclick=()=>{if(currentUser?.source==='supabase')return toggleRemotePlayerActive();if(currentRole!=='admin'&&currentRole!=='club')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const next=p.active===false;p.active=next;savePlayers();recordAudit(next?'Jugador reactivado':'Jugador marcado inactivo',p.id,next?'Vuelve a operación diaria':'Salida o baja operativa');openAdminPlayer(p.id);renderClub();renderMedical()};
 $('#changeTutorForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),p=players.find(x=>x.id===selectedPlayerId),newUser=users.find(u=>u.id===fd.get('tutorUserId'));if(!p||!newUser)return;const newTutorPerson=personForUser(newUser.id);if(!normDni(newTutorPerson?.dni||'')){alert('El tutor seleccionado no tiene DNI/NIE propio registrado. Completa su identidad antes de asignarlo como representante.');return}const legal=fd.get('legalException')==='on',a=ageOn(p.birth);if(a>=18&&!legal){alert('El jugador ya es mayor de edad. Solo puede mantenerse un tutor si se registra una excepción jurídica.');return}const old=activeRepresentation(p.id);if(old)old.endDate=isoToday();representations.push({id:uid('r'),playerId:p.id,userId:newUser.id,type:'guardian',startDate:isoToday(),endDate:'',reason:fd.get('reason'),legalException:legal});saveReps();recordAudit('Cambio de tutor',p.id,`${repUserName(old)} → ${newUser.name}. Motivo: ${fd.get('reason')}`);$('#changeTutorModal').close();openAdminPlayer(p.id);renderClub()};
@@ -823,3 +895,5 @@ async function disableLegacyServiceWorkers(){
 }
 
 disableLegacyServiceWorkers();
+
+$('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());

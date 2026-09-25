@@ -50,10 +50,13 @@ El Service Worker continúa desactivado durante la fase de desarrollo rápido. `
 - Requiere migración 010. El envío efectivo de emails desde la cola requiere backend/Edge Function; no se exponen secretos SMTP en el navegador.
 
 
-## V32
+## V33
 - Bloqueo inmediato de los botones de guardar/modificar/cancelar cita mientras la operación está en curso.
 - Evita dobles pulsaciones durante latencia y muestra estado `Guardando y notificando…`.
 - Compatible con la migración 012, que hace idempotentes las operaciones de cita repetidas con los mismos datos.
 - El procesador de notificaciones V2 usa el cuerpo completo preparado en PostgreSQL.
 - Los errores 429 de Mailtrap se dejan pendientes de reintento en lugar de marcarlos como fallo definitivo.
 - Los envíos se espacian para respetar el límite del Sandbox gratuito.
+
+
+V33: documentación federativa RFFM en Supabase Storage privado, checklist por inscripción, carga por familia/jugador y validación/rechazo por Club/Administrador.

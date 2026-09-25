@@ -77,3 +77,13 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .appointment-current{margin-top:8px}.appointment-summary{padding:12px 14px;border-radius:14px;background:#f8fafc;border:1px solid #e5e7eb;line-height:1.45}.appointment-summary strong{display:block;margin-bottom:4px}.appointment-summary-actions{margin-top:10px}.appointment-summary-actions .appointment-cancel{width:auto;padding:10px 16px}.appointment-notification{margin-top:8px;font-weight:700}.appointment-notification:empty{display:none}#medicalAppointmentEditor[hidden],#medicalAppointmentActions[hidden]{display:none!important}
 
 .primary:disabled,.secondary:disabled,.return-button:disabled{opacity:.55;cursor:wait;pointer-events:none}
+
+/* V33 - Documentacion federativa */
+.federation-requirements{display:grid;gap:12px;margin-top:14px}
+.federation-requirement{border:1px solid #e2e6eb;border-radius:14px;padding:14px;background:#fff}
+.federation-requirement .row{align-items:flex-start;gap:12px}
+.doc-upload{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,2fr) auto;gap:10px;align-items:end;margin-top:12px}
+.doc-upload label{margin:0}
+.card-actions{display:flex;justify-content:flex-end;margin-top:12px}
+.return-button.tiny,.primary.tiny,.secondary.tiny{width:auto;padding:7px 10px;font-size:12px}
+@media(max-width:720px){.doc-upload{grid-template-columns:1fr}.doc-upload .primary{width:100%}}
