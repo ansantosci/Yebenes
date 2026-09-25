@@ -72,3 +72,5 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 #guardianDniField input[readonly]{background:#f5f7fa;color:#475467}
 
 .auth-resend{width:100%;border:1px solid #d7dce3;background:#fff;color:var(--red)}.auth-resend:hover{background:#fff7f8}.auth-resend:disabled{opacity:.6;cursor:wait}
+
+.appointment-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:.72rem;font-weight:800;white-space:nowrap}.appointment-badge.scheduled{background:#e0f2fe;color:#075985}.appointment-badge.pending{background:#fff3cd;color:#8a6116}.appointment-family{margin-top:12px;padding:12px;border-radius:12px;background:#eef7ff;border:1px solid #cfe5fb;font-size:.84rem}.appointment-family strong{display:block;margin-bottom:4px}.appointment-grid{margin-top:10px}
