@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '36';
+    window.YEBENES_APP_VERSION = '37';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=37" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v36</div>
+      <div class="version-badge" aria-label="Versión de prueba">v37</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -136,17 +136,17 @@
           <p id="clubHeroText">Revisa documentación, asigna equipos y prepara los datos para la RFFM.</p>
         </div>
         <section class="stats-grid">
-          <article class="stat"><strong id="statPlayers">0</strong><span>Jugadores</span></article>
-          <article class="stat"><strong id="statComplete">0</strong><span>Completos</span></article>
-          <article class="stat"><strong id="statDocs">0</strong><span>Documentos pendientes</span></article>
-          <article class="stat"><strong id="statReview">0</strong><span>Por revisar</span></article><article class="stat alert-stat"><strong id="statMedical90">0</strong><span>RRMM vence ≤ 90 días</span></article><article class="stat alert-stat"><strong id="statAdult30">0</strong><span>Mayoría edad ≤ 30 días</span></article>
+          <article class="stat quick-filter" data-club-quick="all" tabindex="0"><strong id="statPlayers">0</strong><span>Jugadores</span></article>
+          <article class="stat quick-filter" data-club-quick="complete" tabindex="0"><strong id="statComplete">0</strong><span>Completos</span></article>
+          <article class="stat quick-filter" data-club-quick="docs" tabindex="0"><strong id="statDocs">0</strong><span>Documentos pendientes</span></article>
+          <article class="stat quick-filter" data-club-quick="review" tabindex="0"><strong id="statReview">0</strong><span>Por revisar</span></article><article class="stat alert-stat quick-filter" data-club-quick="medical90" tabindex="0"><strong id="statMedical90">0</strong><span>RRMM vence ≤ 90 días</span></article><article class="stat alert-stat quick-filter" data-club-quick="adult30" tabindex="0"><strong id="statAdult30">0</strong><span>Mayoría edad ≤ 30 días</span></article>
         </section>
         <section class="section">
           <div class="section-head stacked-mobile">
             <div><span class="eyebrow dark">Gestión</span><h2>Jugadores de la temporada</h2></div>
             <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="clubCategoryFilter"><option value="all">Todas las categorías</option></select><select id="clubActiveFilter"><option value="active">Solo activos</option><option value="inactive">Solo inactivos</option><option value="all">Activos e inactivos</option></select><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
-          <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
+          <div id="clubQuickFilterChip" class="quick-filter-chip hidden"></div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>Datos</th><th>Docs.</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
         </section>
       </section>
 
@@ -157,14 +157,14 @@
           <p>Controla la fecha del último reconocimiento, su validez y los vencimientos próximos.</p>
         </div>
         <section class="stats-grid medical-stats">
-          <article class="stat"><strong id="medicalTotal">0</strong><span>Jugadores</span></article>
-          <article class="stat"><strong id="medicalOk">0</strong><span>Vigente &gt; 90 días</span></article>
-          <article class="stat alert-stat"><strong id="medicalSoon">0</strong><span>Vence ≤ 90 días</span></article>
-          <article class="stat danger-stat"><strong id="medicalExpired">0</strong><span>Vencidos / sin fecha</span></article>
+          <article class="stat quick-filter" data-medical-quick="all" tabindex="0"><strong id="medicalTotal">0</strong><span>Jugadores</span></article>
+          <article class="stat quick-filter" data-medical-quick="ok" tabindex="0"><strong id="medicalOk">0</strong><span>Vigente &gt; 90 días</span></article>
+          <article class="stat alert-stat quick-filter" data-medical-quick="soon" tabindex="0"><strong id="medicalSoon">0</strong><span>Vence ≤ 90 días</span></article>
+          <article class="stat danger-stat quick-filter" data-medical-quick="expired_or_missing" tabindex="0"><strong id="medicalExpired">0</strong><span>Vencidos / sin fecha</span></article>
         </section>
         <section class="section">
           <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Seguimiento</span><h2>Reconocimientos de jugadores</h2></div><div class="filters"><input id="medicalSearch" type="search" placeholder="Buscar jugador..." /><select id="medicalFilter"><option value="all">Todos</option><option value="ok">Vigente &gt; 90 días</option><option value="soon">Vence ≤ 90 días</option><option value="appointment_pending">Cita pendiente</option><option value="appointment_scheduled">Cita gestionada</option><option value="expired">Vencidos</option><option value="missing">Sin RRMM</option></select></div></div>
-          <div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Último RRMM</th><th>Válido hasta</th><th>Estado</th></tr></thead><tbody id="medicalTable"></tbody></table></div>
+          <div id="medicalQuickFilterChip" class="quick-filter-chip hidden"></div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Categoría</th><th>Último RRMM</th><th>Válido hasta</th><th>Estado</th></tr></thead><tbody id="medicalTable"></tbody></table></div>
         </section>
         <section class="section compact"><div class="info-card"><strong>Regla del aviso</strong><p>La app marca en ámbar los reconocimientos que vencen en los próximos 90 días y en rojo los ya vencidos. La fecha de validez se guarda por jugador para ajustarse al dato oficial de RFFM.</p></div></section>
       </section>
@@ -258,6 +258,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=37"></script>
 </body>
 </html>

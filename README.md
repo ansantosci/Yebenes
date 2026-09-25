@@ -165,3 +165,19 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 
 ### Pendiente relacionado
 - Si la RFFM habilita en el futuro una API/webhook para consultar autorización/firma de licencia, sustituir la verificación manual por consulta automática manteniendo el mismo modelo de estados.
+
+
+---
+
+## V37 — 25/09/2026 — Sin migración
+
+### Filtros rápidos desde indicadores KPI
+- Las tarjetas numéricas de **Fichas** pasan a ser filtros rápidos clicables: Jugadores, Completos, Documentos pendientes, Por revisar, RRMM ≤90 días y Mayoría de edad ≤30 días.
+- Las tarjetas de **RRMM** también filtran el listado: Jugadores, Vigente >90 días, Vence ≤90 días y Vencidos/sin RRMM.
+- El filtro rápido se combina con búsqueda, categoría, activo/inactivo y estado existentes.
+- La tarjeta activa queda resaltada y se muestra una etiqueta de filtro sobre la tabla.
+- Pulsar de nuevo la tarjeta activa, la tarjeta `Jugadores` o la `×` de la etiqueta elimina el filtro rápido.
+- Se añade soporte de teclado (Enter/Espacio) para las tarjetas KPI.
+
+### Base de datos
+- V37 no requiere migración.
