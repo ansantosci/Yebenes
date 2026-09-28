@@ -1,11 +1,12 @@
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
-## V46 - 2026-09-28
+## V47 - 2026-09-28
 
-- Corrige la visibilidad de las alertas de las pestañas de la ficha: los indicadores con atributo `hidden` ya no quedan visibles por una regla CSS.
-- La pestaña **Datos** muestra alerta solo cuando faltan datos validados **o** no existe equipo asignado.
-- Un jugador con datos validados y equipo asignado no muestra alerta en Datos.
-- Se conserva la alerta para jugadores sin equipo, tal como requiere la operativa del club.
-- Se mantienen los ajustes responsive introducidos en V45.
+- La operativa de cobro manual queda limitada a **Efectivo**.
+- Los pagos de **Cluber** dejan de poder registrarse manualmente para evitar duplicidades cuando se implante la conciliación por fichero/API.
+- La pestaña Economía incorpora un bloque **Conciliación Cluber** preparado para importación futura; en V47 se muestra como funcionalidad pendiente.
+- Se mantiene la validación manual de domiciliación/fraccionamiento Cluber para que el club pueda habilitar la ficha mientras no exista importación automática.
+- Se añade configuración frontend `PAYMENT_FEATURES`: efectivo activo; otros medios manuales, tarjeta e importación Cluber desactivados. No se modifica el modelo de datos para conservar extensibilidad futura.
+- Se normaliza la marca visible a **Cluber** (una sola b). Los identificadores técnicos históricos de PostgreSQL con `_clubber` se conservan por compatibilidad.
 - Sin cambios de base de datos.
 
 
@@ -21,7 +22,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V43 — 28/09/2026**
+**Versión actual: V47 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -60,6 +61,11 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V40** | **28/09/2026** | Sin migración | Estructura unificada por equipo: datos deportivos y económicos en un único listado/ficha. |
 | **V41** | **28/09/2026** | Sin migración | Ordenación de Estructura por categoría de menor a mayor edad: Chupetín, Prebenjamín, Benjamín, Alevín, Infantil, Cadete, Juvenil y Senior; dentro de cada categoría, orden natural por nombre de equipo. |
 | **V42** | **28/09/2026** | Sin migración | Corrige la apertura de Gestión de pago/Cluber desde la ficha del jugador: evita diálogos modales anidados, permite registrar cobros parciales/totales y vuelve a la ficha al cerrar Economía. |
+| **V43** | **28/09/2026** | Sin migración | Ficha de jugador por pestañas con alertas contextuales; Economía integrada en la ficha. |
+| **V44** | **28/09/2026** | Sin migración | Corrige maquetación y desbordamientos de la ficha por pestañas. |
+| **V45** | **28/09/2026** | Sin migración | Consolidación responsive/mobile-first de fichas y controles táctiles. |
+| **V46** | **28/09/2026** | Sin migración | Corrige alertas de pestañas; Datos alerta solo si faltan datos validados o equipo. |
+| **V47** | **28/09/2026** | Sin migración | Cobro manual solo en efectivo; Cluber reservado a conciliación/importación futura; parametrización de medios de pago. |
 
 ## V34 — detalle
 
@@ -251,7 +257,7 @@ Se incorpora un bloque **Preparación para tramitar ficha** con porcentaje y cua
 ### Situación económica de cada inscripción
 - Cada inscripción mantiene importe total, importe cobrado, estado económico y condición **Apto para ficha**.
 - Estados operativos: `pendiente`, `parcial`, `pagado` y movimientos anulados/devueltos en histórico.
-- Se pueden registrar cobros por `efectivo`, `clubber` u `otro`, con fecha, referencia y observaciones.
+- El modelo admite históricamente `efectivo`, `clubber` y `otro`; desde V47 la interfaz solo permite registrar manualmente **efectivo**. Los pagos Cluber se reservan a conciliación/importación.
 - Un pago solo figura como **Pagado** cuando la suma cobrada alcanza el 100 % del importe de inscripción.
 
 ### Fraccionamiento Cluber
@@ -279,7 +285,7 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 
 ### UX
 - La ficha de Club/Administrador incorpora un bloque **Situación económica**.
-- Desde la ficha se pueden registrar cobros, guardar IDs Cluber y validar/revocar el fraccionamiento.
+- Desde la ficha se pueden registrar cobros **en efectivo**, guardar IDs Cluber y validar/revocar el fraccionamiento. Los pagos Cluber no se introducen manualmente desde V47.
 - Estructura incorpora una tabla específica para configurar importes y reglas económicas por equipo.
 - Familia/Jugador ve el estado económico dentro del checklist de su inscripción.
 
@@ -345,7 +351,7 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 - La causa era la apertura de un segundo `dialog.showModal()` mientras la ficha del jugador seguía abierta como diálogo modal; el comportamiento no es consistente entre navegadores.
 - Al entrar en Economía, V42 cierra temporalmente la ficha del jugador y abre la gestión económica como único modal activo.
 - Al cerrar Economía (botón X o tecla Escape) se reabre automáticamente la ficha del mismo jugador.
-- Se mantiene el formulario existente para registrar cobros parciales o totales, IDs Cluber, referencias e histórico, y la validación/revocación de fraccionamiento Cluber.
+- Se mantiene el formulario económico; desde V47 el alta manual de cobros queda limitada a efectivo. Se conservan IDs Cluber, referencias, histórico y validación/revocación de fraccionamiento Cluber.
 - Si por cualquier motivo el diálogo económico no pudiera abrirse, ahora se informa al usuario en lugar de fallar silenciosamente.
 
 ### Versionado
@@ -387,3 +393,23 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 
 ### Base de datos
 - V45 no requiere migración. La última migración funcional sigue siendo la **016**.
+
+## V47 — 28/09/2026 — Política de cobros y Cluber
+
+### Operativa actual
+- **Registro manual:** únicamente efectivo.
+- **Cluber:** los cobros no se registran manualmente; se incorporarán mediante conciliación de fichero exportado o API cuando esté disponible.
+- **Fraccionamiento Cluber:** el Club/Administrador puede seguir validando manualmente que la domiciliación de cuotas está correctamente configurada. Esa validación puede habilitar la ficha aunque el importe total aún no esté cobrado.
+- Los pagos Cluber previamente registrados durante pruebas permanecen en el histórico; V47 no altera ni elimina datos existentes.
+
+### Parametrización
+`PAYMENT_FEATURES` mantiene separada la política operativa de la estructura de datos:
+- `efectivo`: habilitado;
+- otros medios manuales: deshabilitados;
+- tarjeta: deshabilitada;
+- importación Cluber: todavía deshabilitada.
+
+Esto permite activar nuevas formas de cobro en el futuro sin eliminar la estructura económica existente. Si una futura forma de pago requiere un código específico nuevo en PostgreSQL, se realizará entonces la migración correspondiente.
+
+### Compatibilidad técnica
+La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la migración 016 (`vinculos_clubber`, `validar_fraccionamiento_clubber`, etc.) no se renombran en V47 para evitar una migración destructiva o innecesaria.
