@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '51';
+    window.YEBENES_APP_VERSION = '53';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=52" />
+  <link rel="stylesheet" href="styles.css?v=53" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v52</div>
+      <div class="version-badge" aria-label="Versión de prueba">v53</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -122,10 +122,6 @@
         </section>
         <section class="section compact" id="familyStatusSection">
           <div class="progress-card"><div><span class="eyebrow dark">Estado familiar</span><h3 id="familyPlayerCount">0 jugadores registrados</h3></div><div class="progress-ring" style="--p:0"><span>0%</span></div></div>
-        </section>
-        <section class="section" id="familyDocumentsSection" hidden>
-          <div class="section-head"><div><span class="eyebrow dark">Federación RFFM</span><h2>Documentación de jugadores</h2></div></div>
-          <div id="familyDocumentsList" class="cards-grid"></div>
         </section>
       </section>
 
@@ -217,7 +213,7 @@
     </main>
 
     <nav class="bottom-nav" id="familyNav">
-      <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="players"><span>⚽</span>Jugadores</button><button class="nav-item" data-family-tab="docs"><span>▣</span>Documentos</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
+      <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="players"><span>⚽</span>Jugadores</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
     </nav>
     <nav class="bottom-nav club-nav hidden" id="clubNav">
       <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button>
@@ -281,6 +277,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=52"></script>
+  <script src="app.js?v=53"></script>
 </body>
 </html>

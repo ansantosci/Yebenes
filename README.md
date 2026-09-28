@@ -1,3 +1,14 @@
+## V53 - 2026-09-28
+
+### Simplificación de navegación en Familia
+- Se elimina **Documentos** del menú inferior de Familia para evitar una navegación redundante.
+- El menú inferior queda en **Inicio | Jugadores | Perfil**, más limpio y usable en móvil.
+- La documentación se gestiona únicamente desde **Jugadores → ficha del jugador → Documentos**, manteniendo el contexto del jugador.
+- Se retira de la interfaz la antigua vista global de documentación familiar; el gestor documental de la ficha permanece operativo.
+- La barra inferior se adapta a tres opciones y conserva el comportamiento responsive.
+- Versionado visible e interno alineado a V53.
+- Sin cambios de base de datos ni migraciones.
+
 
 ## V52 - 2026-09-28
 
@@ -41,7 +52,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V48 — 28/09/2026**
+**Versión actual: V53 — 28/09/2026**
 
 ## Estado funcional actual
 

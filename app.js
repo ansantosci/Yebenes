@@ -1,4 +1,4 @@
-const APP_VERSION='52';
+const APP_VERSION='53';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1105,19 +1105,7 @@ $('#searchInput').oninput=renderClub;['statusFilter','clubCategoryFilter','clubA
 $$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;setView(b.dataset.clubView);if(b.dataset.clubView==='clubView')renderClub();if(b.dataset.clubView==='medicalView')renderMedical();if(b.dataset.clubView==='coachesView')renderCoaches();if(b.dataset.clubView==='structureView')renderStructure();if(b.dataset.clubView==='usersView')renderClubUsers();if(b.dataset.clubView==='personsView')renderPersons()});
 function setFamilyMainTab(tab){
   $$('[data-family-tab]').forEach(x=>x.classList.toggle('active',x.dataset.familyTab===tab));
-  const docs=$('#familyDocumentsSection'),playersSec=$('#familyPlayersSection'),statusSec=$('#familyStatusSection'),hero=$('#familyHero');
-  if(tab==='docs'){
-    if(playersSec)playersSec.hidden=true;
-    if(statusSec)statusSec.hidden=true;
-    if(hero)hero.hidden=true;
-    if(docs){docs.hidden=false;renderFamilyDocumentsSummary();}
-    $('#familyHeroEyebrow').textContent='Federación RFFM';
-    $('#familyHeroTitle').textContent='Documentación de tus jugadores';
-    $('#familyHeroText').textContent='Consulta el progreso documental y aporta o revisa los requisitos de cada inscripción.';
-    window.scrollTo({top:0,behavior:'smooth'});
-    return;
-  }
-  if(docs)docs.hidden=true;
+  const playersSec=$('#familyPlayersSection'),statusSec=$('#familyStatusSection'),hero=$('#familyHero');
   if(playersSec)playersSec.hidden=false;
   if(statusSec)statusSec.hidden=false;
   if(hero)hero.hidden=false;
@@ -1125,7 +1113,7 @@ function setFamilyMainTab(tab){
   $('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha federativa':'Gestiona la ficha de tus hijos desde el móvil';
   $('#familyHeroText').textContent='Completa datos, adjunta documentación y consulta el estado de cada inscripción.';
   if(tab==='players'&&playersSec){playersSec.scrollIntoView({behavior:'smooth'});return;}
-  if(tab==='profile'){window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(tab==='profile'){window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});return;}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 $$('[data-family-tab]').forEach(b=>b.onclick=()=>setFamilyMainTab(b.dataset.familyTab));
