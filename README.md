@@ -1,14 +1,14 @@
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
-## V47 - 2026-09-28
+## V48 - 2026-09-28
 
-- La operativa de cobro manual queda limitada a **Efectivo**.
-- Los pagos de **Cluber** dejan de poder registrarse manualmente para evitar duplicidades cuando se implante la conciliación por fichero/API.
-- La pestaña Economía incorpora un bloque **Conciliación Cluber** preparado para importación futura; en V47 se muestra como funcionalidad pendiente.
-- Se mantiene la validación manual de domiciliación/fraccionamiento Cluber para que el club pueda habilitar la ficha mientras no exista importación automática.
-- Se añade configuración frontend `PAYMENT_FEATURES`: efectivo activo; otros medios manuales, tarjeta e importación Cluber desactivados. No se modifica el modelo de datos para conservar extensibilidad futura.
-- Se normaliza la marca visible a **Cluber** (una sola b). Los identificadores técnicos históricos de PostgreSQL con `_clubber` se conservan por compatibilidad.
+- La pestaña **Economía mantiene una alerta mientras la inscripción no esté abonada al 100 %**, aunque exista fraccionamiento Cluber validado.
+- La alerta económica es **roja** cuando la situación económica bloquea la tramitación de la ficha.
+- La alerta económica es **ámbar** cuando todavía queda saldo pendiente pero el fraccionamiento/domiciliación Cluber ha sido validado y, por tanto, la ficha está habilitada para tramitarse.
+- La alerta desaparece únicamente cuando el pago está completado al 100 % o el equipo está configurado como pago no requerido.
+- Se elimina de la ficha individual del jugador el bloque **Conciliación Cluber**. La conciliación/importación será un proceso masivo de backoffice para Club/Administrador y se implementará más adelante como opción independiente de menú.
+- Se mantiene en la ficha individual la información necesaria para cada jugador: IDs Cluber, estado económico, validación/revocación de fraccionamiento y histórico de pagos.
+- El registro manual continúa limitado a **Efectivo**. El modelo de datos conserva otros métodos para futuras activaciones sin migraciones destructivas.
 - Sin cambios de base de datos.
-
 
 ## V44 — Corrección de maquetación de la ficha por pestañas
 
@@ -22,7 +22,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V47 — 28/09/2026**
+**Versión actual: V48 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -66,6 +66,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V45** | **28/09/2026** | Sin migración | Consolidación responsive/mobile-first de fichas y controles táctiles. |
 | **V46** | **28/09/2026** | Sin migración | Corrige alertas de pestañas; Datos alerta solo si faltan datos validados o equipo. |
 | **V47** | **28/09/2026** | Sin migración | Cobro manual solo en efectivo; Cluber reservado a conciliación/importación futura; parametrización de medios de pago. |
+| **V48** | **28/09/2026** | Sin migración | Alerta económica persiste hasta pago 100 %; ámbar si el fraccionamiento Cluber habilita la ficha con saldo pendiente; conciliación Cluber retirada de la ficha individual y reservada a backoffice masivo futuro. |
 
 ## V34 — detalle
 
