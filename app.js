@@ -1,4 +1,4 @@
-const APP_VERSION='40';
+const APP_VERSION='41';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -256,6 +256,21 @@ async function loadSupabaseStructure(){
 }
 function dbActiveSeason(){return dbSeasons.find(s=>s.status==='activa')||dbSeasons[0]||null}
 function dbCategoryName(id){return dbCategories.find(c=>c.id===id)?.name||'—'}
+function categoryAgeOrder(categoryId,remote=dbStructureLoaded){
+  if(remote){
+    const c=dbCategories.find(x=>x.id===categoryId);
+    return Number.isFinite(Number(c?.order))?Number(c.order):9999;
+  }
+  const ix=categories.findIndex(x=>x.id===categoryId);
+  return ix>=0?ix:9999;
+}
+function sortTeamsByCategoryAge(list,remote=dbStructureLoaded){
+  return [...list].sort((a,b)=>{
+    const catDiff=categoryAgeOrder(a.categoryId,remote)-categoryAgeOrder(b.categoryId,remote);
+    if(catDiff!==0)return catDiff;
+    return String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'});
+  });
+}
 function dbSeasonTeams(){const s=dbActiveSeason();return s?dbTeams.filter(t=>t.seasonId===s.id):[]}
 function dbCategoryForBirth(birth){
   if(!birth)return null;
@@ -836,7 +851,7 @@ function renderCoaches(){if(!$('#coachesTable'))return;const teamSel=$('#coachTe
 function renderCoachAssignments(){renderAssignmentList('#coachAssignmentsList',pendingCoachAssignments,'remove-coach-assignment');$$('.remove-coach-assignment').forEach(b=>b.onclick=()=>{pendingCoachAssignments.splice(+b.dataset.index,1);renderCoachAssignments()})}
 function openCoachForNew(){editingCoachId=null;pendingCoachAssignments=[];$('#coachForm').reset();fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();$('#coachModalTitle').textContent='Nuevo entrenador';$('#coachModal').showModal()}
 function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;editingCoachId=id;pendingCoachAssignments=(c.assignments||[]).map(a=>({...a}));const f=$('#coachForm');f.elements.name.value=c.name;f.elements.hasLicense.value=c.hasLicense?'yes':'no';f.elements.licenseType.value=c.licenseType||'';f.elements.delegateCourse.value=c.delegateCourse?'yes':'no';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();$('#coachModalTitle').textContent='Editar entrenador';$('#coachModal').showModal()}
-function renderTeamsSummary(){if(!$('#teamsTable'))return;const source=dbStructureLoaded?dbSeasonTeams():currentSeasonTeams();const catName=id=>dbStructureLoaded?dbCategoryName(id):categoryName(id);$('#teamsTable').innerHTML=source.map(t=>`<tr><td><strong>${esc(t.name)}</strong></td><td>${esc(catName(t.categoryId))}</td><td>${dbStructureLoaded?'—':playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${dbStructureLoaded?'—':coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td></tr>`).join('')}
+function renderTeamsSummary(){if(!$('#teamsTable'))return;const source=dbStructureLoaded?sortTeamsByCategoryAge(dbSeasonTeams(),true):sortTeamsByCategoryAge(currentSeasonTeams(),false);const catName=id=>dbStructureLoaded?dbCategoryName(id):categoryName(id);$('#teamsTable').innerHTML=source.map(t=>`<tr><td><strong>${esc(t.name)}</strong></td><td>${esc(catName(t.categoryId))}</td><td>${dbStructureLoaded?'—':playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${dbStructureLoaded?'—':coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td></tr>`).join('')}
 
 function renderClubUsers(){if(!$('#clubUsersTable'))return;const rows=users.filter(u=>internalRoles(u).length);$('#clubUsersTable').innerHTML=rows.map(u=>{const c=coaches.find(x=>x.userId===u.id),ts=c?(c.assignments||[]).filter(a=>assignmentState(a)==='active').map(a=>teamName(a.teamId)).join(', '):'—';const badges=(u.roles||[]).map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('');return`<tr><td><strong>${esc(u.name)}</strong></td><td>${esc(u.email)}</td><td><div class="role-badges">${badges}</div></td><td>${esc(ts||'—')}</td><td><span class="status ${u.active?'complete':'returned'}">${u.active?'Activo':'Inactivo'}</span></td><td><button class="secondary tiny toggle-user" data-id="${u.id}">${u.active?'Desactivar':'Activar'}</button></td></tr>`}).join('');$$('.toggle-user').forEach(b=>b.onclick=()=>{users=users.map(u=>u.id===b.dataset.id?{...u,active:!u.active}:u);saveUsers();renderClubUsers()})}
 
@@ -851,7 +866,7 @@ function renderEconomicTeamConfig(){
   const body=$('#economicTeamsTable');if(!body)return;
   if(!['admin','club'].includes(currentRole)){body.innerHTML='<tr><td colspan="6">Sin acceso a configuración económica.</td></tr>';return}
   loadEconomicConfigs().then(()=>{
-    body.innerHTML=dbSeasonTeams().map(t=>{const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);return `<tr><td><strong>${esc(t.name)}</strong><div class="meta">${esc(dbCategoryName(t.categoryId))}</div></td><td>${c?moneyEUR(c.importe_inscripcion):'Sin configurar'}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td><span class="status ${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'complete':'pending'}">${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'Configurado':'Pendiente'}</span></td><td><button class="secondary tiny edit-economic-config" data-id="${t.id}">${c?'Editar':'Configurar'}</button></td></tr>`}).join('');
+    body.innerHTML=sortTeamsByCategoryAge(dbSeasonTeams(),true).map(t=>{const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);return `<tr><td><strong>${esc(t.name)}</strong><div class="meta">${esc(dbCategoryName(t.categoryId))}</div></td><td>${c?moneyEUR(c.importe_inscripcion):'Sin configurar'}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td><span class="status ${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'complete':'pending'}">${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'Configurado':'Pendiente'}</span></td><td><button class="secondary tiny edit-economic-config" data-id="${t.id}">${c?'Editar':'Configurar'}</button></td></tr>`}).join('');
     $$('.edit-economic-config').forEach(b=>b.onclick=()=>openEconomicConfig(b.dataset.id));
   }).catch(err=>{body.innerHTML=`<tr><td colspan="6">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
 }
@@ -886,7 +901,7 @@ function renderStructure(){
     const body=$('#structureTeamsTable');
     body.innerHTML='<tr><td colspan="10">Cargando equipos y configuración económica…</td></tr>';
     loadEconomicConfigs().then(()=>{
-      body.innerHTML=dbSeasonTeams().map(t=>{
+      body.innerHTML=sortTeamsByCategoryAge(dbSeasonTeams(),true).map(t=>{
         const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);
         const playersCount=remoteClubPlayers.filter(p=>p.assignment?.equipo_id===t.id&&p.active).length;
         const amount=c?moneyEUR(c.importe_inscripcion):'<span class="meta">Sin configurar</span>';
@@ -900,7 +915,7 @@ function renderStructure(){
     }).catch(err=>{body.innerHTML=`<tr><td colspan="10">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
     return;
   }
-  $('#openSeasonModal').style.display=can?'inline-flex':'none';$('#openTeamModal').style.display=can?'inline-flex':'none';$('#seasonsTable').innerHTML=seasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===currentSeasonId?'<span class="status complete">Actual</span>':'—'}</td><td>${s.active?'Activa':'Cerrada'}</td><td>${can&&s.id!==currentSeasonId?`<button class="secondary tiny activate-season" data-id="${s.id}">Usar</button>`:''}</td></tr>`).join('');$$('.activate-season').forEach(b=>b.onclick=()=>{currentSeasonId=b.dataset.id;writeJSON(K.currentSeason,currentSeasonId);recalculateSeasonCategories(currentSeasonId);recordAudit('Cambio de temporada activa','',seasonName(currentSeasonId));$('#currentSeasonLabel').textContent=seasonName(currentSeasonId);renderStructure();renderClub();renderMedical();renderCoaches()});$('#structureTeamsTable').innerHTML=currentSeasonTeams().map(t=>`<tr><td><strong>${esc(t.name)}</strong></td><td>${esc(categoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td>—</td><td>—</td><td>—</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td><td>${can?`<button class="secondary tiny edit-team" data-id="${t.id}">Editar</button>`:''}</td></tr>`).join('');$$('.edit-team').forEach(b=>b.onclick=()=>openTeamEdit(b.dataset.id))
+  $('#openSeasonModal').style.display=can?'inline-flex':'none';$('#openTeamModal').style.display=can?'inline-flex':'none';$('#seasonsTable').innerHTML=seasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===currentSeasonId?'<span class="status complete">Actual</span>':'—'}</td><td>${s.active?'Activa':'Cerrada'}</td><td>${can&&s.id!==currentSeasonId?`<button class="secondary tiny activate-season" data-id="${s.id}">Usar</button>`:''}</td></tr>`).join('');$$('.activate-season').forEach(b=>b.onclick=()=>{currentSeasonId=b.dataset.id;writeJSON(K.currentSeason,currentSeasonId);recalculateSeasonCategories(currentSeasonId);recordAudit('Cambio de temporada activa','',seasonName(currentSeasonId));$('#currentSeasonLabel').textContent=seasonName(currentSeasonId);renderStructure();renderClub();renderMedical();renderCoaches()});$('#structureTeamsTable').innerHTML=sortTeamsByCategoryAge(currentSeasonTeams(),false).map(t=>`<tr><td><strong>${esc(t.name)}</strong></td><td>${esc(categoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td>—</td><td>—</td><td>—</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td><td>${can?`<button class="secondary tiny edit-team" data-id="${t.id}">Editar</button>`:''}</td></tr>`).join('');$$('.edit-team').forEach(b=>b.onclick=()=>openTeamEdit(b.dataset.id))
 }
 function saveTeamAssignment(){if(currentRole==='coach')return;const p=players.find(x=>x.id===selectedPlayerId),i=inscriptionFor(selectedPlayerId);if(!p||!i||i.workflow==='review')return;const teamId=$('#adminTeam').value,old=activeTeamAssignment(p.id);if(old?.teamId===teamId)return;if(old){old.endDate=isoToday();old.reason='Cambio de equipo';}if(teamId){playerTeams.push({id:uid('pt'),playerId:p.id,seasonId:currentSeasonId,teamId,startDate:isoToday(),endDate:currentSeason().endDate,reason:old?'Cambio de equipo':'Asignación inicial'})}savePlayerTeams();recordAudit('Asignación de equipo',p.id,teamId?`Asignado a ${teamName(teamId)}`:'Equipo retirado');openAdminPlayer(p.id);renderClub();renderCoaches();renderStructure()}
 function advanceSelected(){const i=inscriptionFor(selectedPlayerId);if(currentRole==='coach'||!i)return;const ix=Math.max(0,WORKFLOW.findIndex(x=>x.key===i.workflow)),n=WORKFLOW[Math.min(ix+1,WORKFLOW.length-1)];updateInscription(selectedPlayerId,x=>({...x,workflow:n.key,federation:n.federation,status:['ready','federated'].includes(n.key)?'complete':'pending',familyActionRequired:false,returnMessage:''}),'Avance de estado');openAdminPlayer(selectedPlayerId)}

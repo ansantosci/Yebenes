@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V39 — 28/09/2026**
+**Versión actual: V41 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -38,6 +38,8 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V37** | **25/09/2026** | Sin migración | KPIs clicables como filtros rápidos en Fichas y RRMM. |
 | **V38** | **28/09/2026** | Sin migración | El RRMM vigente pasa a formar parte explícita de la ficha y del cálculo de preparación; nuevo progreso integral de requisitos y bloqueo de Listo para federar. |
 | **V39** | **28/09/2026** | Migración 016 | Módulo económico por equipo/temporada, pagos, Cluber, fraccionamiento validado y pago como quinto requisito bloqueante de la ficha. |
+| **V40** | **28/09/2026** | Sin migración | Estructura unificada por equipo: datos deportivos y económicos en un único listado/ficha. |
+| **V41** | **28/09/2026** | Sin migración | Ordenación de Estructura por categoría de menor a mayor edad: Chupetín, Prebenjamín, Benjamín, Alevín, Infantil, Cadete, Juvenil y Senior; dentro de cada categoría, orden natural por nombre de equipo. |
 
 ## V34 — detalle
 
@@ -300,3 +302,18 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 ### Base de datos
 - V40 no requiere migración.
 - Reutiliza `equipos`, `configuracion_economica_equipo` y la RPC `configurar_economia_equipo` de la migración 016.
+
+
+---
+
+## V41 — 28/09/2026 — Sin migración
+
+### Ordenación deportiva de Estructura
+- El listado único de equipos se ordena por la edad de la categoría, de menor a mayor: **Chupetín → Prebenjamín → Benjamín → Alevín → Infantil → Cadete → Juvenil → Senior**.
+- El orden se apoya en el campo maestro `categorias.orden` de PostgreSQL, por lo que no depende del nombre textual de la categoría.
+- Dentro de una misma categoría se aplica orden natural por nombre de equipo (`A`, `B`, `C`, etc.).
+- El mismo criterio se conserva como fallback en el modo local del prototipo.
+
+### Base de datos
+- V41 no requiere migración.
+- Reutiliza `categorias.orden`, ya cargado en el Modelo de Datos V1.
