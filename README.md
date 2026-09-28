@@ -1,5 +1,5 @@
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
-## V48 - 2026-09-28
+## V49 - 2026-09-28
 
 - La pestaña **Economía mantiene una alerta mientras la inscripción no esté abonada al 100 %**, aunque exista fraccionamiento Cluber validado.
 - La alerta económica es **roja** cuando la situación económica bloquea la tramitación de la ficha.
@@ -38,6 +38,14 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 - Service Worker desactivado durante desarrollo rápido. Debe reactivarse cuando exista una versión estable.
 
 ## Trazabilidad de versiones
+
+### V49 — 28/09/2026
+
+- Corrige la ficha de **Estructura → Equipo**: vuelven a funcionar **Guardar equipo**, **Cancelar** y la **X** de cierre.
+- Causa raíz: el JavaScript se detenía al intentar enlazar controles legacy de alta de usuarios de club que ya no existen en el HTML actual, antes de registrar los eventos del modal de equipo.
+- Los listeners legacy pasan a inicializarse de forma defensiva y el propio `openTeamEdit()` registra además los controles críticos del modal de equipo como salvaguarda.
+- Sin cambios de base de datos ni migraciones.
+
 
 | Versión | Fecha | BD / backend | Cambios principales |
 |---|---|---|---|
