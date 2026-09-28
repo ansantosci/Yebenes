@@ -102,3 +102,15 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 
 /* V38 - preparación integral de ficha */
 .readiness-progress{margin-top:12px;padding:14px;border:1px solid #e2e6ea;border-radius:14px;background:#fff}.readiness-list{display:grid;gap:8px;margin-top:12px}.readiness-item{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:#f7f8fa}.readiness-item span{font-weight:800;font-size:.86rem}.readiness-item small{color:var(--muted);text-align:right;max-width:52%}.readiness-item.ok{background:#eafaf0}.readiness-item.ok span{color:#087a3e}.readiness-item.warning{background:#fff7df}.readiness-item.warning span{color:#8a6116}.readiness-item.missing{background:#fff0f2}.readiness-item.missing span{color:#a30f2b}.readiness-ready{margin-top:12px;padding:10px 12px;border-radius:10px;background:#dcfce7;color:#087a3e;font-weight:800}.readiness-note{margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff3cd;color:#7a5414;font-weight:700}.readiness-future{margin-top:8px;color:var(--muted);font-size:.76rem}.ok-text{color:#087a3e}.warn-text{color:#8a6116}.error-text{color:#a30f2b}@media(max-width:640px){.readiness-item{flex-direction:column;gap:4px}.readiness-item small{max-width:none;text-align:left}}
+
+/* V39 - economia de inscripcion */
+.economic-summary{border:1px solid var(--line,#e5e7eb);border-radius:16px;padding:16px;background:#fff;margin-top:10px}
+.economic-summary.is-ready{border-color:#b7dfc2;background:#f7fcf8}
+.economic-summary.is-pending{border-color:#ead7a4;background:#fffaf0}
+.economic-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.economic-grid span{display:flex;flex-direction:column;gap:3px;font-size:.78rem;color:#667085;background:rgba(255,255,255,.75);border-radius:10px;padding:9px 10px}
+.economic-grid strong{font-size:.95rem;color:#161616}
+.economic-current{margin-bottom:16px}
+.section-note{margin:-4px 0 14px}
+#economicPlayerModal form,#economicConfigModal form{max-width:760px}
+@media (max-width:700px){.economic-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

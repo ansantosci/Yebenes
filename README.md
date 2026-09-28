@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V38 — 28/09/2026**
+**Versión actual: V39 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -37,6 +37,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V36** | **25/09/2026** | Migración 015 | Progreso documental real y declaración por Familia/Jugador de autorización/firma RFFM realizada, pendiente de verificación por el club. |
 | **V37** | **25/09/2026** | Sin migración | KPIs clicables como filtros rápidos en Fichas y RRMM. |
 | **V38** | **28/09/2026** | Sin migración | El RRMM vigente pasa a formar parte explícita de la ficha y del cálculo de preparación; nuevo progreso integral de requisitos y bloqueo de Listo para federar. |
+| **V39** | **28/09/2026** | Migración 016 | Módulo económico por equipo/temporada, pagos, Cluber, fraccionamiento validado y pago como quinto requisito bloqueante de la ficha. |
 
 ## V34 — detalle
 
@@ -66,6 +67,8 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 - 012: robustez/idempotencia de notificaciones RRMM.
 - 013: requisitos y documentos federativos + Storage privado.
 - 014: bloqueo de documentos validados, solicitud de nueva versión e histórico de requisitos.
+- 015: declaración de autorización/firma RFFM por familia/jugador y progreso documental.
+- 016: configuración económica por equipo/temporada, pagos, situación económica e IDs Cluber.
 
 ## Edge Functions
 
@@ -83,8 +86,7 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 ### P0 antes de producción
 - Sustituir Mailtrap por proveedor SMTP de producción con `losyebenessanbruno.es` y SPF/DKIM/DMARC.
 - Reactivar y estabilizar Service Worker/PWA cuando el ciclo de releases deje de ser tan frecuente.
-- Construir módulo económico: importe de inscripción configurable por equipo+temporada; pago efectivo/Cluber; pago total separado de validación de fraccionamiento Cluber; bloqueo de ficha si no está económicamente habilitada.
-- Investigar/acordar con Cluber API/webhook para IDs de deportista/tutor e historial/estado de pagos.
+- Investigar/acordar con Cluber API/webhook para automatizar IDs de deportista/tutor, historial de pagos, estado de cargos y validación de fraccionamientos. La V39 deja preparado el modelo para sustituir la validación manual por integración automática.
 
 ### Funcional
 - Completar circuito documental RFFM y reglas por categoría/temporada.
@@ -212,3 +214,63 @@ Se incorpora un bloque **Preparación para tramitar ficha** con porcentaje y cua
 
 ### Base de datos
 - V38 no requiere migración. Usa los datos ya existentes de inscripciones, asignaciones, requisitos documentales y reconocimientos médicos.
+
+
+---
+
+## V39 — 28/09/2026 — Migración 016
+
+### Configuración económica por equipo y temporada
+- Club y Administrador pueden definir el **importe total de inscripción** para cada equipo de la temporada.
+- Se configura si el equipo admite **fraccionamiento mediante Cluber** y si el pago es requisito para tramitar la ficha.
+- La configuración queda ligada a `equipo + temporada`, de modo que puede cambiar en temporadas posteriores sin alterar el modelo histórico.
+- Por defecto no se activa todavía ninguna excepción: Senior A se trata igual que el resto hasta que se decida lo contrario.
+
+### Situación económica de cada inscripción
+- Cada inscripción mantiene importe total, importe cobrado, estado económico y condición **Apto para ficha**.
+- Estados operativos: `pendiente`, `parcial`, `pagado` y movimientos anulados/devueltos en histórico.
+- Se pueden registrar cobros por `efectivo`, `clubber` u `otro`, con fecha, referencia y observaciones.
+- Un pago solo figura como **Pagado** cuando la suma cobrada alcanza el 100 % del importe de inscripción.
+
+### Fraccionamiento Cluber
+- El club puede marcar que ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.
+- Una inscripción con cobro parcial puede quedar **habilitada para tramitar ficha** cuando el fraccionamiento Cluber está validado y el equipo lo admite.
+- Se diferencia expresamente `pagado al 100 %` de `habilitado para ficha por fraccionamiento validado`.
+- La validación queda fechada y asociada al usuario Club/Administrador que la realizó.
+
+### IDs Cluber
+- Se pueden registrar el **ID Cluber de deportista** y el **ID Cluber del tutor**.
+- Los IDs se almacenan en una entidad separada para mantenerlos fuera del acceso del perfil Entrenador.
+- El modelo queda preparado para una futura API/webhook de Cluber sin necesidad de rediseñar la ficha.
+
+### Motor de preparación federativa
+El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
+1. Datos personales validados.
+2. Equipo asignado.
+3. Documentación RFFM al 100 %.
+4. Reconocimiento médico vigente.
+5. Inscripción económicamente habilitada.
+
+- `Listo para federar` y `Ficha tramitada` quedan bloqueados si el quinto requisito no está cumplido.
+- El contador **Completos** y su filtro rápido utilizan también el nuevo requisito económico.
+- Se añade el KPI/filtro rápido **Pago pendiente** en Fichas.
+
+### UX
+- La ficha de Club/Administrador incorpora un bloque **Situación económica**.
+- Desde la ficha se pueden registrar cobros, guardar IDs Cluber y validar/revocar el fraccionamiento.
+- Estructura incorpora una tabla específica para configurar importes y reglas económicas por equipo.
+- Familia/Jugador ve el estado económico dentro del checklist de su inscripción.
+
+### Base de datos
+- **Migración 016:** `016_economia_inscripcion_clubber.sql`.
+- Nuevas tablas:
+  - `configuracion_economica_equipo`;
+  - `situacion_economica_inscripcion`;
+  - `pagos_inscripcion`;
+  - `vinculos_clubber`.
+- Nuevas RPC principales:
+  - `configurar_economia_equipo`;
+  - `registrar_pago_inscripcion`;
+  - `anular_pago_inscripcion`;
+  - `validar_fraccionamiento_clubber`;
+  - `actualizar_vinculos_clubber`.
