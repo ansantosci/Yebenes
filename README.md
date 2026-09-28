@@ -1,4 +1,4 @@
-## V54 - 2026-09-28
+## V55 - 2026-09-28
 
 ### Documentación familiar responsive y navegación simplificada
 - Corrige los formularios de subida de documentación para impedir solapamientos entre selector de archivo, nombre del fichero y botón **Subir**.
@@ -480,3 +480,12 @@ La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la 
 - Cache-busting de `styles.css` y `app.js` actualizado a `?v=50`.
 - `version.json` actualizado a 50.
 - No requiere migración SQL.
+
+
+## V55 — Estado visible de documentos aportados
+- La vista Familia distingue de forma robusta entre documento pendiente sin archivo y documento ya aportado pendiente de revisión.
+- Tras una subida correcta, se muestra nombre de archivo, estado **Aportado · pendiente de revisión**, botón **Ver documento** y **Sustituir documento**.
+- Mientras el club no valide, la familia puede reemplazar el archivo.
+- Los documentos validados continúan bloqueados salvo solicitud de nueva versión por el club.
+- Se añade una salvaguarda de render: si existe un documento activo para el requisito, la interfaz lo trata como aportado aunque el estado del requisito llegue momentáneamente desfasado.
+- Sin cambios de base de datos.

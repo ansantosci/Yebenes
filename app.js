@@ -1,4 +1,4 @@
-const APP_VERSION='54';
+const APP_VERSION='55';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -489,7 +489,10 @@ async function renderRemoteFamily(){
 function federationReqState(req){
   const m={pendiente:['pending','Pendiente'],aportado:['pending','Aportado · pendiente de revisión'],declarado_realizado:['pending','Comunicado · pendiente de verificación'],validado:['complete','✓ Validado'],rechazado:['returned','⚠ Rechazado'],nueva_version_solicitada:['pending','↻ Nueva versión solicitada']};return m[req?.estado]||m.pendiente;
 }
-function currentFedDoc(player,req){return (player?.fedDocs||[]).find(d=>d.id===req?.current_documento_id)||null}
+function currentFedDoc(player,req){
+  const docs=(player?.fedDocs||[]).filter(d=>d.requisito_id===req?.id&&d.estado!=='sustituido');
+  return docs.find(d=>d.id===req?.current_documento_id)||docs[0]||null;
+}
 function identitySubtypeLabel(v){return ({dni:'DNI',nie:'NIE',pasaporte:'Pasaporte',partida_nacimiento:'Partida de nacimiento',libro_familia:'Libro de Familia'})[v]||v||''}
 function federationDocsProgress(player){const required=(player?.requirements||[]).filter(r=>r.obligatorio);const valid=required.filter(r=>r.estado==='validado').length;const total=required.length;const pct=total?Math.round(valid*100/total):0;return {valid,total,pct}}
 function federationDocsComplete(player){const p=federationDocsProgress(player);return p.total>0&&p.valid===p.total}
@@ -535,7 +538,9 @@ function federationUploadForm(player,req,labelText){
   return `<div class="doc-upload replacement-upload ${subtype?'has-subtype':'no-subtype'}" data-replacement="${req.id}">${subtype}<label class="doc-file-field">${esc(labelText)}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
 }
 function documentRequirementHtml(player,req,mode='family'){
-  const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado',newVersion=req.estado==='nueva_version_solicitada',declared=req.estado==='declarado_realizado';
+  const doc=currentFedDoc(player,req);
+  const effectiveReq=(doc&&req.estado==='pendiente')?{...req,estado:'aportado'}:req;
+  const [cls,label]=federationReqState(effectiveReq);const rejected=req.estado==='rechazado',newVersion=req.estado==='nueva_version_solicitada',declared=req.estado==='declarado_realizado';
   let action='';
   if(mode==='family'&&req.requiere_archivo){
     if(!doc){
@@ -547,7 +552,7 @@ function documentRequirementHtml(player,req,mode='family'){
     }else if(req.estado==='validado'){
       action=`<div class="document-delivered is-valid"><div><strong>✓ Validado por el club</strong><div class="meta">Documento aceptado y bloqueado. Solo podrá sustituirse si el club solicita una nueva versión.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button></div></div>`;
     }else{
-      action=`<div class="document-delivered is-review"><div><strong>✓ Documento aportado</strong><div class="meta">Pendiente de revisión por el club. Puedes sustituirlo mientras no haya sido validado.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button><button type="button" class="secondary tiny replace-fed-doc" data-req="${req.id}">Sustituir</button></div></div><div class="replacement-panel" data-replacement-panel="${req.id}" hidden>${federationUploadForm(player,req,'Seleccionar nuevo archivo')}</div>`;
+      action=`<div class="document-delivered is-review"><div><strong>✓ Documento aportado</strong><div class="meta">Pendiente de revisión por el club. Puedes sustituirlo mientras no haya sido validado.</div></div><div class="document-actions"><button type="button" class="secondary tiny view-family-fed-doc" data-path="${esc(doc.storage_path)}">Ver documento</button><button type="button" class="secondary tiny replace-fed-doc" data-req="${req.id}">Sustituir documento</button></div></div><div class="replacement-panel" data-replacement-panel="${req.id}" hidden>${federationUploadForm(player,req,'Seleccionar nuevo archivo')}</div>`;
     }
   }else if(mode==='family'&&!req.requiere_archivo){
     if(req.estado==='validado'){
@@ -581,7 +586,7 @@ async function uploadFederationDocument(player,reqId,button){
   try{
     const up=await sb.storage.from('documentacion-federativa').upload(path,file,{contentType:file.type||undefined,upsert:false});if(up.error)throw up.error;
     const {error}=await sb.rpc('registrar_documento_federativo',{p_requisito_id:reqId,p_storage_path:path,p_nombre_original:file.name,p_mime_type:file.type||null,p_subtipo:subtype});if(error){await sb.storage.from('documentacion-federativa').remove([path]);throw error}
-    await loadRemoteFamilyData();renderRemoteFamily();const fresh=remoteFamilyPlayers.find(x=>x.id===player.id);if(fresh)await openDocumentManager(fresh.id);alert('Documento aportado. Queda pendiente de revisión por el club.');
+    await loadRemoteFamilyData();renderRemoteFamily();const fresh=remoteFamilyPlayers.find(x=>x.id===player.id);if(fresh)await openDocumentManager(fresh.id);alert('Documento aportado correctamente. Queda pendiente de revisión por el club y puedes sustituirlo mientras no sea validado.');
   }catch(err){alert(`No se ha podido subir el documento: ${err.message||err}`)}finally{button.disabled=false;button.textContent=old}
 }
 async function openFederationDocument(path){const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(path,300);if(error)throw error;const a=document.createElement('a');a.href=data.signedUrl;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove()}
