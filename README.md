@@ -1,4 +1,4 @@
-## V58 - 2026-09-28
+## V58 - 2026-09-28 
 
 ### Entrenadores reales en Supabase
 - La pantalla **Entrenadores** deja de depender del inventario local/demo cuando la sesión procede de Supabase.
