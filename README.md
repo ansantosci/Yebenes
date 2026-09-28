@@ -1,5 +1,15 @@
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
 
+## V44 — Corrección de maquetación de la ficha por pestañas
+
+- Corrige el desbordamiento horizontal de la ficha de jugador en Club/Administrador introducido en V43.
+- El diálogo de la ficha puede crecer hasta 980 px en escritorio y se adapta al ancho útil de la ventana.
+- El contenido interno usa el ancho real del diálogo, evitando que paneles, cabecera y pestañas queden desplazados o recortados.
+- Las pestañas mantienen desplazamiento horizontal propio cuando no caben, sin desplazar el contenido completo de la ficha.
+- Mejora adicional de comportamiento responsive en pantallas estrechas.
+- Sin cambios de base de datos ni migraciones.
+
+
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
 **Versión actual: V43 — 28/09/2026**

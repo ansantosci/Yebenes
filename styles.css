@@ -132,3 +132,12 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .entity-tab-panel{display:none}.entity-tab-panel.active{display:block}.tab-jump{cursor:pointer}.tab-jump:hover{outline:2px solid rgba(197,18,48,.15)}
 .family-card-tabs{display:flex;gap:5px;overflow-x:auto;margin:14px 0 8px}.family-card-tab{white-space:nowrap;border:0;border-bottom:2px solid transparent;background:transparent;padding:8px 7px;font-size:.78rem;font-weight:800;color:var(--muted)}.family-card-tab.active{color:var(--red);border-bottom-color:var(--red)}.family-card-panel{display:none}.family-card-panel.active{display:block}.family-tab-alert{color:#b91c1c;font-weight:900}.family-tab-alert.amber{color:#d97706}
 @media(max-width:640px){.player-tabbed-detail{padding:14px}.entity-tabs{margin-left:-2px;margin-right:-2px}.entity-tab{padding:8px 10px;font-size:.8rem}}
+/* V44 · corrección responsive de ficha por pestañas */
+#adminPlayerModal{width:min(980px,calc(100vw - 24px));max-width:980px;max-height:calc(100vh - 24px);overflow:auto}
+#adminPlayerModal .player-tabbed-detail{width:100%;max-width:none;min-width:0;overflow-x:hidden}
+#adminPlayerModal .modal-head>div,#adminPlayerModal .entity-tab-panel,#adminPlayerModal .workflow-box,#adminPlayerModal .return-box{min-width:0}
+#adminPlayerModal .entity-tabs{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+#adminPlayerModal .entity-tab-panel{overflow-x:hidden}
+#adminPlayerModal .detail-grid,#adminPlayerModal .readiness-list,#adminPlayerModal .economic-grid{min-width:0}
+#adminPlayerModal input,#adminPlayerModal select,#adminPlayerModal textarea{max-width:100%}
+@media(max-width:720px){#adminPlayerModal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}#adminPlayerModal .player-tabbed-detail{padding:14px}.entity-tabs{position:sticky;top:0}.entity-tab{font-size:.78rem;padding:8px 9px}}
