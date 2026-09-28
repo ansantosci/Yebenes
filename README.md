@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V35 — 25/09/2026**
+**Versión actual: V38 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -34,6 +34,9 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | V33 | 25/09/2026 | Migración 013 | Documentación federativa RFFM en Storage privado; checklist y validación/rechazo. |
 | **V34** | **25/09/2026** | Sin migración nueva | Mejora UX documental: tarjeta de documento aportado/validado, sustitución bajo demanda, rechazo visible con motivo y acción secundaria para cambiar una validación. README acumulativo reconstruido. |
 | **V35** | **25/09/2026** | Migración 014 | Bloqueo de documentos validados, solicitud de nueva versión por Club/Admin, retorno automático a pendiente al aportar corrección y nuevo histórico documental. |
+| **V36** | **25/09/2026** | Migración 015 | Progreso documental real y declaración por Familia/Jugador de autorización/firma RFFM realizada, pendiente de verificación por el club. |
+| **V37** | **25/09/2026** | Sin migración | KPIs clicables como filtros rápidos en Fichas y RRMM. |
+| **V38** | **28/09/2026** | Sin migración | El RRMM vigente pasa a formar parte explícita de la ficha y del cálculo de preparación; nuevo progreso integral de requisitos y bloqueo de Listo para federar. |
 
 ## V34 — detalle
 
@@ -181,3 +184,31 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 
 ### Base de datos
 - V37 no requiere migración.
+
+
+---
+
+## V38 — 28/09/2026 — Sin migración
+
+### Reconocimiento médico integrado en la ficha
+- La ficha del Club/Administrador muestra de forma explícita el estado del RRMM y su fecha de validez.
+- Un RRMM `Vigente >90 días` se muestra en verde.
+- Un RRMM que `Vence <=90 días` se muestra en ámbar pero sigue siendo válido para tramitar.
+- `Vencido` o `Sin RRMM` se muestran en rojo y bloquean `Listo para federar`.
+- Familia/Jugador ve también el estado RRMM dentro del checklist de su ficha.
+
+### Preparación integral de la ficha
+Se incorpora un bloque **Preparación para tramitar ficha** con porcentaje y cuatro requisitos actualmente implantados:
+1. Datos personales validados por el club.
+2. Equipo asignado.
+3. Documentación RFFM al 100 %.
+4. Reconocimiento médico vigente.
+
+- El indicador muestra `X de 4 requisitos cumplidos` y una barra de progreso.
+- El contador superior **Completos** pasa a contar jugadores que cumplen realmente los cuatro requisitos, no solo un estado manual del workflow.
+- El filtro rápido `Completos` utiliza el mismo criterio.
+- `Listo para federar` y `Ficha tramitada` quedan bloqueados si falta cualquiera de esos requisitos.
+- El pago de inscripción queda señalado como futuro quinto requisito cuando se implemente el módulo económico/Cluber.
+
+### Base de datos
+- V38 no requiere migración. Usa los datos ya existentes de inscripciones, asignaciones, requisitos documentales y reconocimientos médicos.
