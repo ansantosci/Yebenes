@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V41 — 28/09/2026**
+**Versión actual: V42 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -40,6 +40,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V39** | **28/09/2026** | Migración 016 | Módulo económico por equipo/temporada, pagos, Cluber, fraccionamiento validado y pago como quinto requisito bloqueante de la ficha. |
 | **V40** | **28/09/2026** | Sin migración | Estructura unificada por equipo: datos deportivos y económicos en un único listado/ficha. |
 | **V41** | **28/09/2026** | Sin migración | Ordenación de Estructura por categoría de menor a mayor edad: Chupetín, Prebenjamín, Benjamín, Alevín, Infantil, Cadete, Juvenil y Senior; dentro de cada categoría, orden natural por nombre de equipo. |
+| **V42** | **28/09/2026** | Sin migración | Corrige la apertura de Gestión de pago/Cluber desde la ficha del jugador: evita diálogos modales anidados, permite registrar cobros parciales/totales y vuelve a la ficha al cerrar Economía. |
 
 ## V34 — detalle
 
@@ -317,3 +318,21 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 ### Base de datos
 - V41 no requiere migración.
 - Reutiliza `categorias.orden`, ya cargado en el Modelo de Datos V1.
+
+## V42 — 28/09/2026 — Sin migración
+
+### Corrección de gestión económica desde la ficha
+- Corrige el botón **Gestionar pago / Cluber** de la ficha de Club/Administrador, que podía no abrir el formulario económico.
+- La causa era la apertura de un segundo `dialog.showModal()` mientras la ficha del jugador seguía abierta como diálogo modal; el comportamiento no es consistente entre navegadores.
+- Al entrar en Economía, V42 cierra temporalmente la ficha del jugador y abre la gestión económica como único modal activo.
+- Al cerrar Economía (botón X o tecla Escape) se reabre automáticamente la ficha del mismo jugador.
+- Se mantiene el formulario existente para registrar cobros parciales o totales, IDs Cluber, referencias e histórico, y la validación/revocación de fraccionamiento Cluber.
+- Si por cualquier motivo el diálogo económico no pudiera abrirse, ahora se informa al usuario en lugar de fallar silenciosamente.
+
+### Versionado
+- Se corrige también `window.YEBENES_APP_VERSION`, que había quedado rezagado respecto al número visible de release.
+- `index.html`, `app.js`, `version.json`, CSS y JS quedan alineados en **V42**.
+
+### Base de datos
+- V42 no requiere nueva migración. Continúa utilizando la **migración 016** para configuración económica, pagos y Cluber.
+
