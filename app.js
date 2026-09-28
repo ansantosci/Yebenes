@@ -1,4 +1,4 @@
-const APP_VERSION='51';
+const APP_VERSION='52';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -566,9 +566,12 @@ function documentRequirementHtml(player,req,mode='family'){
   return `<div class="federation-requirement"><div class="row"><div><strong>${esc(req.nombre)}</strong>${fileLine}</div><span class="status ${cls}">${esc(label)}</span></div>${reason}${newReason}${action}</div>`;
 }
 async function openDocumentManager(playerId){
-  const p=remoteFamilyPlayers.find(x=>x.id===playerId);if(!p)return;
-  $('#documentPlayerName').textContent=p.name;$('#documentPlayerMeta').textContent=`${p.categoryName} · ${dbActiveSeason()?.name||''}`;
-  $('#documentRequirementsList').innerHTML=federationProgressHtml(p)+(p.requirements||[]).map(r=>documentRequirementHtml(p,r,'family')).join('')||'<div class="empty-card">No se han inicializado requisitos documentales.</div>';
+  const p=remoteFamilyPlayers.find(x=>x.id===playerId);
+  if(!p){alert('No se ha podido localizar al jugador para abrir su documentación.');return;}
+  const modal=$('#documentModal'),name=$('#documentPlayerName'),meta=$('#documentPlayerMeta'),list=$('#documentRequirementsList');
+  if(!modal||!name||!meta||!list){console.error('Gestor documental incompleto en el DOM',{modal,name,meta,list});alert('No se puede abrir la documentación porque falta el panel documental en esta versión.');return;}
+  name.textContent=p.name;meta.textContent=`${p.categoryName} · ${dbActiveSeason()?.name||''}`;
+  list.innerHTML=federationProgressHtml(p)+(p.requirements||[]).map(r=>documentRequirementHtml(p,r,'family')).join('')||'<div class="empty-card">No se han inicializado requisitos documentales.</div>';
   $$('.upload-fed-doc').forEach(b=>b.onclick=()=>uploadFederationDocument(p,b.dataset.req,b));$$('.replace-fed-doc').forEach(b=>b.onclick=()=>{const panel=document.querySelector(`[data-replacement-panel="${b.dataset.req}"]`);if(panel)panel.hidden=!panel.hidden});$$('.view-family-fed-doc').forEach(b=>b.onclick=async()=>{try{await openFederationDocument(b.dataset.path)}catch(err){alert(`No se puede abrir: ${err.message||err}`)}});$$('.declare-rffm-done').forEach(b=>b.onclick=()=>declareRffmRequirementDone(p,b.dataset.req,b));$('#documentModal').showModal();
 }
 async function uploadFederationDocument(player,reqId,button){

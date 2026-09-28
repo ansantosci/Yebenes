@@ -1,3 +1,13 @@
+
+## V52 - 2026-09-28
+
+### Corrección crítica: acceso a documentación de Familia
+- Restaurado en `index.html` el diálogo `documentModal`, que se había eliminado accidentalmente durante el rediseño por pestañas de V43.
+- Esta era la causa raíz por la que **Gestionar documentación** y **Abrir documentación** no hacían nada en Chrome ni Safari: el JavaScript intentaba escribir en elementos del gestor documental que ya no existían en el DOM.
+- Se mantiene una única vista documental compartida desde la ficha del jugador y desde el menú global **Documentos**.
+- Añadidas comprobaciones defensivas: si el panel documental faltase en una versión futura, se mostrará un error explícito en lugar de fallar silenciosamente.
+- Sin cambios de base de datos.
+
 # V51 — Corrección de acceso a documentación de Familia
 
 ## Cambios V51
