@@ -489,3 +489,18 @@ La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la 
 - Los documentos validados continúan bloqueados salvo solicitud de nueva versión por el club.
 - Se añade una salvaguarda de render: si existe un documento activo para el requisito, la interfaz lo trata como aportado aunque el estado del requisito llegue momentáneamente desfasado.
 - Sin cambios de base de datos.
+
+
+## V56 — Sustitución documental sincronizada (28/09/2026)
+
+### Correcciones funcionales
+- Tras sustituir un documento desde Familia, la tarjeta se actualiza inmediatamente con la **nueva versión activa**.
+- El modo **Sustituir documento** se cierra automáticamente después de una subida correcta; desaparecen el selector y el botón `Subir`.
+- El nombre, tipo y enlace de **Ver documento** pasan a apuntar a la última versión aportada.
+- La versión anterior queda únicamente como histórico/sustituida conforme a la función de base de datos existente.
+- La subida se refresca primero de forma optimista en pantalla y después se reconcilia con Supabase, evitando estados visuales obsoletos por latencia.
+- Se evita volver a ejecutar `showModal()` sobre un diálogo documental que ya está abierto, eliminando una posible interrupción del refresco.
+- Los selectores de archivo y subtipo se resuelven dentro del formulario concreto que disparó la acción, evitando tomar controles de otra versión del mismo requisito.
+
+### Base de datos
+- V56 no requiere migración SQL. Continúa utilizando la lógica de versionado documental introducida en las migraciones 013 y 014.
