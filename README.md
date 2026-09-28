@@ -1,4 +1,13 @@
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
+## V46 - 2026-09-28
+
+- Corrige la visibilidad de las alertas de las pestañas de la ficha: los indicadores con atributo `hidden` ya no quedan visibles por una regla CSS.
+- La pestaña **Datos** muestra alerta solo cuando faltan datos validados **o** no existe equipo asignado.
+- Un jugador con datos validados y equipo asignado no muestra alerta en Datos.
+- Se conserva la alerta para jugadores sin equipo, tal como requiere la operativa del club.
+- Se mantienen los ajustes responsive introducidos en V45.
+- Sin cambios de base de datos.
+
 
 ## V44 — Corrección de maquetación de la ficha por pestañas
 

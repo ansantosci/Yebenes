@@ -1,4 +1,4 @@
-const APP_VERSION='45';
+const APP_VERSION='46';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -669,7 +669,7 @@ function setAdminPlayerTab(tab){
   if(activeAdminPlayerTab==='economic')populateEconomicPlayerTab();
 }
 function updateAdminTabAlerts(v){
-  const docs=!federationDocsComplete(v),m=medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null),econ=!economicState(v).ok,data=!remoteDataValidated(v);
+  const docs=!federationDocsComplete(v),m=medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null),econ=!economicState(v).ok,data=!remoteDataValidated(v)||!v.assignment;
   const set=(id,on,amber=false)=>{const el=$(id);if(!el)return;el.hidden=!on;el.classList.toggle('amber',!!amber)};
   set('#tabAlertData',data);set('#tabAlertDocs',docs);set('#tabAlertMedical',!['ok'].includes(m.key),m.key==='soon');set('#tabAlertEconomic',econ);
 }
