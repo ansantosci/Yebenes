@@ -357,3 +357,24 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 - La ficha de Familia/Jugador adopta el mismo lenguaje visual, simplificado a **Resumen, Datos, Documentos, RRMM e Inscripción**. Las alertas de Familia se reservan a tareas que puede resolver o debe conocer el tutor/jugador; la falta de equipo no se presenta como tarea familiar.
 - Se mantiene el patrón global de diseño: **listados = KPIs + filtros + tabla; fichas = pestañas + resumen + alertas contextuales**.
 - Sin cambios de base de datos. Se mantiene migración 016 como última migración funcional.
+
+
+## V45 — 28/09/2026 — Responsive mobile-first y alertas de pestaña corregidas
+
+### Corrección funcional
+- La alerta roja de la pestaña **Datos** ya no depende de que exista una asignación de equipo.
+- **Datos** solo muestra alerta cuando los datos personales todavía no han sido validados por el club, reutilizando la misma regla que el requisito `Datos personales validados` del motor de preparación federativa.
+- La falta de equipo queda representada únicamente en el requisito de equipo correspondiente y no contamina la pestaña Datos.
+
+### Consolidación responsive
+- La ficha de jugador de Club/Administrador pasa a comportamiento **mobile-first**.
+- En <=720 px ocupa el viewport útil completo, sin scroll horizontal global y con scroll vertical interno.
+- Cabecera y botón cerrar permanecen accesibles; la barra de pestañas queda sticky y es desplazable horizontalmente.
+- Pestañas y controles tienen altura táctil mínima aproximada de 44 px.
+- Resúmenes, requisitos, formularios, acciones y economía se apilan a una sola columna en móvil.
+- Botones principales pasan a ancho completo cuando el espacio es reducido.
+- Textos largos, históricos y estados pueden envolver sin ensanchar la ficha.
+- El mismo criterio de controles táctiles, formularios apilados y ausencia de scroll horizontal se extiende a fichas de Familia y al resto de diálogos.
+
+### Base de datos
+- V45 no requiere migración. La última migración funcional sigue siendo la **016**.

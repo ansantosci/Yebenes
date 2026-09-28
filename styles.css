@@ -141,3 +141,53 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 #adminPlayerModal .detail-grid,#adminPlayerModal .readiness-list,#adminPlayerModal .economic-grid{min-width:0}
 #adminPlayerModal input,#adminPlayerModal select,#adminPlayerModal textarea{max-width:100%}
 @media(max-width:720px){#adminPlayerModal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}#adminPlayerModal .player-tabbed-detail{padding:14px}.entity-tabs{position:sticky;top:0}.entity-tab{font-size:.78rem;padding:8px 9px}}
+
+
+/* V45 · responsive mobile-first + alertas de pestañas coherentes */
+#adminPlayerModal .modal-head{gap:12px;position:sticky;top:0;background:#fff;z-index:6;padding-bottom:6px}
+#adminPlayerModal .modal-head .icon-button{flex:0 0 44px;width:44px;height:44px}
+#adminPlayerModal .entity-tabs{-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+#adminPlayerModal .entity-tab{min-height:44px;display:inline-flex;align-items:center;justify-content:center;scroll-snap-align:start}
+#adminPlayerModal .entity-tab-panel>*{max-width:100%}
+#adminPlayerModal .workflow-box,#adminPlayerModal .return-box{overflow-wrap:anywhere}
+#adminPlayerModal button,#adminPlayerModal input,#adminPlayerModal select,#adminPlayerModal textarea{font-size:16px}
+#adminPlayerModal .readiness-item small{overflow-wrap:anywhere}
+#adminPlayerModal .economic-current,#adminPlayerModal .history-list,#adminPlayerModal .mini-history{max-width:100%;overflow-wrap:anywhere}
+#adminPlayerModal .form-grid>*{min-width:0}
+
+@media(max-width:720px){
+  #adminPlayerModal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border-radius:0}
+  #adminPlayerModal .player-tabbed-detail{padding:12px 12px 22px}
+  #adminPlayerModal .modal-head{margin:-12px -12px 0;padding:12px 12px 8px;border-bottom:1px solid #eef0f3}
+  #adminPlayerModal .modal-head h2{font-size:1.25rem;margin-bottom:4px}
+  #adminPlayerModal .detail-source{margin:8px 0 10px}
+  #adminPlayerModal .entity-tabs{top:69px;margin:0 -12px 8px;padding:8px 12px;background:#fff;border-bottom:1px solid #eef0f3;z-index:5}
+  #adminPlayerModal .entity-tab{font-size:.82rem;padding:9px 12px;flex:0 0 auto}
+  #adminPlayerModal .detail-grid{grid-template-columns:1fr}
+  #adminPlayerModal .workflow-box,#adminPlayerModal .return-box{padding:12px;margin-top:10px}
+  #adminPlayerModal .workflow-actions,#adminPlayerModal .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
+  #adminPlayerModal .workflow-actions>*,#adminPlayerModal .modal-actions>*{width:100%;min-height:44px}
+  #adminPlayerModal .representation-summary{align-items:stretch;flex-direction:column;gap:10px}
+  #adminPlayerModal .representation-summary button{width:100%;min-height:44px}
+  #adminPlayerModal .readiness-item{flex-direction:column;gap:4px}
+  #adminPlayerModal .readiness-item small{max-width:none;text-align:left}
+  #adminPlayerModal .federation-requirement .workflow-actions{display:grid;grid-template-columns:1fr}
+  #adminPlayerModal .federation-requirement .workflow-actions>*{width:100%!important}
+  #adminPlayerModal .economic-grid{grid-template-columns:1fr!important}
+  #adminPlayerModal .form-grid{grid-template-columns:1fr}
+  #adminPlayerModal .span-2{grid-column:auto}
+}
+
+/* El mismo patrón de controles táctiles y formularios apilados se aplica a las fichas familiares y resto de diálogos */
+@media(max-width:640px){
+  dialog:not(#adminPlayerModal){width:calc(100vw - 12px);max-width:calc(100vw - 12px);max-height:calc(100dvh - 12px);border-radius:16px}
+  dialog:not(#adminPlayerModal) form,.admin-detail{padding:14px}
+  .family-card-tabs{margin-left:-4px;margin-right:-4px;padding:0 4px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .family-card-tab{min-height:44px;padding:10px 9px;scroll-snap-align:start}
+  .modal-actions{display:grid;grid-template-columns:1fr}
+  .modal-actions>*{width:100%;min-height:44px}
+  .filters input,.filters select{min-height:44px;font-size:16px}
+  .bottom-nav{overflow-x:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch}
+  .bottom-nav .nav-item{min-width:78px;min-height:52px}
+  .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
