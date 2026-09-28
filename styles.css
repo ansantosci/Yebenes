@@ -193,4 +193,58 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 }
 
 /* V53: navegación Familia simplificada */
-#familyNav{grid-template-columns:repeat(3,1fr)}
+#familyNav{grid-template-columns:repeat(2,1fr)}
+
+/* V54 · documentación familiar responsive y navegación simplificada */
+#documentModal .doc-upload{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  align-items:stretch;
+  margin-top:12px;
+}
+#documentModal .doc-upload label{min-width:0;margin:0;display:grid;gap:6px}
+#documentModal .doc-upload input[type="file"]{
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+#documentModal .doc-upload select{width:100%;max-width:100%;min-width:0}
+#documentModal .doc-upload .upload-fed-doc{
+  width:100%;
+  min-height:44px;
+  justify-self:stretch;
+}
+#documentModal .rffm-external-step{min-width:0}
+#documentModal .rffm-external-step .declare-rffm-done{
+  width:100%;
+  max-width:100%;
+  min-height:44px;
+  white-space:normal;
+  line-height:1.25;
+  text-align:center;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+#documentModal .federation-requirement{min-width:0;overflow:hidden}
+#documentModal .federation-requirement .row>div{min-width:0}
+#documentModal .doc-file-name{overflow-wrap:anywhere;word-break:break-word}
+@media(min-width:900px){
+  #documentModal{width:min(760px,calc(100vw - 32px))}
+  #documentModal .doc-upload.has-subtype{grid-template-columns:minmax(150px,.8fr) minmax(0,1.5fr) auto;align-items:end}
+  #documentModal .doc-upload.no-subtype{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+  #documentModal .doc-upload .upload-fed-doc{width:auto;min-width:112px}
+}
+@media(max-width:899px){
+  #documentModal .doc-upload{grid-template-columns:1fr!important}
+  #documentModal .doc-upload .upload-fed-doc{width:100%!important}
+  #documentModal .rffm-external-step .declare-rffm-done{font-size:.92rem;padding:11px 12px}
+}
+@media(max-width:480px){
+  #documentModal .admin-detail{padding:12px}
+  #documentModal .warning-box{font-size:.83rem}
+  #documentModal .federation-requirement{padding:12px}
+}

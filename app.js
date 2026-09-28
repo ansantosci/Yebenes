@@ -1,4 +1,4 @@
-const APP_VERSION='53';
+const APP_VERSION='54';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -532,7 +532,7 @@ function renderFamilyDocumentsSummary(){
 function federationUploadForm(player,req,labelText){
   const subtype=req.codigo==='identidad_rffm'?`<label>Tipo de documento<select class="doc-subtype" data-req="${req.id}"><option value="dni">DNI</option><option value="nie">NIE</option><option value="pasaporte">Pasaporte</option><option value="partida_nacimiento">Partida de nacimiento</option><option value="libro_familia">Libro de Familia</option></select></label>`:'';
   const accept=req.codigo==='foto_jugador'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf';
-  return `<div class="doc-upload replacement-upload" data-replacement="${req.id}">${subtype}<label>${esc(labelText)}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
+  return `<div class="doc-upload replacement-upload ${subtype?'has-subtype':'no-subtype'}" data-replacement="${req.id}">${subtype}<label class="doc-file-field">${esc(labelText)}<input type="file" class="doc-file" data-req="${req.id}" accept="${accept}"></label><button type="button" class="primary small upload-fed-doc" data-req="${req.id}" data-player="${player.id}">Subir</button></div>`;
 }
 function documentRequirementHtml(player,req,mode='family'){
   const [cls,label]=federationReqState(req),doc=currentFedDoc(player,req);const rejected=req.estado==='rechazado',newVersion=req.estado==='nueva_version_solicitada',declared=req.estado==='declarado_realizado';

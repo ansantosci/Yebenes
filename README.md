@@ -1,3 +1,14 @@
+## V54 - 2026-09-28
+
+### Documentación familiar responsive y navegación simplificada
+- Corrige los formularios de subida de documentación para impedir solapamientos entre selector de archivo, nombre del fichero y botón **Subir**.
+- En móvil/tablet, `Tipo de documento`, selector de archivo y botón se apilan en una sola columna; en escritorio solo comparten fila cuando hay ancho suficiente.
+- Los botones **Ya he realizado la autorización en RFFM** y **Ya he realizado la firma en RFFM** pasan a ancho disponible, permiten salto de línea y mantienen tamaño táctil cómodo.
+- Los nombres de archivo largos ya no invaden botones ni otras columnas.
+- Se elimina **Jugadores** del menú inferior de Familia porque actualmente duplicaba exactamente el contenido de **Inicio**. El menú queda en **Inicio | Perfil**.
+- La ficha de cada jugador sigue siendo accesible desde Inicio y conserva sus pestañas internas `Resumen | Datos | Documentos | RRMM | Inscripción`.
+- Sin cambios de base de datos ni migraciones.
+
 ## V53 - 2026-09-28
 
 ### Simplificación de navegación en Familia
@@ -52,7 +63,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V53 — 28/09/2026**
+**Versión actual: V54 — 28/09/2026**
 
 ## Estado funcional actual
 
