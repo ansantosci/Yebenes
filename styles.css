@@ -114,3 +114,11 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .section-note{margin:-4px 0 14px}
 #economicPlayerModal form,#economicConfigModal form{max-width:760px}
 @media (max-width:700px){.economic-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* V40: ficha unificada de equipo */
+.structure-team-row{cursor:pointer}
+.structure-team-row:hover{background:rgba(176,0,32,.045)}
+.structure-team-row:focus{outline:2px solid currentColor;outline-offset:-2px}
+.form-section-title{display:flex;flex-direction:column;gap:.2rem;padding:.75rem 0 .25rem;border-top:1px solid rgba(0,0,0,.09);margin-top:.25rem}
+.form-section-title:first-child{border-top:0;margin-top:0}
+.form-section-title span{font-size:.84rem;opacity:.7;font-weight:400}

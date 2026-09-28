@@ -274,3 +274,29 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
   - `anular_pago_inscripcion`;
   - `validar_fraccionamiento_clubber`;
   - `actualizar_vinculos_clubber`.
+
+---
+
+## V40 — 28/09/2026 — Sin migración
+
+### Estructura unificada por equipo
+- Se elimina de **Estructura** el segundo listado independiente de configuración económica.
+- La tabla de equipos pasa a mostrar en una única vista los datos deportivos y económicos de cada equipo.
+- Nuevas columnas visibles: importe de inscripción, fraccionamiento Cluber y requisito de pago para ficha, junto con categoría, modalidad, jugadores, entrenadores y estado.
+- Cada fila de equipo es navegable/clicable y abre una única ficha de edición.
+
+### Ficha única de equipo
+- La ficha reúne **Datos deportivos** y **Configuración económica**.
+- Datos deportivos editables por Administrador: nombre, categoría, código, modalidad, género y estado activo/inactivo.
+- Datos económicos editables por Club y Administrador: importe de inscripción, admisión de fraccionamiento Cluber, requisito de pago para tramitar ficha y observaciones.
+- El perfil Club puede consultar los datos deportivos pero no modificarlos; sí puede gestionar la configuración económica.
+- La configuración sigue perteneciendo a `equipo + temporada`, conservando el modelo histórico ya establecido.
+
+### UX
+- Se elimina la duplicidad conceptual `Equipos / Economía` dentro de Estructura.
+- La fila muestra `Economía pendiente` cuando el equipo está activo pero su configuración económica requerida aún no está completa.
+- La edición se realiza desde un único punto, reduciendo navegación y riesgo de inconsistencias.
+
+### Base de datos
+- V40 no requiere migración.
+- Reutiliza `equipos`, `configuracion_economica_equipo` y la RPC `configurar_economia_equipo` de la migración 016.
