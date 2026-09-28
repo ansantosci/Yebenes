@@ -1,3 +1,20 @@
+## V58 - 2026-09-28
+
+### Entrenadores reales en Supabase
+- La pantalla **Entrenadores** deja de depender del inventario local/demo cuando la sesión procede de Supabase.
+- Alta y edición de entrenador vinculada a una `Persona` real: nombre, apellidos, email y teléfono.
+- Datos federativos/operativos: tipo y número de licencia, curso de delegado, observaciones y activo/inactivo.
+- Un entrenador puede tener una o varias asignaciones a equipos con **Primer entrenador / Segundo entrenador / Delegado**, fecha de inicio y fecha fin.
+- Las reasignaciones conservan histórico en `asignaciones_entrenador_equipo`; las ediciones del mismo día no generan duplicados innecesarios.
+- Si la Persona ya dispone de cuenta Supabase Auth, la migración garantiza el rol `entrenador`, permitiendo que el control de acceso existente limite su vista a jugadores de sus equipos.
+- Los contadores de entrenadores de **Estructura** pasan a calcularse con las asignaciones reales cargadas de PostgreSQL.
+- La cola de citas RRMM ya existente utiliza estas asignaciones reales, por lo que los técnicos con email reciben las notificaciones de jugadores de sus equipos.
+- Modal de entrenador revisado para móvil: campos y asignaciones se apilan y los botones mantienen tamaño táctil.
+
+### Base de datos
+- Requiere **migración 017 — Entrenadores reales**.
+- Añade metadatos federativos a `entrenadores`, función a `asignaciones_entrenador_equipo` y RPC seguras `guardar_entrenador` / `guardar_asignaciones_entrenador`.
+
 ## V57 - 2026-09-28
 
 ### Corrección crítica de sustitución documental
@@ -81,7 +98,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V57 — 28/09/2026**
+**Versión actual: V58 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -108,6 +125,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 
 | Versión | Fecha | BD / backend | Cambios principales |
 |---|---|---|---|
+| V58 | 28/09/2026 | Migración 017 | Entrenadores reales, asignaciones por equipo, licencia/curso delegado, contadores y notificaciones RRMM. |
 | V1 modelo | 24/09/2026 | Modelo de datos V1 | Modelo relacional congelado; adopción de UUID como identificadores. |
 | V20 | 24/09/2026 | Supabase Auth/RLS | Primer login real contra Supabase y resolución Persona → Roles. |
 | V21 | 25/09/2026 | — | Corrige el error de login por uso de `event.currentTarget` tras un `await`. |

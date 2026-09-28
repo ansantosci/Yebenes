@@ -248,3 +248,17 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
   #documentModal .warning-box{font-size:.83rem}
   #documentModal .federation-requirement{padding:12px}
 }
+
+/* V58 - Entrenadores reales */
+#coachModal{width:min(920px,calc(100vw - 24px));max-height:calc(100vh - 24px)}
+#coachModal form{min-width:0}
+#coachModal .assignment-add select,#coachModal .assignment-add input{width:100%;min-width:0}
+@media(max-width:720px){
+  #coachModal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}
+  #coachModal .form-grid{grid-template-columns:1fr}
+  #coachModal .span-2{grid-column:auto}
+  #coachModal .assignment-add{grid-template-columns:1fr}
+  #coachModal .assignment-add button{grid-column:auto;width:100%;min-height:44px}
+  #coachModal .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
+  #coachModal .modal-actions button{width:100%;min-height:44px}
+}
