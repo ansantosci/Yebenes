@@ -2,7 +2,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V42 — 28/09/2026**
+**Versión actual: V43 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -336,3 +336,14 @@ El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
 ### Base de datos
 - V42 no requiere nueva migración. Continúa utilizando la **migración 016** para configuración económica, pagos y Cluber.
 
+
+
+## V43 · 28/09/2026 · Fichas por pestañas y alertas contextuales
+
+- La ficha de jugador para Club/Administrador se reorganiza en **Resumen, Datos, Documentación, RRMM, Economía e Histórico**.
+- Las pestañas muestran alerta roja cuando existe un bloqueo que requiere atención y alerta ámbar para RRMM vigente que vence en <=90 días.
+- El resumen de preparación es navegable: pulsar Datos/Equipo, Documentación, RRMM o Pago abre directamente la pestaña correspondiente.
+- **Economía queda integrada dentro de la propia ficha**, eliminando el diálogo secundario que provocaba el fallo de `Gestionar pago / Cluber`.
+- La ficha de Familia/Jugador adopta el mismo lenguaje visual, simplificado a **Resumen, Datos, Documentos, RRMM e Inscripción**. Las alertas de Familia se reservan a tareas que puede resolver o debe conocer el tutor/jugador; la falta de equipo no se presenta como tarea familiar.
+- Se mantiene el patrón global de diseño: **listados = KPIs + filtros + tabla; fichas = pestañas + resumen + alertas contextuales**.
+- Sin cambios de base de datos. Se mantiene migración 016 como última migración funcional.
