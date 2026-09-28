@@ -1,3 +1,21 @@
+## V57 - 2026-09-28
+
+### Corrección crítica de sustitución documental
+- Corrige el error `subtipo is not defined` al sustituir una fotografía o documento desde la vista Familia.
+- La causa era una referencia incorrecta en la actualización optimista del documento activo: se usaba `subtipo` en lugar de la variable real `subtype`.
+- Tras una sustitución correcta, la nueva versión se muestra inmediatamente, se cierra el modo de sustitución y **Ver documento** apunta al archivo activo más reciente.
+- La versión anterior se conserva como sustituida/histórica.
+- Sin cambios de base de datos ni migraciones.
+
+## V56 - 2026-09-28
+
+### Sincronización tras sustituir documentación
+- Tras subir una nueva versión, la ficha documental se refresca con el documento activo más reciente.
+- Se limpia el selector de archivo y se cierra automáticamente el modo **Sustituir documento**.
+- **Ver documento** queda asociado a la versión activa, manteniendo las anteriores en histórico.
+- Se evita reabrir con `showModal()` un diálogo documental ya abierto durante el refresco.
+- Sin cambios de base de datos ni migraciones.
+
 ## V55 - 2026-09-28
 
 ### Documentación familiar responsive y navegación simplificada
@@ -63,7 +81,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V54 — 28/09/2026**
+**Versión actual: V57 — 28/09/2026**
 
 ## Estado funcional actual
 

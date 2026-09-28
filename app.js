@@ -1,4 +1,4 @@
-const APP_VERSION='56';
+const APP_VERSION='57';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -608,7 +608,7 @@ async function uploadFederationDocument(player,reqId,button){
     // incluso antes de completar la recarga desde Supabase.
     (player.fedDocs||[]).forEach(d=>{if(d.requisito_id===reqId&&d.estado!=='sustituido')d.estado='sustituido'});
     player.fedDocs=player.fedDocs||[];
-    player.fedDocs.unshift({id:newDocId,requisito_id:reqId,inscripcion_id:player.inscription.id,storage_path:path,nombre_original:file.name,mime_type:file.type||null,subtipo,estado:'aportado',aportado_at:new Date().toISOString()});
+    player.fedDocs.unshift({id:newDocId,requisito_id:reqId,inscripcion_id:player.inscription.id,storage_path:path,nombre_original:file.name,mime_type:file.type||null,subtipo:subtype,estado:'aportado',aportado_at:new Date().toISOString()});
     req.current_documento_id=newDocId;req.estado='aportado';req.motivo_rechazo=null;req.motivo_nueva_version=null;req.nueva_version_solicitada_at=null;
     if(input)input.value='';
     renderDocumentManagerPlayer(player);
