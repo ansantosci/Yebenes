@@ -1,4 +1,4 @@
-const APP_VERSION='50';
+const APP_VERSION='51';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -36,6 +36,16 @@ const WORKFLOW=[
   {key:'federated',label:'Ficha tramitada',federation:'Ficha tramitada'}
 ];
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+// V51: acceso documental robusto. Se registra al principio para que no dependa
+// de la inicialización posterior de controles legacy o de rerenders de Familia.
+document.addEventListener('click',e=>{
+  const button=e.target.closest?.('.manage-docs, .manage-docs-summary');
+  if(!button)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const playerId=button.dataset.id;
+  if(playerId&&typeof openDocumentManager==='function') openDocumentManager(playerId);
+},true);
 const esc=(s='')=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const readJSON=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 const writeJSON=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
@@ -454,7 +464,7 @@ function familyPlayerTabbedCard(p){
   <nav class="family-card-tabs" aria-label="Secciones de ${esc(p.name)}"><button class="family-card-tab active" type="button" data-family-card-tab="summary">Resumen</button><button class="family-card-tab" type="button" data-family-card-tab="data">Datos${returned?' <span class="family-tab-alert">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="docs">Documentos${docsAlert?' <span class="family-tab-alert">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="medical">RRMM${medicalBlock?' <span class="family-tab-alert">!</span>':medicalWarn?' <span class="family-tab-alert amber">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="inscription">Inscripción${insBlock?' <span class="family-tab-alert">!</span>':insWarn?' <span class="family-tab-alert amber">!</span>':''}</button></nav>
   <div class="family-card-panel active" data-family-card-panel="summary">${returned?`<div class="family-alert"><strong>El club solicita cambios</strong><p>${esc(i.observaciones||'Revisa la información de la ficha.')}</p><button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar</button></div>`:''}<div class="checklist"><div class="check"><span>Datos personales</span><strong>✓</strong></div><div class="check"><span>Documentación</span><strong>${docs.pct}% · ${docs.valid}/${docs.total}</strong></div><div class="check"><span>RRMM</span><strong>${['ok','soon'].includes(m.key)?(m.key==='soon'?'⚠ '+m.label:'✓ Vigente'):(m.key==='expired'?'✕ Vencido':'✕ Pendiente')}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Pago inscripción</span><strong>${econ.ok?'✓ '+esc(econ.label):'✕ '+esc(econ.label)}</strong></div><div class="check"><span>Federación</span><strong>${esc(fed)}</strong></div></div></div>
   <div class="family-card-panel" data-family-card-panel="data"><div class="checklist"><div class="check"><span>Jugador</span><strong>${esc(p.name)}</strong></div><div class="check"><span>Fecha de nacimiento</span><strong>${fmt(p.birth)}</strong></div><div class="check"><span>Categoría</span><strong>${esc(p.categoryName)}</strong></div><div class="check"><span>Representación</span><strong>${currentRole==='player'?'Autorrepresentación':esc(currentUser.name)}</strong></div></div>${returned?`<button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar datos</button>`:''}</div>
-  <div class="family-card-panel" data-family-card-panel="docs">${federationProgressHtml(p,true)}<div class="card-actions"><button class="secondary small manage-docs" data-id="${esc(p.id)}">Gestionar documentación</button></div></div>
+  <div class="family-card-panel" data-family-card-panel="docs">${federationProgressHtml(p,true)}<div class="card-actions"><button class="secondary small manage-docs" data-id="${esc(p.id)}" onclick="openDocumentManager(this.dataset.id)">Gestionar documentación</button></div></div>
   <div class="family-card-panel" data-family-card-panel="medical"><div class="checklist"><div class="check"><span>Estado RRMM</span><strong>${esc(m.label)}</strong></div>${p.medical?`<div class="check"><span>Válido hasta</span><strong>${fmt(p.medical.fecha_valido_hasta)}</strong></div>`:''}</div>${p.appointment?`<div class="appointment-family"><strong>📅 Próximo reconocimiento médico</strong><div>${esc(formatDateTime(p.appointment.fecha_hora))}</div><div>${esc(p.appointment.lugar||'')}</div>${p.appointment.direccion?`<div>${esc(p.appointment.direccion)}</div>`:''}${p.appointment.indicaciones?`<div class="meta">${esc(p.appointment.indicaciones)}</div>`:''}</div>`:'<div class="meta">Sin cita programada.</div>'}</div>
   <div class="family-card-panel" data-family-card-panel="inscription"><div class="checklist"><div class="check"><span>Estado</span><strong>${esc(fed)}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Situación económica</span><strong>${esc(econ.label)}</strong></div><div class="check"><span>Detalle económico</span><strong>${esc(econ.detail||'')}</strong></div></div></div></article>`;
 }
@@ -516,7 +526,7 @@ function readinessProgressHtml(player){const r=remoteFederationReadiness(player)
 function federationProgressHtml(player,compact=false){const p=federationDocsProgress(player);return `<div class="docs-progress ${compact?'compact':''}"><div class="docs-progress-head"><strong>Documentación RFFM · ${p.pct}%</strong><span>${p.valid} de ${p.total} requisitos validados</span></div><div class="docs-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p.pct}"><span style="width:${p.pct}%"></span></div></div>`}
 function renderFamilyDocumentsSummary(){
   const box=$('#familyDocumentsList');if(!box)return;
-  box.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>{const pr=federationDocsProgress(p);return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${pr.valid}/${pr.total} requisitos validados</div></div><span class="status ${federationDocsComplete(p)?'complete':'pending'}">${federationDocsComplete(p)?'✓ Completa':pr.pct+'%'}</span></div>${federationProgressHtml(p,true)}<button class="secondary small manage-docs-summary" data-id="${esc(p.id)}">Abrir documentación</button></article>`}).join(''):'<div class="empty-card">No hay jugadores con inscripción activa.</div>';
+  box.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>{const pr=federationDocsProgress(p);return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${pr.valid}/${pr.total} requisitos validados</div></div><span class="status ${federationDocsComplete(p)?'complete':'pending'}">${federationDocsComplete(p)?'✓ Completa':pr.pct+'%'}</span></div>${federationProgressHtml(p,true)}<button class="secondary small manage-docs-summary" data-id="${esc(p.id)}" onclick="openDocumentManager(this.dataset.id)">Abrir documentación</button></article>`}).join(''):'<div class="empty-card">No hay jugadores con inscripción activa.</div>';
 }
 
 function federationUploadForm(player,req,labelText){
@@ -1117,15 +1127,7 @@ function setFamilyMainTab(tab){
 }
 $$('[data-family-tab]').forEach(b=>b.onclick=()=>setFamilyMainTab(b.dataset.familyTab));
 
-// Delegación estable: todos los accesos a documentación abren el mismo gestor,
-// tanto desde la ficha del jugador como desde la pantalla global Documentos.
-$('#familyView')?.addEventListener('click',e=>{
-  const button=e.target.closest('.manage-docs, .manage-docs-summary');
-  if(!button)return;
-  e.preventDefault();
-  const playerId=button.dataset.id;
-  if(playerId)openDocumentManager(playerId);
-});
+// V51: la delegación documental se registra al inicio del script.
 
 $('#togglePlayerActive').onclick=()=>{if(currentUser?.source==='supabase')return toggleRemotePlayerActive();if(currentRole!=='admin'&&currentRole!=='club')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const next=p.active===false;p.active=next;savePlayers();recordAudit(next?'Jugador reactivado':'Jugador marcado inactivo',p.id,next?'Vuelve a operación diaria':'Salida o baja operativa');openAdminPlayer(p.id);renderClub();renderMedical()};
 $('#changeTutorForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),p=players.find(x=>x.id===selectedPlayerId),newUser=users.find(u=>u.id===fd.get('tutorUserId'));if(!p||!newUser)return;const newTutorPerson=personForUser(newUser.id);if(!normDni(newTutorPerson?.dni||'')){alert('El tutor seleccionado no tiene DNI/NIE propio registrado. Completa su identidad antes de asignarlo como representante.');return}const legal=fd.get('legalException')==='on',a=ageOn(p.birth);if(a>=18&&!legal){alert('El jugador ya es mayor de edad. Solo puede mantenerse un tutor si se registra una excepción jurídica.');return}const old=activeRepresentation(p.id);if(old)old.endDate=isoToday();representations.push({id:uid('r'),playerId:p.id,userId:newUser.id,type:'guardian',startDate:isoToday(),endDate:'',reason:fd.get('reason'),legalException:legal});saveReps();recordAudit('Cambio de tutor',p.id,`${repUserName(old)} → ${newUser.name}. Motivo: ${fd.get('reason')}`);$('#changeTutorModal').close();openAdminPlayer(p.id);renderClub()};

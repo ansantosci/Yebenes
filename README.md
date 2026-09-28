@@ -1,3 +1,12 @@
+# V51 — Corrección de acceso a documentación de Familia
+
+## Cambios V51
+- Corrige los botones **Gestionar documentación** y **Abrir documentación** de la vista Familia.
+- El acceso al gestor documental se enlaza mediante delegación global temprana, por lo que ya no depende de que terminen de inicializarse otros controles de la aplicación.
+- Se añade una salvaguarda directa en ambos botones para soportar rerenders dinámicos de la ficha y del listado global de Documentos.
+- Se mantiene la simplificación introducida en V50: la vista global **Documentos** no duplica la ficha completa del jugador.
+- Sin cambios de esquema ni migraciones SQL.
+
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
 ## V49 - 2026-09-28
 
