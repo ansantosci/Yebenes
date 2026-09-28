@@ -422,3 +422,20 @@ Esto permite activar nuevas formas de cobro en el futuro sin eliminar la estruct
 
 ### Compatibilidad técnica
 La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la migración 016 (`vinculos_clubber`, `validar_fraccionamiento_clubber`, etc.) no se renombran en V47 para evitar una migración destructiva o innecesaria.
+
+## V50 — Navegación Familia y documentación sin redundancias (28/09/2026)
+
+### Cambios funcionales
+- Se corrige el acceso a documentación desde Familia: tanto **Gestionar documentación** en la ficha del jugador como **Abrir documentación** en la vista global abren el mismo gestor documental.
+- Se centraliza el evento mediante delegación sobre la vista Familia para evitar botones sin respuesta tras rerenders dinámicos.
+- La opción inferior **Documentos** pasa a ser una vista específica: oculta temporalmente el bloque completo de fichas de jugadores y el resumen familiar para evitar mostrar dos veces la misma información.
+- En la vista Documentos solo se muestra el listado documental por jugador con progreso y acceso al gestor.
+- Al volver a **Inicio** o **Jugadores** se restaura la ficha completa con sus pestañas.
+- El hero de Familia adapta título y descripción cuando se entra en Documentos.
+- Se mantiene una única fuente de detalle documental (`openDocumentManager`) independientemente del punto de entrada.
+
+### Cambios técnicos
+- `APP_VERSION` y `YEBENES_APP_VERSION` pasan a 50.
+- Cache-busting de `styles.css` y `app.js` actualizado a `?v=50`.
+- `version.json` actualizado a 50.
+- No requiere migración SQL.

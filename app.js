@@ -1,4 +1,4 @@
-const APP_VERSION='49';
+const APP_VERSION='50';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -467,7 +467,6 @@ async function renderRemoteFamily(){
     await loadRemoteFamilyData();
     $('#playersList').innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(familyPlayerTabbedCard).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
     $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));
-    $$('.manage-docs').forEach(b=>b.onclick=()=>openDocumentManager(b.dataset.id));
     bindFamilyCardTabs();
     renderFamilyDocumentsSummary();
     $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
@@ -518,8 +517,8 @@ function federationProgressHtml(player,compact=false){const p=federationDocsProg
 function renderFamilyDocumentsSummary(){
   const box=$('#familyDocumentsList');if(!box)return;
   box.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>{const pr=federationDocsProgress(p);return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${pr.valid}/${pr.total} requisitos validados</div></div><span class="status ${federationDocsComplete(p)?'complete':'pending'}">${federationDocsComplete(p)?'✓ Completa':pr.pct+'%'}</span></div>${federationProgressHtml(p,true)}<button class="secondary small manage-docs-summary" data-id="${esc(p.id)}">Abrir documentación</button></article>`}).join(''):'<div class="empty-card">No hay jugadores con inscripción activa.</div>';
-  $$('.manage-docs-summary').forEach(b=>b.onclick=()=>openDocumentManager(b.dataset.id));
 }
+
 function federationUploadForm(player,req,labelText){
   const subtype=req.codigo==='identidad_rffm'?`<label>Tipo de documento<select class="doc-subtype" data-req="${req.id}"><option value="dni">DNI</option><option value="nie">NIE</option><option value="pasaporte">Pasaporte</option><option value="partida_nacimiento">Partida de nacimiento</option><option value="libro_familia">Libro de Familia</option></select></label>`:'';
   const accept=req.codigo==='foto_jugador'?'image/jpeg,image/png,image/webp':'image/jpeg,image/png,image/webp,application/pdf';
@@ -1091,12 +1090,41 @@ $('#addPlayerButton').onclick=openPlayerForNew;$('#playerForm').onsubmit=async e
 
 $('#searchInput').oninput=renderClub;['statusFilter','clubCategoryFilter','clubActiveFilter'].forEach(id=>$('#'+id).onchange=renderClub);$$('[data-club-quick]').forEach(el=>{const go=()=>{const v=el.dataset.clubQuick;clubQuickFilter=(clubQuickFilter===v&&v!=='all')?'all':v;renderClub()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#saveTeamAssignment').onclick=()=>currentUser?.source==='supabase'?saveRemoteTeamAssignment():saveTeamAssignment();$('#advanceStatus').onclick=()=>currentUser?.source==='supabase'?advanceRemoteSelected():advanceSelected();$('#saveWorkflow').onclick=()=>currentUser?.source==='supabase'?setRemoteWorkflowSelected():setWorkflowSelected();$('#returnToFamily').onclick=()=>currentUser?.source==='supabase'?returnRemoteSelected():returnSelected();$('#closeAdminModal').onclick=()=>$('#adminPlayerModal').close();$('#changeTutorButton').onclick=openChangeTutor;$('#selfRepresentationButton').onclick=openSelfRepresentation;
 $$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;setView(b.dataset.clubView);if(b.dataset.clubView==='clubView')renderClub();if(b.dataset.clubView==='medicalView')renderMedical();if(b.dataset.clubView==='coachesView')renderCoaches();if(b.dataset.clubView==='structureView')renderStructure();if(b.dataset.clubView==='usersView')renderClubUsers();if(b.dataset.clubView==='personsView')renderPersons()});
-$$('[data-family-tab]').forEach(b=>b.onclick=()=>{
-  $$('[data-family-tab]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
-  const docs=$('#familyDocumentsSection'),playersSec=$('#familyPlayersSection');
-  if(b.dataset.familyTab==='docs'){if(docs){docs.hidden=false;renderFamilyDocumentsSummary();docs.scrollIntoView({behavior:'smooth'});}return;}
-  if(b.dataset.familyTab==='players'){if(playersSec)playersSec.scrollIntoView({behavior:'smooth'});return;}
-  if(b.dataset.familyTab==='home'){if(docs)docs.hidden=true;window.scrollTo({top:0,behavior:'smooth'});}
+function setFamilyMainTab(tab){
+  $$('[data-family-tab]').forEach(x=>x.classList.toggle('active',x.dataset.familyTab===tab));
+  const docs=$('#familyDocumentsSection'),playersSec=$('#familyPlayersSection'),statusSec=$('#familyStatusSection'),hero=$('#familyHero');
+  if(tab==='docs'){
+    if(playersSec)playersSec.hidden=true;
+    if(statusSec)statusSec.hidden=true;
+    if(hero)hero.hidden=true;
+    if(docs){docs.hidden=false;renderFamilyDocumentsSummary();}
+    $('#familyHeroEyebrow').textContent='Federación RFFM';
+    $('#familyHeroTitle').textContent='Documentación de tus jugadores';
+    $('#familyHeroText').textContent='Consulta el progreso documental y aporta o revisa los requisitos de cada inscripción.';
+    window.scrollTo({top:0,behavior:'smooth'});
+    return;
+  }
+  if(docs)docs.hidden=true;
+  if(playersSec)playersSec.hidden=false;
+  if(statusSec)statusSec.hidden=false;
+  if(hero)hero.hidden=false;
+  $('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';
+  $('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha federativa':'Gestiona la ficha de tus hijos desde el móvil';
+  $('#familyHeroText').textContent='Completa datos, adjunta documentación y consulta el estado de cada inscripción.';
+  if(tab==='players'&&playersSec){playersSec.scrollIntoView({behavior:'smooth'});return;}
+  if(tab==='profile'){window.scrollTo({top:0,behavior:'smooth'});return;}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$$('[data-family-tab]').forEach(b=>b.onclick=()=>setFamilyMainTab(b.dataset.familyTab));
+
+// Delegación estable: todos los accesos a documentación abren el mismo gestor,
+// tanto desde la ficha del jugador como desde la pantalla global Documentos.
+$('#familyView')?.addEventListener('click',e=>{
+  const button=e.target.closest('.manage-docs, .manage-docs-summary');
+  if(!button)return;
+  e.preventDefault();
+  const playerId=button.dataset.id;
+  if(playerId)openDocumentManager(playerId);
 });
 
 $('#togglePlayerActive').onclick=()=>{if(currentUser?.source==='supabase')return toggleRemotePlayerActive();if(currentRole!=='admin'&&currentRole!=='club')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const next=p.active===false;p.active=next;savePlayers();recordAudit(next?'Jugador reactivado':'Jugador marcado inactivo',p.id,next?'Vuelve a operación diaria':'Salida o baja operativa');openAdminPlayer(p.id);renderClub();renderMedical()};
