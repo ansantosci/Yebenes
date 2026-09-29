@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '59';
+    window.YEBENES_APP_VERSION = '60';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=59" />
+  <link rel="stylesheet" href="styles.css?v=60" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v59</div>
+      <div class="version-badge" aria-label="Versión de prueba">v60</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -135,14 +135,14 @@
           <article class="stat quick-filter" data-club-quick="all" tabindex="0"><strong id="statPlayers">0</strong><span>Jugadores</span></article>
           <article class="stat quick-filter" data-club-quick="complete" tabindex="0"><strong id="statComplete">0</strong><span>Completos</span></article>
           <article class="stat quick-filter" data-club-quick="docs" tabindex="0"><strong id="statDocs">0</strong><span>Documentos pendientes</span></article>
-          <article class="stat quick-filter" data-club-quick="review" tabindex="0"><strong id="statReview">0</strong><span>Por revisar</span></article><article class="stat alert-stat quick-filter" data-club-quick="medical90" tabindex="0"><strong id="statMedical90">0</strong><span>RRMM vence ≤ 90 días</span></article><article class="stat alert-stat quick-filter" data-club-quick="adult30" tabindex="0"><strong id="statAdult30">0</strong><span>Mayoría edad ≤ 30 días</span></article><article class="stat danger-stat quick-filter" data-club-quick="payment" tabindex="0"><strong id="statPaymentPending">0</strong><span>Pago pendiente</span></article>
+          <article class="stat quick-filter" data-club-quick="review" tabindex="0"><strong id="statReview">0</strong><span>Por revisar</span></article><article class="stat alert-stat quick-filter" data-club-quick="medical90" tabindex="0"><strong id="statMedical90">0</strong><span>RRMM vence ≤ 90 días</span></article><article class="stat alert-stat quick-filter" data-club-quick="adult30" tabindex="0"><strong id="statAdult30">0</strong><span>Mayoría edad ≤ 30 días</span></article><article class="stat danger-stat quick-filter" data-club-quick="payment" tabindex="0" id="paymentPendingStat"><strong id="statPaymentPending">0</strong><span>Pago pendiente</span></article>
         </section>
         <section class="section">
           <div class="section-head stacked-mobile">
             <div><span class="eyebrow dark">Gestión</span><h2>Jugadores de la temporada</h2></div>
             <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="clubCategoryFilter"><option value="all">Todas las categorías</option></select><select id="clubActiveFilter"><option value="active">Solo activos</option><option value="inactive">Solo inactivos</option><option value="all">Activos e inactivos</option></select><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
-          <div id="clubQuickFilterChip" class="quick-filter-chip hidden"></div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>Datos</th><th>Docs.</th><th>Pago</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
+          <div id="clubQuickFilterChip" class="quick-filter-chip hidden"></div><div class="table-wrap"><table><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>Datos</th><th>Docs.</th><th id="paymentTableHead">Pago</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div>
         </section>
       </section>
 
@@ -235,14 +235,14 @@
       <button type="button" class="entity-tab" data-player-tab="data">Datos <span class="tab-alert" id="tabAlertData" hidden>!</span></button>
       <button type="button" class="entity-tab" data-player-tab="docs">Documentación <span class="tab-alert" id="tabAlertDocs" hidden>!</span></button>
       <button type="button" class="entity-tab" data-player-tab="medical">RRMM <span class="tab-alert amber" id="tabAlertMedical" hidden>!</span></button>
-      <button type="button" class="entity-tab" data-player-tab="economic">Economía <span class="tab-alert" id="tabAlertEconomic" hidden>!</span></button>
+      <button type="button" class="entity-tab" data-player-tab="economic" id="economicPlayerTabButton">Economía <span class="tab-alert" id="tabAlertEconomic" hidden>!</span></button>
       <button type="button" class="entity-tab" data-player-tab="history">Histórico</button>
     </nav>
     <div class="entity-tab-panel active" data-player-panel="summary">
       <div class="detail-grid"><div><span>Datos personales</span><strong id="adminPlayerData"></strong></div><div><span>Documentación</span><strong id="adminPlayerDocs"></strong></div><div><span>Reconocimiento médico</span><strong id="adminPlayerMedical"></strong></div><div><span>Estado federativo</span><strong id="adminPlayerFed"></strong></div></div>
       <section class="workflow-box"><span class="eyebrow dark">Preparación para tramitar ficha</span><div class="meta">Selecciona un requisito para ir directamente a la sección que necesita atención.</div><div id="adminFederationReadiness"></div></section>
-      <section class="workflow-box"><span class="eyebrow dark">Tramitación</span><label>Estado de la ficha<select id="adminWorkflow"><option value="pendiente_revision_inicial">Pendiente de revisión inicial</option><option value="devuelta_familia">Devuelta a la familia</option><option value="datos_validados">Datos validados</option><option value="documentacion_validada">Documentación validada</option><option value="lista_para_federar">Listo para federar</option><option value="ficha_tramitada">Ficha tramitada</option></select></label><div class="workflow-actions"><button class="secondary" id="saveWorkflow" type="button">Guardar estado</button><button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button></div></section>
-      <section class="return-box"><span class="eyebrow dark">Solicitar cambios a la familia</span><p>Indica exactamente qué información debe corregir o completar.</p><textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea><div class="meta" id="returnHint"></div><button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button></section>
+      <section class="workflow-box" id="playerWorkflowSection"><span class="eyebrow dark">Tramitación</span><label>Estado de la ficha<select id="adminWorkflow"><option value="pendiente_revision_inicial">Pendiente de revisión inicial</option><option value="devuelta_familia">Devuelta a la familia</option><option value="datos_validados">Datos validados</option><option value="documentacion_validada">Documentación validada</option><option value="lista_para_federar">Listo para federar</option><option value="ficha_tramitada">Ficha tramitada</option></select></label><div class="workflow-actions"><button class="secondary" id="saveWorkflow" type="button">Guardar estado</button><button class="primary" id="advanceStatus" type="button">Avanzar al siguiente estado →</button></div></section>
+      <section class="return-box" id="playerReturnSection"><span class="eyebrow dark">Solicitar cambios a la familia</span><p>Indica exactamente qué información debe corregir o completar.</p><textarea id="returnMessage" rows="4" placeholder="Ej.: Falta completar el segundo apellido y revisar el DNI/NIE."></textarea><div class="meta" id="returnHint"></div><button class="return-button" id="returnToFamily" type="button">↩ Devolver a la familia</button></section>
     </div>
     <div class="entity-tab-panel" data-player-panel="data">
       <section class="workflow-box"><span class="eyebrow dark">Estado del jugador</span><div class="representation-summary"><div><strong id="playerOperationalStatus">Activo</strong><div class="meta">Los jugadores inactivos se conservan en el histórico pero quedan fuera de la operación diaria por defecto.</div></div><button type="button" class="return-button" id="togglePlayerActive">Marcar como inactivo</button></div></section>
@@ -251,7 +251,7 @@
     </div>
     <div class="entity-tab-panel" data-player-panel="docs"><section class="workflow-box"><span class="eyebrow dark">Requisitos para ficha RFFM</span><div class="meta">Fotografía e identificación se aportan aquí. La autorización del tutor y la firma online se realizan en la RFFM: tutor/jugador comunica que las ha realizado y el club las verifica.</div><div id="adminFederationRequirements" class="federation-requirements"></div></section></div>
     <div class="entity-tab-panel" data-player-panel="medical"><section class="workflow-box"><span class="eyebrow dark">Reconocimiento médico</span><div id="adminMedicalTabSummary"></div><div class="workflow-actions"><button type="button" class="primary" id="openMedicalFromPlayer">Gestionar RRMM / cita</button></div></section></div>
-    <div class="entity-tab-panel" data-player-panel="economic"><form id="economicPlayerForm"><div id="economicPlayerCurrent" class="economic-current"></div><section class="workflow-box"><span class="eyebrow dark">Cluber</span><div class="form-grid"><label>ID deportista Cluber<input name="clubberPlayerId" placeholder="ID de deportista" /></label><label>ID tutor Cluber<input name="clubberTutorId" placeholder="ID de tutor" /></label></div><div class="workflow-actions"><button type="button" class="secondary" id="saveClubberIds">Guardar IDs Cluber</button></div></section><section class="workflow-box"><span class="eyebrow dark">Registrar cobro manual</span><div class="meta">Actualmente el club solo registra manualmente pagos recibidos en efectivo. Los cobros de Cluber se incorporarán mediante conciliación/importación y no se introducen manualmente.</div><div class="form-grid"><label>Importe (€)<input name="paymentAmount" type="number" min="0.01" step="0.01" /></label><label>Método<select name="paymentMethod" id="manualPaymentMethod"></select></label><label>Fecha<input name="paymentDate" type="date" /></label><label>Referencia / justificante<input name="paymentReference" placeholder="Opcional" /></label><label class="span-2">Observaciones<input name="paymentNotes" placeholder="Opcional" /></label></div><div class="workflow-actions"><button type="button" class="primary" id="registerEconomicPayment">Registrar pago en efectivo</button></div></section><section class="workflow-box"><span class="eyebrow dark">Fraccionamiento Cluber</span><div id="installmentValidationSummary" class="meta"></div><div class="workflow-actions"><button type="button" class="primary" id="validateClubberInstallments">Validar domiciliación / fraccionamiento</button><button type="button" class="secondary" id="revokeClubberInstallments">Revocar validación</button></div></section><section class="workflow-box"><span class="eyebrow dark">Histórico de pagos</span><div id="economicPaymentsHistory" class="history-list"></div></section></form></div>
+    <div class="entity-tab-panel" data-player-panel="economic" id="economicPlayerPanel"><form id="economicPlayerForm"><div id="economicPlayerCurrent" class="economic-current"></div><section class="workflow-box"><span class="eyebrow dark">Cluber</span><div class="form-grid"><label>ID deportista Cluber<input name="clubberPlayerId" placeholder="ID de deportista" /></label><label>ID tutor Cluber<input name="clubberTutorId" placeholder="ID de tutor" /></label></div><div class="workflow-actions"><button type="button" class="secondary" id="saveClubberIds">Guardar IDs Cluber</button></div></section><section class="workflow-box"><span class="eyebrow dark">Registrar cobro manual</span><div class="meta">Actualmente el club solo registra manualmente pagos recibidos en efectivo. Los cobros de Cluber se incorporarán mediante conciliación/importación y no se introducen manualmente.</div><div class="form-grid"><label>Importe (€)<input name="paymentAmount" type="number" min="0.01" step="0.01" /></label><label>Método<select name="paymentMethod" id="manualPaymentMethod"></select></label><label>Fecha<input name="paymentDate" type="date" /></label><label>Referencia / justificante<input name="paymentReference" placeholder="Opcional" /></label><label class="span-2">Observaciones<input name="paymentNotes" placeholder="Opcional" /></label></div><div class="workflow-actions"><button type="button" class="primary" id="registerEconomicPayment">Registrar pago en efectivo</button></div></section><section class="workflow-box"><span class="eyebrow dark">Fraccionamiento Cluber</span><div id="installmentValidationSummary" class="meta"></div><div class="workflow-actions"><button type="button" class="primary" id="validateClubberInstallments">Validar domiciliación / fraccionamiento</button><button type="button" class="secondary" id="revokeClubberInstallments">Revocar validación</button></div></section><section class="workflow-box"><span class="eyebrow dark">Histórico de pagos</span><div id="economicPaymentsHistory" class="history-list"></div></section></form></div>
     <div class="entity-tab-panel" data-player-panel="history"><section class="workflow-box"><span class="eyebrow dark">Histórico y auditoría</span><div id="playerHistory" class="history-list"></div></section></div>
   </div></dialog>
 
@@ -278,6 +278,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=59"></script>
+  <script src="app.js?v=60"></script>
 </body>
 </html>

@@ -1,3 +1,19 @@
+## V60 — Perfil Entrenador: permisos, ámbito de equipo y coherencia (29/09/2026)
+
+### Correcciones funcionales
+- El perfil **Entrenador** carga únicamente jugadores con una asignación deportiva activa a alguno de sus equipos activos. Una asignación a Chupetines ya no arrastra jugadores de otras categorías/equipos.
+- La vista Entrenador oculta por completo información económica: KPI de pago pendiente, columna Pago, pestaña Economía y requisito económico del progreso de ficha.
+- Para Entrenador, el progreso operativo se calcula con 4 requisitos visibles: datos, equipo, documentación RFFM y RRMM. El pago continúa existiendo y bloqueando la tramitación para Club/Administrador, pero no se expone al técnico.
+- Documentación y RRMM quedan en modo de **consulta operativa** para Entrenador. Se oculta la entrada de gestión RRMM desde la ficha y las acciones de validación documental siguen reservadas a Club/Administrador.
+- Se ocultan al Entrenador los bloques de tramitación/devolución a familia y las acciones de activación/inactivación de jugador.
+- La columna **Datos** del listado usa ahora el mismo criterio que la ficha del jugador (`remoteDataValidated`), eliminando discrepancias como “Pendiente” en tabla y “Completo” en detalle.
+- Al entrar en la vista **Entrenadores** como Administrador/Club se recarga el listado directamente desde Supabase antes de renderizar, evitando información obsoleta tras cambios de roles/asignaciones.
+
+### Modelo y base de datos
+- No requiere migración SQL nueva.
+- Se apoya en el saneamiento Persona/Entrenador de las migraciones 018–020.
+- La asignación real del entrenador se toma exclusivamente de `asignaciones_entrenador_equipo`; no se infieren equipos por categoría ni por datos de la interfaz.
+
 ## V59 - 2026-09-28
 
 ### Entrenadores reales en Supabase
@@ -98,7 +114,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V59 — 28/09/2026**
+**Versión actual: V60 — 29/09/2026**
 
 ## Estado funcional actual
 
@@ -125,6 +141,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 
 | Versión | Fecha | BD / backend | Cambios principales |
 |---|---|---|---|
+| V60 | 29/09/2026 | Sin migración | Perfil Entrenador restringido a sus equipos, sin Economía, consultas operativas y coherencia Datos/listado. |
 | V59 | 28/09/2026 | Migración 017 | Entrenadores reales, asignaciones por equipo, licencia/curso delegado, contadores y notificaciones RRMM. |
 | V1 modelo | 24/09/2026 | Modelo de datos V1 | Modelo relacional congelado; adopción de UUID como identificadores. |
 | V20 | 24/09/2026 | Supabase Auth/RLS | Primer login real contra Supabase y resolución Persona → Roles. |
