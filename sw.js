@@ -1,1 +1,1 @@
-// V27: service worker desactivado durante desarrollo.
+const CACHE_NAME='los-yebenes-v75';
