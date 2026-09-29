@@ -1,4 +1,4 @@
-## V60 — Perfil Entrenador: permisos, ámbito de equipo y coherencia (29/09/2026)
+## V61 — Administración integral de Personas (29/09/2026)
 
 ### Correcciones funcionales
 - El perfil **Entrenador** carga únicamente jugadores con una asignación deportiva activa a alguno de sus equipos activos. Una asignación a Chupetines ya no arrastra jugadores de otras categorías/equipos.
@@ -114,7 +114,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V60 — 29/09/2026**
+**Versión actual: V61 — 29/09/2026**
 
 ## Estado funcional actual
 
@@ -142,6 +142,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | Versión | Fecha | BD / backend | Cambios principales |
 |---|---|---|---|
 | V60 | 29/09/2026 | Sin migración | Perfil Entrenador restringido a sus equipos, sin Economía, consultas operativas y coherencia Datos/listado. |
+| V61 | 29/09/2026 | 021 | Administración integral de Personas, perfiles de acceso, baja lógica, vínculo Auth y relaciones derivadas. |
 | V59 | 28/09/2026 | Migración 017 | Entrenadores reales, asignaciones por equipo, licencia/curso delegado, contadores y notificaciones RRMM. |
 | V1 modelo | 24/09/2026 | Modelo de datos V1 | Modelo relacional congelado; adopción de UUID como identificadores. |
 | V20 | 24/09/2026 | Supabase Auth/RLS | Primer login real contra Supabase y resolución Persona → Roles. |
@@ -568,3 +569,27 @@ La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la 
 - El formulario de Entrenador selecciona una Persona existente y usa la RPC `asignar_rol_entrenador`; los datos de identidad quedan de solo lectura en esta vista.
 - Se conservan función por equipo, vigencia, licencia, curso de delegado, estado e histórico de asignaciones.
 - No requiere nueva migración: depende de las migraciones 018–020 ya aplicadas.
+
+## V61 - Administración integral de Personas (2026-09-29)
+
+V61 consolida **Persona** como identidad maestra y mueve la administración de usuarios y perfiles a la vista Personas.
+
+### Cambios funcionales
+- La tabla Personas muestra identidad, correo, perfiles de acceso, relaciones, cuenta Auth y estado.
+- Cada Persona se abre en una ficha con pestañas **Identidad / Acceso y roles / Relaciones**.
+- El administrador puede modificar los datos de identidad y realizar una baja lógica (Activo/Inactivo) conservando el histórico.
+- Los perfiles **Administrador, Club y Entrenador** se administran con checks.
+- **Jugador · acceso propio** solo puede concederse a una Persona adulta. Al activarlo se reutiliza/crea su extensión `jugadores`; no necesita representación ordinaria para gestionarse a sí misma.
+- **Tutor/Familia** no se concede manualmente: se muestra como perfil derivado de una representación activa.
+- La condición de **Jugador federado** se muestra como relación derivada de la extensión `jugadores`, diferenciándola del perfil de acceso propio.
+- Si existe una cuenta de Supabase Auth con el mismo correo, el administrador puede vincularla a la Persona desde la ficha.
+- Se elimina del menú la vista separada **Usuarios**, al quedar su función consolidada en Personas.
+- Entrenador sigue siendo una extensión de Persona; si se retira el perfil Entrenador con asignaciones activas, la operación se bloquea hasta finalizar dichas asignaciones.
+
+### Migración 021
+`021_administracion_personas_roles.sql` añade RPC seguras para:
+- `guardar_persona_admin(...)`
+- `actualizar_perfiles_persona_admin(...)`
+- `vincular_auth_persona_por_email_admin(...)`
+
+La baja es lógica. No se eliminan identidades con histórico operativo.

@@ -262,3 +262,13 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
   #coachModal .modal-actions{display:grid;grid-template-columns:1fr;gap:8px}
   #coachModal .modal-actions button{width:100%;min-height:44px}
 }
+
+/* V61 - Administracion integral de Personas */
+.person-admin-modal{width:min(900px,calc(100% - 24px));max-height:92vh}
+.person-admin-detail{padding:18px;min-width:0}
+.person-access-grid,.person-relations-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.person-admin-card{border:1px solid #e1e5ea;border-radius:16px;background:#f8f9fb;padding:14px;min-width:0}
+.role-check-list{display:grid;gap:10px;margin:12px 0}.role-check-list label{display:flex;align-items:center;gap:9px;font-weight:800}.role-check-list input{width:18px;height:18px;accent-color:var(--red)}
+.person-auth-state{display:grid;gap:6px;margin:10px 0}.derived-role-row,.relation-line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e7eaee}.derived-role-row:last-child,.relation-line:last-child{border-bottom:0}.relation-line span{color:var(--muted);text-align:right}
+.person-admin-card .modal-actions{margin-top:12px}.person-admin-card .secondary.small{margin-top:10px}
+@media(max-width:720px){.person-admin-modal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}.person-admin-detail{padding:14px}.person-access-grid,.person-relations-grid{grid-template-columns:1fr}.person-admin-modal .entity-tabs{position:sticky;top:0;background:#fff;z-index:4}.derived-role-row,.relation-line{align-items:flex-start;flex-direction:column}.relation-line span{text-align:left}}

@@ -1,4 +1,4 @@
-const APP_VERSION='60';
+const APP_VERSION='61';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -159,7 +159,7 @@ let remoteMedicalAppointments=[];
 let remoteMedicalRows=[];
 const PENDING_SIGNUP_KEY='yebenes-pending-signup-v1';
 const AUTH_REDIRECT_URL='https://ansantosci.github.io/Yebenes/';
-let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,editingCoachId=null,selectedCoachPersonId=null,editingTeamId=null,pendingCoachAssignments=[],pendingUserAssignments=[];
+let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,editingCoachId=null,selectedCoachPersonId=null,editingTeamId=null,selectedPersonAdminId=null,pendingCoachAssignments=[],pendingUserAssignments=[];
 
 function categoryByName(name){return categories.find(c=>c.name===name)}
 function categoryName(id){return categories.find(c=>c.id===id)?.name||'Sin categoría'}
@@ -1059,21 +1059,76 @@ function renderPersons(){
   if(currentUser?.source==='supabase')return renderRemotePersons();
   const pairs=duplicatePairs();$('#duplicateCount').textContent=String(pairs.length);$('#duplicateList').innerHTML=pairs.length?pairs.map(d=>`<div class="duplicate-card"><div><strong>${esc(d.a.name)} ↔ ${esc(d.b.name)}</strong><span>${esc(d.reasons.join(', '))}</span></div><button class="secondary tiny merge-persons" data-a="${d.a.id}" data-b="${d.b.id}">Fusionar</button></div>`).join(''):'<div class="empty-note">No se han detectado posibles duplicados.</div>';$('#personsTable').innerHTML=persons.map(p=>{const us=users.filter(u=>u.personId===p.id),ps=players.filter(x=>x.personId===p.id),roles=[...new Set(us.flatMap(u=>u.roles||[]))];const emails=[...new Set(us.flatMap(u=>[u.email,...(u.emailAliases||[])]).filter(Boolean))];return`<tr><td><strong>${esc(p.name)}</strong></td><td>${esc(emails.join(', ')||'—')}</td><td><div class="role-badges">${roles.map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('')||'—'}</div></td><td>—</td><td></td></tr>`}).join('');
 }
+async function loadRemotePersonRelations(personId){
+  const today=isoToday();
+  const [playerRes,repRes,coachRes]=await Promise.all([
+    sb.from('jugadores').select('id,activo,fecha_alta,fecha_baja').eq('persona_id',personId),
+    sb.from('representaciones_jugador').select('id,jugador_id,fecha_desde,fecha_hasta,excepcion_representacion_adulto').eq('representante_persona_id',personId),
+    sb.from('entrenadores').select('id,activo,licencia_tipo,licencia_numero,curso_delegado').eq('persona_id',personId)
+  ]);
+  if(playerRes.error)throw playerRes.error;if(repRes.error)throw repRes.error;if(coachRes.error)throw coachRes.error;
+  const reps=(repRes.data||[]).filter(r=>(!r.fecha_desde||r.fecha_desde<=today)&&(!r.fecha_hasta||r.fecha_hasta>=today));
+  const coach=(coachRes.data||[])[0]||null;
+  let assignments=[];
+  if(coach){const ar=await sb.from('asignaciones_entrenador_equipo').select('id,equipo_id,funcion,fecha_desde,fecha_hasta').eq('entrenador_id',coach.id);if(ar.error)throw ar.error;assignments=ar.data||[]}
+  return {players:playerRes.data||[],representations:reps,coach,assignments};
+}
+function setPersonAdminTab(tab){
+  $$('#personAdminTabs [data-person-tab]').forEach(b=>b.classList.toggle('active',b.dataset.personTab===tab));
+  $$('#personAdminModal [data-person-panel]').forEach(p=>p.classList.toggle('active',p.dataset.personPanel===tab));
+}
+async function openPersonAdmin(personId,tab='identity'){
+  if(currentRole!=='admin')return;
+  await loadSupabasePersons();await loadSupabaseCoaches();
+  const person=dbPersons.find(p=>p.id===personId);if(!person)return;
+  selectedPersonAdminId=personId;
+  const rel=await loadRemotePersonRelations(personId);
+  const roles=remotePersonRoleCodes(personId);
+  const f=$('#personAdminIdentityForm');
+  f.elements.firstName.value=person.nombre||'';f.elements.lastName1.value=person.primer_apellido||'';f.elements.lastName2.value=person.segundo_apellido||'';f.elements.birth.value=person.fecha_nacimiento||'';f.elements.email.value=person.email_contacto||'';f.elements.phone.value=person.telefono||'';f.elements.active.value=person.activo===false?'no':'yes';
+  $('#personAdminName').textContent=remotePersonName(person);$('#personAdminMeta').textContent=person.email_contacto||'Sin correo de contacto';
+  $('#personRoleAdmin').checked=roles.includes('administrador');$('#personRoleClub').checked=roles.includes('club');$('#personRoleCoach').checked=roles.includes('entrenador');
+  const adult=person.fecha_nacimiento?ageOn(person.fecha_nacimiento)>=18:false;
+  $('#personRolePlayer').checked=roles.includes('jugador');$('#personRolePlayer').disabled=!adult;
+  $('#personPlayerRoleHint').textContent=!person.fecha_nacimiento?'Indica la fecha de nacimiento para valorar el acceso propio como Jugador.':adult?'El perfil Jugador da acceso a su propia ficha. No requiere representante ordinario.':'Menor de edad: la condición de jugador se gestiona por su ficha; el acceso propio se habilita al alcanzar la mayoría de edad.';
+  const isTutor=roles.includes('tutor')||rel.representations.length>0;
+  $('#personDerivedRoles').innerHTML=`<div class="derived-role-row"><span>Tutor / Familia</span><strong>${isTutor?'✓ Activo':'—'}</strong></div><div class="derived-role-row"><span>Jugador federado</span><strong>${rel.players.length?`✓ ${rel.players.some(x=>x.activo!==false)?'Activo':'Histórico'}`:'—'}</strong></div>`;
+  $('#personAuthState').innerHTML=person.auth_user_id?`<span class="status complete">Cuenta vinculada</span><div class="meta">Auth: ${esc(person.auth_user_id)}</div>`:`<span class="status pending">Sin cuenta vinculada</span><div class="meta">${person.email_contacto?'Puedes intentar vincular una cuenta Auth existente con este correo.':'Añade primero un correo de contacto.'}</div>`;
+  $('#linkPersonAuth').hidden=!!person.auth_user_id;$('#linkPersonAuth').disabled=!person.email_contacto;
+  const teamNames=rel.assignments.map(a=>{const t=dbTeams.find(x=>x.id===a.equipo_id);return `${t?.name||'Equipo'} · ${coachRoleLabel(a.funcion)}${a.fecha_hasta?' · hasta '+fmt(a.fecha_hasta):''}`});
+  $('#personRelationsPanel').innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Jugador</span>${rel.players.length?rel.players.map(x=>`<div class="relation-line"><strong>Ficha de jugador</strong><span>${x.activo!==false?'Activa':'Inactiva'}</span></div>`).join(''):'<div class="meta">No tiene ficha de jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Familia / representación</span>${rel.representations.length?`<div class="relation-line"><strong>${rel.representations.length} representación(es) activa(s)</strong><span>Perfil Familia derivado</span></div>`:'<div class="meta">No representa actualmente a ningún jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Entrenador</span>${rel.coach?`<div class="relation-line"><strong>${rel.coach.activo!==false?'Entrenador activo':'Entrenador inactivo'}</strong><span>${teamNames.join('<br>')||'Sin asignaciones activas'}</span></div><button type="button" class="secondary small" id="openCoachFromPerson">Abrir ficha de entrenador</button>`:'<div class="meta">No tiene extensión de entrenador.</div>'}</section>`;
+  const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id)}};
+  setPersonAdminTab(tab);$('#personAdminModal').showModal();
+}
 async function renderRemotePersons(){
   const body=$('#personsTable');if(!body||currentRole!=='admin')return;
-  try{await loadSupabasePersons();$('#duplicateCount').textContent='—';$('#duplicateList').innerHTML='<div class="empty-note">La identidad se gestiona por Persona. El alta de Entrenador reutiliza siempre una Persona existente.</div>';
-    const coachByPerson=new Map(coaches.map(c=>[c.personId,c]));
-    body.innerHTML=dbPersons.map(p=>{const roleCodes=remotePersonRoleCodes(p.id),coach=coachByPerson.get(p.id);return `<tr><td><strong>${esc(remotePersonName(p))}</strong>${p.auth_user_id?'<div class="meta">Cuenta de acceso vinculada</div>':''}</td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${roleCodes.map(r=>`<span class="role-badge">${esc(r)}</span>`).join('')||'—'}</div></td><td>${coach?`<span class="status complete">Entrenador</span>`:'—'}</td><td>${coach?`<button class="secondary tiny person-coach" data-person="${p.id}" data-coach="${coach.id}">Abrir entrenador</button>`:`<button class="primary tiny person-coach" data-person="${p.id}">Asignar rol Entrenador</button>`}</td></tr>`}).join('')||'<tr><td colspan="5">No hay personas registradas.</td></tr>';
-    $$('.person-coach').forEach(b=>b.onclick=()=>b.dataset.coach?openCoachForEdit(b.dataset.coach):openCoachForNew(b.dataset.person));
-  }catch(err){body.innerHTML=`<tr><td colspan="5">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}
+  try{await loadSupabasePersons();await loadSupabaseCoaches();$('#duplicateCount').textContent='—';$('#duplicateList').innerHTML='<div class="empty-note">Persona es la identidad maestra. Perfiles y relaciones se administran desde su ficha sin duplicar identidades.</div>';
+    const rows=[];
+    for(const p of dbPersons){
+      const roles=remotePersonRoleCodes(p.id),coach=coaches.find(c=>c.personId===p.id),player=await sb.from('jugadores').select('id,activo',{count:'exact',head:true}).eq('persona_id',p.id),rep=await sb.from('representaciones_jugador').select('id',{count:'exact',head:true}).eq('representante_persona_id',p.id).or(`fecha_hasta.is.null,fecha_hasta.gte.${isoToday()}`);
+      const relationBits=[];if((player.count||0)>0)relationBits.push('Jugador');if((rep.count||0)>0)relationBits.push('Tutor/Familia');if(coach)relationBits.push('Entrenador');
+      const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador'].includes(r));
+      rows.push(`<tr><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td><td><button class="secondary tiny open-person-admin" data-person="${p.id}">Abrir</button></td></tr>`);
+    }
+    body.innerHTML=rows.join('')||'<tr><td colspan="7">No hay personas registradas.</td></tr>';$$('.open-person-admin').forEach(b=>b.onclick=()=>openPersonAdmin(b.dataset.person));
+  }catch(err){body.innerHTML=`<tr><td colspan="7">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}
 }
 async function createRemotePerson(form){
   if(currentRole!=='admin')return;const fd=new FormData(form),btn=form.querySelector('button[type="submit"]');if(btn){btn.disabled=true;btn.textContent='Creando…'}
-  try{const email=String(fd.get('email')||'').trim().toLowerCase()||null;if(email){const existing=dbPersons.find(p=>String(p.email_contacto||'').toLowerCase()===email);if(existing)throw new Error('Ya existe una Persona con ese correo. Utiliza la identidad existente.')}
-    const payload={nombre:String(fd.get('firstName')||'').trim(),primer_apellido:String(fd.get('lastName1')||'').trim(),segundo_apellido:String(fd.get('lastName2')||'').trim()||null,email_contacto:email,telefono:String(fd.get('phone')||'').trim()||null,fecha_nacimiento:String(fd.get('birth')||'')||null,activo:true};
-    const {data,error}=await sb.from('personas').insert(payload).select('id').single();if(error)throw error;form.reset();$('#personModal').close();await loadSupabasePersons();renderPersons();if(confirm('Persona creada. ¿Quieres asignarle ahora el rol Entrenador?'))openCoachForNew(data.id);
+  try{const {data,error}=await sb.rpc('guardar_persona_admin',{p_persona_id:null,p_nombre:String(fd.get('firstName')||'').trim(),p_primer_apellido:String(fd.get('lastName1')||'').trim(),p_segundo_apellido:String(fd.get('lastName2')||'').trim()||null,p_email:String(fd.get('email')||'').trim()||null,p_telefono:String(fd.get('phone')||'').trim()||null,p_fecha_nacimiento:String(fd.get('birth')||'')||null,p_activo:true});if(error)throw error;form.reset();$('#personModal').close();await loadSupabasePersons();renderPersons();await openPersonAdmin(data,'access');
   }catch(err){alert(`No se ha podido crear la persona: ${err.message||err}`)}finally{if(btn){btn.disabled=false;btn.textContent='Crear persona'}}
 }
+async function savePersonAdminIdentity(form){
+  const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;const fd=new FormData(form),btn=form.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent='Guardando…';
+  try{const {error}=await sb.rpc('guardar_persona_admin',{p_persona_id:p.id,p_nombre:String(fd.get('firstName')||'').trim(),p_primer_apellido:String(fd.get('lastName1')||'').trim(),p_segundo_apellido:String(fd.get('lastName2')||'').trim()||null,p_email:String(fd.get('email')||'').trim()||null,p_telefono:String(fd.get('phone')||'').trim()||null,p_fecha_nacimiento:String(fd.get('birth')||'')||null,p_activo:fd.get('active')==='yes'});if(error)throw error;await loadSupabasePersons();await openPersonAdmin(p.id,'identity');renderPersons();
+  }catch(err){alert(`No se ha podido guardar la Persona: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Guardar identidad'}
+}
+async function savePersonAdminRoles(){
+  const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;const adult=p.fecha_nacimiento?ageOn(p.fecha_nacimiento)>=18:false,b=$('#savePersonRoles');b.disabled=true;b.textContent='Guardando…';
+  try{const args={p_persona_id:p.id,p_administrador:$('#personRoleAdmin').checked,p_club:$('#personRoleClub').checked,p_entrenador:$('#personRoleCoach').checked,p_jugador:adult?$('#personRolePlayer').checked:null};const {error}=await sb.rpc('actualizar_perfiles_persona_admin',args);if(error)throw error;await loadSupabasePersons();await loadSupabaseCoaches();await openPersonAdmin(p.id,'access');renderPersons();renderCoaches();renderStructure();
+  }catch(err){alert(`No se han podido actualizar los perfiles: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Guardar perfiles'}
+}
+async function linkPersonAuth(){const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;try{const {error}=await sb.rpc('vincular_auth_persona_por_email_admin',{p_persona_id:p.id});if(error)throw error;await loadSupabasePersons();await openPersonAdmin(p.id,'access');renderPersons()}catch(err){alert(`No se ha podido vincular la cuenta: ${err.message||err}`)}}
 
 
 async function loadEconomicConfigs(){
@@ -1307,7 +1362,7 @@ $('#addCoachAssignment').onclick=()=>addAssignmentFrom('coachAssignment',pending
   if(clubUserForm)clubUserForm.onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),email=String(fd.get('email')).toLowerCase(),role=fd.get('role');let u=users.find(x=>x.email.toLowerCase()===email);if(role==='coach'&&!pendingUserAssignments.length){alert('Añade al menos una asignación de equipo.');return}if(u){u=normalizeUser(u);if(hasRole(u,role)){alert('Esa persona ya tiene ese perfil.');return}u.roles.push(role);u.name=fd.get('name')||u.name;u.active=true;if(role==='coach'){let c=coaches.find(x=>x.userId===u.id);const data={name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true};if(c)Object.assign(c,data);else coaches.push({id:uid('c'),userId:u.id,...data})}recordAudit('Perfil añadido a persona','',`${u.name} · ${roleLabel(role)}`)}else{const password=fd.get('password');if(!password||String(password).length<6){alert('Para una cuenta nueva indica una contraseña inicial de al menos 6 caracteres.');return}const person={id:uid('person'),name:fd.get('name'),email,dni:'',createdAt:isoToday(),mergedFrom:[]};persons.push(person);u={id:uid('u-person'),personId:person.id,name:fd.get('name'),email,phone:'',password,roles:[role],active:true};users.push(u);if(role==='coach')coaches.push({id:uid('c'),userId:u.id,name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true});recordAudit('Persona interna creada','',`${u.name} · ${roleLabel(role)}`)}saveUsers();saveCoaches();writeJSON(K.persons,persons);pendingUserAssignments=[];clubUserModal?.close();renderClubUsers();renderCoaches()};
 }
 
-if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};
+if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
