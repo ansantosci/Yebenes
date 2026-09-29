@@ -1,4 +1,4 @@
-const APP_VERSION='61';
+const APP_VERSION='62';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -858,9 +858,19 @@ function showApp(){
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
   $('#familyView').classList.remove('active');setView('clubView');const isCoach=currentRole==='coach';
-  $('#medicalNavButton').style.display=isCoach?'none':'flex';$('#coachesNavButton').style.display=isCoach?'none':'flex';$('#structureNavButton').style.display=isCoach?'none':'flex';$('#usersNavButton').style.display=currentRole==='admin'?'flex':'none';$('#personsNavButton').style.display=currentRole==='admin'?'flex':'none';$('#openCoachModal').style.display=currentRole==='admin'?'inline-flex':'none';
+  const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),openCoachModal=$('#openCoachModal');
+  if(medicalNavButton)medicalNavButton.style.display=isCoach?'none':'flex';
+  if(coachesNavButton)coachesNavButton.style.display=isCoach?'none':'flex';
+  if(structureNavButton)structureNavButton.style.display=isCoach?'none':'flex';
+  // V61 consolidó Usuarios dentro de Personas. usersNavButton es opcional para mantener compatibilidad con HTML anterior.
+  if(usersNavButton)usersNavButton.style.display=currentRole==='admin'?'flex':'none';
+  if(personsNavButton)personsNavButton.style.display=currentRole==='admin'?'flex':'none';
+  if(openCoachModal)openCoachModal.style.display=currentRole==='admin'?'inline-flex':'none';
   if($('#paymentPendingStat'))$('#paymentPendingStat').style.display=isCoach?'none':'';if($('#paymentTableHead'))$('#paymentTableHead').style.display=isCoach?'none':'';if(isCoach&&clubQuickFilter==='payment')clubQuickFilter='all';
-  $('#clubNav').style.gridTemplateColumns=isCoach?'repeat(2,1fr)':currentRole==='admin'?'repeat(7,1fr)':'repeat(5,1fr)';$('#clubHeroTitle').textContent=isCoach?'Jugadores de mis equipos':'Control de fichas federativas';$('#clubHeroText').textContent=isCoach?'Consulta los jugadores asignados a tus equipos con una asignación vigente.':'Revisa inscripciones, representación, equipos, reconocimientos y preparación federativa.';
+  const clubNav=$('#clubNav'),clubHeroTitle=$('#clubHeroTitle'),clubHeroText=$('#clubHeroText');
+  if(clubNav)clubNav.style.gridTemplateColumns=isCoach?'repeat(2,1fr)':currentRole==='admin'?'repeat(6,1fr)':'repeat(5,1fr)';
+  if(clubHeroTitle)clubHeroTitle.textContent=isCoach?'Jugadores de mis equipos':'Control de fichas federativas';
+  if(clubHeroText)clubHeroText.textContent=isCoach?'Consulta los jugadores asignados a tus equipos con una asignación vigente.':'Revisa inscripciones, representación, equipos, reconocimientos y preparación federativa.';
   renderClub();if(!isCoach){renderMedical();renderCoaches();renderStructure()}if(currentRole==='admin'){renderClubUsers();renderPersons();}
 }
 
@@ -1246,7 +1256,7 @@ async function saveUnifiedTeam(form){
 }
 
 function renderUserAssignments(){renderAssignmentList('#clubUserAssignmentsList',pendingUserAssignments,'remove-user-assignment');$$('.remove-user-assignment').forEach(b=>b.onclick=()=>{pendingUserAssignments.splice(+b.dataset.index,1);renderUserAssignments()})}
-function syncCoachUserFields(){const x=$('#clubUserRole').value==='coach';$('#coachUserFields').classList.toggle('hidden',!x);if(x){fillAssignmentTeamSelect('#clubUserAssignmentTeam');renderUserAssignments()}}
+function syncCoachUserFields(){const role=$('#clubUserRole'),fields=$('#coachUserFields');if(!role||!fields)return;const x=role.value==='coach';fields.classList.toggle('hidden',!x);if(x){fillAssignmentTeamSelect('#clubUserAssignmentTeam');renderUserAssignments()}}
 
 $('#showLogin').onclick=()=>showAuth('login');$('#showFamilySignup').onclick=()=>showAuth('signup');
 function syncSignupMode(){const self=document.querySelector('input[name="signupMode"]:checked')?.value==='self';$('#selfSignupFields').classList.toggle('hidden',!self);$('#guardianSignupFields').classList.toggle('hidden',self);const f=$('#familySignupForm'),tutorDni=f?.elements?.tutorDni,tutorType=f?.elements?.tutorDocumentType,selfDni=f?.elements?.selfDni,selfType=f?.elements?.selfDocumentType;if(tutorDni){tutorDni.required=!self;tutorDni.disabled=self}if(tutorType)tutorType.disabled=self;if(selfDni)selfDni.disabled=!self;if(selfType)selfType.disabled=!self;refreshCalculatedCategory(f)}

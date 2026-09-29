@@ -1,5 +1,14 @@
 ## V61 — Administración integral de Personas (29/09/2026)
 
+## V62 — Corrección de carga de perfil tras consolidar Usuarios en Personas
+
+- Corrige una regresión de V61 que impedía iniciar sesión con `Cannot read properties of null (reading 'style')`.
+- La causa era una referencia JavaScript residual a `usersNavButton`, eliminado del HTML al consolidar la gestión de Usuarios dentro de Personas.
+- La inicialización de navegación y perfil ahora trata los controles opcionales de forma defensiva para que la ausencia de una vista no bloquee el login.
+- Ajusta la rejilla de navegación de Administrador a las 6 opciones realmente visibles: Fichas, RRMM, Entrenadores, Estructura, Personas y Perfil.
+- No requiere cambios de base de datos; mantiene íntegramente el modelo de Personas/roles introducido en V61 y la migración 021.
+
+
 ### Correcciones funcionales
 - El perfil **Entrenador** carga únicamente jugadores con una asignación deportiva activa a alguno de sus equipos activos. Una asignación a Chupetines ya no arrastra jugadores de otras categorías/equipos.
 - La vista Entrenador oculta por completo información económica: KPI de pago pendiente, columna Pago, pestaña Economía y requisito económico del progreso de ficha.
