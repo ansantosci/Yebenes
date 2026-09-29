@@ -1,3 +1,8 @@
+## V64 — Corrección de versionado visible (29/09/2026)
+
+- Corrige la etiqueta de la pantalla de inicio, que seguía mostrando V62.
+- Alinea `index.html`, `app.js` y `version.json` en V64.
+
 ## V63 — Alta de cuentas internas desde Administrador (29/09/2026)
 
 ### Objetivo
