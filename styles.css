@@ -287,3 +287,9 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
   .credential-copy-row button,.account-access-modal .modal-actions button{width:100%}
   .account-access-modal{width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}
 }
+
+/* V70 */
+.success-box{margin:14px 0;background:#ecfdf3;border:1px solid #b7ebc6;border-radius:12px;padding:12px;font-size:.82rem;color:#166534}
+#minorCoachConsentModal .admin-detail{max-width:680px}
+#minorCoachConsentText{line-height:1.55}
+#coachAssignmentGuard{margin:10px 0 14px}

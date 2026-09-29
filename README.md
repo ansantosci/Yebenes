@@ -675,3 +675,13 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - Flujo específico para enlaces de recuperación con establecimiento de nueva contraseña.
 - Diferenciación entre confirmación de autoregistro y recuperación de contraseña.
 - Mensajes de autenticación revisados.
+
+
+## V70
+- Mejora el circuito de entrenadores menores: la autorización del tutor se comprueba ya al pulsar **Añadir asignación**, manteniendo además el bloqueo de backend al guardar.
+- Tras un rechazo de backend se restaura la lista persistida y no queda una asignación ficticia marcada como activa.
+- La autorización del tutor usa un diálogo integrado con texto explícito e independiente de la representación como jugador.
+- El listado de entrenadores muestra el estado de autorización del tutor para técnicos menores.
+- La ficha de perfiles del Administrador muestra feedback claro cuando un entrenador menor queda pendiente de autorización.
+- Los datos maestros de Persona en la ficha de Entrenador permanecen en solo lectura; el estado mostrado se etiqueta expresamente como estado del entrenador.
+- Se mantiene la separación entre Jugador deportivo (`jugadores.activo`) y perfil de acceso Jugador: los menores son representados por su tutor y no necesitan perfil de acceso Jugador activo hasta la mayoría de edad.
