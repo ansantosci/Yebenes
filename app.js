@@ -1,4 +1,4 @@
-const APP_VERSION='71';
+const APP_VERSION='72';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -523,6 +523,27 @@ function remoteStateMeta(state){
 function remoteStateLabel(state){return remoteStateMeta(state)[2]}
 function remoteStateIsComplete(state){return ['lista_para_federar','ficha_tramitada'].includes(state)}
 function remoteStateProgress(state){return ({pendiente_revision_inicial:25,devuelta_familia:25,datos_validados:50,documentacion_validada:70,lista_para_federar:90,ficha_tramitada:100,cancelada:0})[state]??0}
+let familyMinorCoachConsents=[];
+function familyCoachConsentsFor(personId){return familyMinorCoachConsents.filter(x=>x.persona_menor_id===personId)}
+function familyCoachConsentHtml(p){
+  const rows=familyCoachConsentsFor(p.personId);
+  if(!rows.length)return '';
+  const pending=rows.find(x=>x.estado==='pendiente');
+  const active=rows.find(x=>x.estado==='aceptada');
+  const history=rows.filter(x=>!['pendiente','aceptada'].includes(x.estado));
+  const historyLabel={rechazada:'Rechazada',revocada:'Revocada',finalizada_mayoria_edad:'Finalizada por mayoría de edad'};
+  if(pending)return `<section class="workflow-box compact-consent"><span class="eyebrow dark">Actividad como entrenador</span><div class="family-alert"><strong>Autorización pendiente</strong><p>El club solicita tu autorización para que ${esc(p.name)} pueda desempeñar funciones de entrenador mientras sea menor de edad.</p><div class="workflow-actions"><button type="button" class="primary small minor-coach-consent" data-id="${esc(pending.id)}" data-name="${esc(p.name)}" data-action="accept">Autorizar</button><button type="button" class="secondary small minor-coach-consent" data-id="${esc(pending.id)}" data-name="${esc(p.name)}" data-action="reject">Rechazar</button></div></div>${history.length?`<details class="workflow-history"><summary>Histórico (${history.length})</summary>${history.map(a=>`<div class="check"><span>${fmt(a.respondida_at||a.fecha_hasta||a.solicitada_at)}</span><strong>${esc(historyLabel[a.estado]||a.estado)}</strong></div>`).join('')}</details>`:''}</section>`;
+  if(active)return `<section class="workflow-box compact-consent"><span class="eyebrow dark">Actividad como entrenador</span><div class="checklist"><div class="check"><span>Autorización del tutor</span><strong class="status complete">Vigente</strong></div><div class="check"><span>Desde</span><strong>${fmt(active.fecha_desde||active.respondida_at||'')}</strong></div></div><button type="button" class="secondary small minor-coach-consent" data-id="${esc(active.id)}" data-name="${esc(p.name)}" data-action="revoke">Revocar autorización</button>${history.length?`<details class="workflow-history"><summary>Histórico (${history.length})</summary>${history.map(a=>`<div class="check"><span>${fmt(a.respondida_at||a.fecha_hasta||a.solicitada_at)}</span><strong>${esc(historyLabel[a.estado]||a.estado)}</strong></div>`).join('')}</details>`:''}</section>`;
+  return history.length?`<section class="workflow-box compact-consent"><span class="eyebrow dark">Actividad como entrenador</span><div class="meta">No hay una autorización vigente.</div><details class="workflow-history" open><summary>Histórico (${history.length})</summary>${history.map(a=>`<div class="check"><span>${fmt(a.respondida_at||a.fecha_hasta||a.solicitada_at)}</span><strong>${esc(historyLabel[a.estado]||a.estado)}</strong></div>`).join('')}</details></section>`:'';
+}
+async function loadFamilyMinorCoachConsents(){
+  familyMinorCoachConsents=[];
+  if(currentRole!=='family'||!currentUser?.personId)return;
+  const {data,error}=await sb.from('autorizaciones_menor').select('id,persona_menor_id,tutor_persona_id,tipo,estado,solicitada_at,respondida_at,fecha_desde,fecha_hasta,version_texto,motivo').eq('tutor_persona_id',currentUser.personId).eq('tipo','entrenador_menor').order('solicitada_at',{ascending:false});
+  if(error){console.warn('No se pudieron cargar autorizaciones de entrenador menor',error);return}
+  familyMinorCoachConsents=data||[];
+}
+function bindMinorCoachConsentButtons(root=document){root.querySelectorAll('.minor-coach-consent').forEach(b=>b.onclick=()=>openMinorCoachConsentDialog(b.dataset.id,b.dataset.name,b.dataset.action))}
 function setFamilyProgress(value){const ring=document.querySelector('.progress-ring');const pct=Math.max(0,Math.min(100,Math.round(Number(value)||0)));if(ring){ring.style.setProperty('--p',pct);const span=ring.querySelector('span');if(span)span.textContent=`${pct}%`}}
 function familyPlayerTabbedCard(p){
   const i=p.inscription;if(!i)return `<article class="player-card"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">Sin inscripción en la temporada activa</div></div><span class="status pending">Pendiente</span></div></article>`;
@@ -532,7 +553,7 @@ function familyPlayerTabbedCard(p){
   return `<article class="player-card ${returned?'needs-action':''}" data-family-player="${esc(p.id)}"><div class="row"><div><h3>${esc(p.name)}</h3><div class="meta">${esc(p.categoryName)} · ${esc(dbActiveSeason()?.name||'')}</div></div><span class="status ${cls}">${esc(badge)}</span></div><div class="meta representation-line">${currentRole==='player'?'Autorrepresentación':'Tutor activo: '+esc(currentUser.name)}</div>
   <nav class="family-card-tabs" aria-label="Secciones de ${esc(p.name)}"><button class="family-card-tab active" type="button" data-family-card-tab="summary">Resumen</button><button class="family-card-tab" type="button" data-family-card-tab="data">Datos${returned?' <span class="family-tab-alert">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="docs">Documentos${docsAlert?' <span class="family-tab-alert">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="medical">RRMM${medicalBlock?' <span class="family-tab-alert">!</span>':medicalWarn?' <span class="family-tab-alert amber">!</span>':''}</button><button class="family-card-tab" type="button" data-family-card-tab="inscription">Inscripción${insBlock?' <span class="family-tab-alert">!</span>':insWarn?' <span class="family-tab-alert amber">!</span>':''}</button></nav>
   <div class="family-card-panel active" data-family-card-panel="summary">${returned?`<div class="family-alert"><strong>El club solicita cambios</strong><p>${esc(i.observaciones||'Revisa la información de la ficha.')}</p><button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar</button></div>`:''}<div class="checklist"><div class="check"><span>Datos personales</span><strong>✓</strong></div><div class="check"><span>Documentación</span><strong>${docs.pct}% · ${docs.valid}/${docs.total}</strong></div><div class="check"><span>RRMM</span><strong>${['ok','soon'].includes(m.key)?(m.key==='soon'?'⚠ '+m.label:'✓ Vigente'):(m.key==='expired'?'✕ Vencido':'✕ Pendiente')}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Pago inscripción</span><strong>${econ.ok?'✓ '+esc(econ.label):'✕ '+esc(econ.label)}</strong></div><div class="check"><span>Federación</span><strong>${esc(fed)}</strong></div></div></div>
-  <div class="family-card-panel" data-family-card-panel="data"><div class="checklist"><div class="check"><span>Jugador</span><strong>${esc(p.name)}</strong></div><div class="check"><span>Fecha de nacimiento</span><strong>${fmt(p.birth)}</strong></div><div class="check"><span>Categoría</span><strong>${esc(p.categoryName)}</strong></div><div class="check"><span>Representación</span><strong>${currentRole==='player'?'Autorrepresentación':esc(currentUser.name)}</strong></div></div>${returned?`<button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar datos</button>`:''}</div>
+  <div class="family-card-panel" data-family-card-panel="data"><div class="checklist"><div class="check"><span>Jugador</span><strong>${esc(p.name)}</strong></div><div class="check"><span>Fecha de nacimiento</span><strong>${fmt(p.birth)}</strong></div><div class="check"><span>Categoría</span><strong>${esc(p.categoryName)}</strong></div><div class="check"><span>Representación</span><strong>${currentRole==='player'?'Autorrepresentación':esc(currentUser.name)}</strong></div></div>${familyCoachConsentHtml(p)}${returned?`<button class="primary small edit-remote-family" data-id="${esc(p.id)}">Revisar y modificar datos</button>`:''}</div>
   <div class="family-card-panel" data-family-card-panel="docs">${federationProgressHtml(p,true)}<div class="card-actions"><button class="secondary small manage-docs" data-id="${esc(p.id)}" onclick="openDocumentManager(this.dataset.id)">Gestionar documentación</button></div></div>
   <div class="family-card-panel" data-family-card-panel="medical"><div class="checklist"><div class="check"><span>Estado RRMM</span><strong>${esc(m.label)}</strong></div>${p.medical?`<div class="check"><span>Válido hasta</span><strong>${fmt(p.medical.fecha_valido_hasta)}</strong></div>`:''}</div>${p.appointment?`<div class="appointment-family"><strong>📅 Próximo reconocimiento médico</strong><div>${esc(formatDateTime(p.appointment.fecha_hora))}</div><div>${esc(p.appointment.lugar||'')}</div>${p.appointment.direccion?`<div>${esc(p.appointment.direccion)}</div>`:''}${p.appointment.indicaciones?`<div class="meta">${esc(p.appointment.indicaciones)}</div>`:''}</div>`:'<div class="meta">Sin cita programada.</div>'}</div>
   <div class="family-card-panel" data-family-card-panel="inscription"><div class="checklist"><div class="check"><span>Estado</span><strong>${esc(fed)}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Situación económica</span><strong>${esc(econ.label)}</strong></div><div class="check"><span>Detalle económico</span><strong>${esc(econ.detail||'')}</strong></div></div></div></article>`;
@@ -541,24 +562,9 @@ function bindFamilyCardTabs(){
   $$('.player-card[data-family-player]').forEach(card=>{const tabs=[...card.querySelectorAll('[data-family-card-tab]')],panels=[...card.querySelectorAll('[data-family-card-panel]')];tabs.forEach(tab=>tab.onclick=()=>{tabs.forEach(x=>x.classList.toggle('active',x===tab));panels.forEach(p=>p.classList.toggle('active',p.dataset.familyCardPanel===tab.dataset.familyCardTab))})});
 }
 async function renderMinorCoachConsents(){
-  const box=$('#minorCoachConsentSection');if(!box)return;
-  if(currentRole!=='family'||!currentUser?.personId){box.classList.add('hidden');box.innerHTML='';return}
-  const {data,error}=await sb.from('autorizaciones_menor').select('id,persona_menor_id,tutor_persona_id,tipo,estado,solicitada_at,respondida_at,fecha_desde,fecha_hasta,version_texto,motivo').eq('tutor_persona_id',currentUser.personId).eq('tipo','entrenador_menor').order('solicitada_at',{ascending:false});
-  if(error){console.warn('No se pudieron cargar autorizaciones de entrenador menor',error);box.classList.add('hidden');return}
-  const rows=data||[];
-  if(!rows.length){box.classList.add('hidden');box.innerHTML='';return}
-  const ids=[...new Set(rows.map(x=>x.persona_menor_id))];
-  const pr=ids.length?await sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido').in('id',ids):{data:[]};
-  const names=new Map((pr.data||[]).map(x=>[x.id,[x.nombre,x.primer_apellido,x.segundo_apellido].filter(Boolean).join(' ')]));
-  const pending=rows.filter(x=>x.estado==='pendiente'), active=rows.filter(x=>x.estado==='aceptada'), history=rows.filter(x=>!['pendiente','aceptada'].includes(x.estado));
-  const historyLabel={rechazada:'Rechazada',revocada:'Revocada',finalizada_mayoria_edad:'Finalizada por mayoría de edad'};
-  box.classList.remove('hidden');
-  box.innerHTML=`<section class="workflow-box"><span class="eyebrow dark">Autorizaciones de entrenador menor</span><h3>Consentimientos específicos</h3><div class="meta">Estas autorizaciones son independientes de la representación del menor como jugador.</div>
-    ${pending.length?`<h4>Solicitudes pendientes</h4>${pending.map(a=>`<div class="family-alert"><strong>${esc(names.get(a.persona_menor_id)||'Menor')}</strong><p>Autorizar para desempeñar funciones de entrenador mientras sea menor de edad.</p><div class="workflow-actions"><button type="button" class="primary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="accept">Autorizar</button><button type="button" class="secondary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="reject">Rechazar</button></div></div>`).join('')}`:''}
-    ${active.length?`<h4>Autorizaciones vigentes</h4>${active.map(a=>`<div class="family-alert"><div class="row"><div><strong>${esc(names.get(a.persona_menor_id)||'Menor')}</strong><p><span class="status complete">Vigente</span> desde ${fmt(a.fecha_desde||a.respondida_at||'')}</p></div><button type="button" class="secondary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="revoke">Revocar autorización</button></div></div>`).join('')}`:''}
-    ${history.length?`<details class="workflow-history"><summary>Histórico de autorizaciones (${history.length})</summary>${history.map(a=>`<div class="check"><span>${esc(names.get(a.persona_menor_id)||'Menor')}</span><strong>${esc(historyLabel[a.estado]||a.estado)}</strong></div>`).join('')}</details>`:''}
-  </section>`;
-  box.querySelectorAll('.minor-coach-consent').forEach(b=>b.onclick=()=>openMinorCoachConsentDialog(b.dataset.id,b.dataset.name,b.dataset.action));
+  const box=$('#minorCoachConsentSection');
+  if(box){box.classList.add('hidden');box.innerHTML=''}
+  await loadFamilyMinorCoachConsents();
 }
 function openMinorCoachConsentDialog(id,name,action){
   pendingMinorConsentAction={id,name,action};
@@ -576,7 +582,7 @@ async function submitMinorCoachConsent(){
   try{
     const call=revoke?await sb.rpc('revocar_autorizacion_entrenador_menor',{p_autorizacion_id:a.id}):await sb.rpc('responder_autorizacion_entrenador_menor',{p_autorizacion_id:a.id,p_aceptar:accept});
     if(call.error)throw call.error;
-    $('#minorCoachConsentModal').close();pendingMinorConsentAction=null;await renderMinorCoachConsents();
+    $('#minorCoachConsentModal').close();pendingMinorConsentAction=null;await renderRemoteFamily();
   }
   catch(err){const f=$('#minorCoachConsentFeedback');f.textContent=`No se ha podido registrar la acción: ${err.message||err}`;f.hidden=false;f.className='warning-box'}
   finally{b.disabled=false;b.textContent=accept?'Autorizar':reject?'Rechazar':'Revocar autorización'}
@@ -595,6 +601,7 @@ async function renderRemoteFamily(){
     $('#playersList').innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(familyPlayerTabbedCard).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
     $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));
     bindFamilyCardTabs();
+    bindMinorCoachConsentButtons($('#playersList'));
     renderFamilyDocumentsSummary();
     $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
     const progress=remoteFamilyPlayers.length?remoteFamilyPlayers.reduce((a,p)=>a+remoteStateProgress(p.inscription?.estado),0)/remoteFamilyPlayers.length:0;

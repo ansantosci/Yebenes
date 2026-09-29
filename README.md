@@ -694,3 +694,13 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - Revocar finaliza inmediatamente las asignaciones activas del entrenador menor y cancela las futuras, conservando trazabilidad en auditoría.
 - El perfil Entrenador no se elimina al revocar: simplemente vuelve a quedar bloqueado para asignaciones mientras sea menor.
 - Se mantiene la validación backend de autorización antes de guardar asignaciones.
+
+## V72
+
+- Las autorizaciones de entrenador menor dejan de ocupar un bloque general en la portada de Familia.
+- Autorizar, rechazar y revocar se gestionan dentro de la ficha del menor afectado, en la pestaña **Datos**.
+- Una autorización vigente muestra su fecha y el botón **Revocar autorización** dentro de la ficha del niño.
+- Las solicitudes pendientes aparecen también dentro de la ficha correspondiente con **Autorizar / Rechazar**.
+- El histórico del consentimiento queda asociado visualmente al menor, evitando ocupar espacio en familias con varios jugadores.
+- Sin cambios de backend respecto a V71; la migración 023 sigue siendo la vigente.
+

@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '71';
+    window.YEBENES_APP_VERSION = '72';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -38,7 +38,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v71</div>
+      <div class="version-badge" aria-label="Versión de prueba">v72</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -119,7 +119,6 @@
             <div><span class="eyebrow dark">Mis jugadores</span><h2 id="familyTitle">Mi familia</h2></div>
             <button class="primary small" id="addPlayerButton" data-open="playerModal">+ Añadir</button>
           </div>
-          <div id="minorCoachConsentSection" class="hidden"></div>
           <div id="playersList" class="cards-grid"></div>
         </section>
         <section class="section compact" id="familyStatusSection">
@@ -298,6 +297,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=71"></script>
+  <script src="app.js?v=72"></script>
 </body>
 </html>
