@@ -1,4 +1,4 @@
-const APP_VERSION='70';
+const APP_VERSION='71';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -314,8 +314,8 @@ async function loadSupabaseCoaches(){
     if(error)console.warn('No se pudo cargar el estado de autorizaciones de entrenadores menores',error);else consentRows=data||[];
   }
   const pm=new Map(personRows.map(x=>[x.id,x]));
-  const consentMap=new Map();
-  for(const a of consentRows){const prev=consentMap.get(a.persona_menor_id);if(!prev||['aceptada','pendiente'].indexOf(a.estado)<['aceptada','pendiente'].indexOf(prev.estado))consentMap.set(a.persona_menor_id,a)}
+  const consentMap=new Map(),consentPriority={aceptada:3,pendiente:2,revocada:1,rechazada:1,finalizada_mayoria_edad:1};
+  for(const a of consentRows){const prev=consentMap.get(a.persona_menor_id);if(!prev||(consentPriority[a.estado]||0)>(consentPriority[prev.estado]||0))consentMap.set(a.persona_menor_id,a)}
   coaches=(coachRes.data||[]).map(c=>{
     const person=pm.get(c.persona_id)||{};
     const assignments=(assignmentRes.data||[]).filter(a=>a.entrenador_id===c.id).map(a=>({id:a.id,teamId:a.equipo_id,coachRole:a.funcion||'first',startDate:a.fecha_desde||'',endDate:a.fecha_hasta||''}));
@@ -543,29 +543,43 @@ function bindFamilyCardTabs(){
 async function renderMinorCoachConsents(){
   const box=$('#minorCoachConsentSection');if(!box)return;
   if(currentRole!=='family'||!currentUser?.personId){box.classList.add('hidden');box.innerHTML='';return}
-  const {data,error}=await sb.from('autorizaciones_menor').select('id,persona_menor_id,tutor_persona_id,tipo,estado,solicitada_at').eq('tutor_persona_id',currentUser.personId).eq('tipo','entrenador_menor').eq('estado','pendiente').order('solicitada_at',{ascending:true});
+  const {data,error}=await sb.from('autorizaciones_menor').select('id,persona_menor_id,tutor_persona_id,tipo,estado,solicitada_at,respondida_at,fecha_desde,fecha_hasta,version_texto,motivo').eq('tutor_persona_id',currentUser.personId).eq('tipo','entrenador_menor').order('solicitada_at',{ascending:false});
   if(error){console.warn('No se pudieron cargar autorizaciones de entrenador menor',error);box.classList.add('hidden');return}
-  if(!(data||[]).length){box.classList.add('hidden');box.innerHTML='';return}
-  const ids=[...new Set(data.map(x=>x.persona_menor_id))];
+  const rows=data||[];
+  if(!rows.length){box.classList.add('hidden');box.innerHTML='';return}
+  const ids=[...new Set(rows.map(x=>x.persona_menor_id))];
   const pr=ids.length?await sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido').in('id',ids):{data:[]};
   const names=new Map((pr.data||[]).map(x=>[x.id,[x.nombre,x.primer_apellido,x.segundo_apellido].filter(Boolean).join(' ')]));
+  const pending=rows.filter(x=>x.estado==='pendiente'), active=rows.filter(x=>x.estado==='aceptada'), history=rows.filter(x=>!['pendiente','aceptada'].includes(x.estado));
+  const historyLabel={rechazada:'Rechazada',revocada:'Revocada',finalizada_mayoria_edad:'Finalizada por mayoría de edad'};
   box.classList.remove('hidden');
-  box.innerHTML=`<section class="workflow-box"><span class="eyebrow dark">Autorizaciones pendientes</span><h3>Entrenadores menores</h3><div class="meta">El club solicita una autorización independiente de la representación como jugador.</div>${data.map(a=>`<div class="family-alert"><strong>${esc(names.get(a.persona_menor_id)||'Menor')}</strong><p>Autorizar para desempeñar funciones de entrenador mientras sea menor de edad.</p><div class="workflow-actions"><button type="button" class="primary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-accept="yes">Autorizar</button><button type="button" class="secondary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-accept="no">Rechazar</button></div></div>`).join('')}</section>`;
-  box.querySelectorAll('.minor-coach-consent').forEach(b=>b.onclick=()=>openMinorCoachConsentDialog(b.dataset.id,b.dataset.name,b.dataset.accept==='yes'));
+  box.innerHTML=`<section class="workflow-box"><span class="eyebrow dark">Autorizaciones de entrenador menor</span><h3>Consentimientos específicos</h3><div class="meta">Estas autorizaciones son independientes de la representación del menor como jugador.</div>
+    ${pending.length?`<h4>Solicitudes pendientes</h4>${pending.map(a=>`<div class="family-alert"><strong>${esc(names.get(a.persona_menor_id)||'Menor')}</strong><p>Autorizar para desempeñar funciones de entrenador mientras sea menor de edad.</p><div class="workflow-actions"><button type="button" class="primary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="accept">Autorizar</button><button type="button" class="secondary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="reject">Rechazar</button></div></div>`).join('')}`:''}
+    ${active.length?`<h4>Autorizaciones vigentes</h4>${active.map(a=>`<div class="family-alert"><div class="row"><div><strong>${esc(names.get(a.persona_menor_id)||'Menor')}</strong><p><span class="status complete">Vigente</span> desde ${fmt(a.fecha_desde||a.respondida_at||'')}</p></div><button type="button" class="secondary small minor-coach-consent" data-id="${esc(a.id)}" data-name="${esc(names.get(a.persona_menor_id)||'Menor')}" data-action="revoke">Revocar autorización</button></div></div>`).join('')}`:''}
+    ${history.length?`<details class="workflow-history"><summary>Histórico de autorizaciones (${history.length})</summary>${history.map(a=>`<div class="check"><span>${esc(names.get(a.persona_menor_id)||'Menor')}</span><strong>${esc(historyLabel[a.estado]||a.estado)}</strong></div>`).join('')}</details>`:''}
+  </section>`;
+  box.querySelectorAll('.minor-coach-consent').forEach(b=>b.onclick=()=>openMinorCoachConsentDialog(b.dataset.id,b.dataset.name,b.dataset.action));
 }
-function openMinorCoachConsentDialog(id,name,accept){
-  pendingMinorConsentAction={id,name,accept};
-  $('#minorCoachConsentTitle').textContent=accept?'Autorizar funciones de entrenador':'Rechazar autorización';
+function openMinorCoachConsentDialog(id,name,action){
+  pendingMinorConsentAction={id,name,action};
+  const accept=action==='accept', reject=action==='reject', revoke=action==='revoke';
+  $('#minorCoachConsentTitle').textContent=accept?'Autorizar funciones de entrenador':reject?'Rechazar autorización':'Revocar autorización de entrenador';
   $('#minorCoachConsentName').textContent=name;
-  $('#minorCoachConsentText').textContent=accept?`Autorizo a ${name} a desempeñar funciones de entrenador en el C.D. Los Yébenes San Bruno mientras sea menor de edad. Esta autorización es independiente de mi representación del menor como jugador.`:`Vas a rechazar la solicitud para que ${name} desempeñe funciones de entrenador mientras sea menor de edad.`;
-  $('#minorCoachConsentConfirm').textContent=accept?'Autorizar':'Rechazar';
+  $('#minorCoachConsentText').textContent=accept?`Autorizo a ${name} a desempeñar funciones de entrenador en el C.D. Los Yébenes San Bruno mientras sea menor de edad. Esta autorización es independiente de mi representación del menor como jugador y podrá revocarse posteriormente.`:reject?`Vas a rechazar la solicitud para que ${name} desempeñe funciones de entrenador mientras sea menor de edad.`:`Vas a revocar la autorización para que ${name} desempeñe funciones de entrenador mientras sea menor de edad. Las asignaciones activas finalizarán inmediatamente y las futuras se cancelarán, conservándose la trazabilidad.`;
+  $('#minorCoachConsentConfirm').textContent=accept?'Autorizar':reject?'Rechazar':'Revocar autorización';
   $('#minorCoachConsentFeedback').hidden=true;$('#minorCoachConsentModal').showModal();
 }
 async function submitMinorCoachConsent(){
-  const a=pendingMinorConsentAction;if(!a)return;const b=$('#minorCoachConsentConfirm');b.disabled=true;b.textContent=a.accept?'Autorizando…':'Rechazando…';
-  try{const {error}=await sb.rpc('responder_autorizacion_entrenador_menor',{p_autorizacion_id:a.id,p_aceptar:a.accept});if(error)throw error;$('#minorCoachConsentModal').close();pendingMinorConsentAction=null;await renderMinorCoachConsents();}
-  catch(err){const f=$('#minorCoachConsentFeedback');f.textContent=`No se ha podido registrar la respuesta: ${err.message||err}`;f.hidden=false;f.className='warning-box'}
-  finally{b.disabled=false;b.textContent=a?.accept?'Autorizar':'Rechazar'}
+  const a=pendingMinorConsentAction;if(!a)return;const b=$('#minorCoachConsentConfirm');
+  const accept=a.action==='accept', reject=a.action==='reject', revoke=a.action==='revoke';
+  b.disabled=true;b.textContent=accept?'Autorizando…':reject?'Rechazando…':'Revocando…';
+  try{
+    const call=revoke?await sb.rpc('revocar_autorizacion_entrenador_menor',{p_autorizacion_id:a.id}):await sb.rpc('responder_autorizacion_entrenador_menor',{p_autorizacion_id:a.id,p_aceptar:accept});
+    if(call.error)throw call.error;
+    $('#minorCoachConsentModal').close();pendingMinorConsentAction=null;await renderMinorCoachConsents();
+  }
+  catch(err){const f=$('#minorCoachConsentFeedback');f.textContent=`No se ha podido registrar la acción: ${err.message||err}`;f.hidden=false;f.className='warning-box'}
+  finally{b.disabled=false;b.textContent=accept?'Autorizar':reject?'Rechazar':'Revocar autorización'}
 }
 
 async function processAdultTransitions(){

@@ -685,3 +685,12 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - La ficha de perfiles del Administrador muestra feedback claro cuando un entrenador menor queda pendiente de autorización.
 - Los datos maestros de Persona en la ficha de Entrenador permanecen en solo lectura; el estado mostrado se etiqueta expresamente como estado del entrenador.
 - Se mantiene la separación entre Jugador deportivo (`jugadores.activo`) y perfil de acceso Jugador: los menores son representados por su tutor y no necesitan perfil de acceso Jugador activo hasta la mayoría de edad.
+
+
+## V71
+
+- Tutor/Familia puede consultar autorizaciones vigentes e histórico de entrenador menor.
+- Se añade revocación expresa por el mismo tutor que concedió la autorización.
+- Revocar finaliza inmediatamente las asignaciones activas del entrenador menor y cancela las futuras, conservando trazabilidad en auditoría.
+- El perfil Entrenador no se elimina al revocar: simplemente vuelve a quedar bloqueado para asignaciones mientras sea menor.
+- Se mantiene la validación backend de autorización antes de guardar asignaciones.
