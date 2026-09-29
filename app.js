@@ -1,4 +1,4 @@
-const APP_VERSION='65';
+const APP_VERSION='66';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1186,8 +1186,8 @@ async function renderRemotePersons(){
     for(const p of dbPersons){
       const roles=remotePersonRoleCodes(p.id),coach=coaches.find(c=>c.personId===p.id),player=await sb.from('jugadores').select('id,activo',{count:'exact',head:true}).eq('persona_id',p.id),rep=await sb.from('representaciones_jugador').select('id',{count:'exact',head:true}).eq('representante_persona_id',p.id).or(`fecha_hasta.is.null,fecha_hasta.gte.${isoToday()}`);
       const relationBits=[];if((player.count||0)>0)relationBits.push('Jugador');if((rep.count||0)>0)relationBits.push('Tutor/Familia');if(coach)relationBits.push('Entrenador');
-      const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador'].includes(r));
-      rows.push(`<tr><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td><td><button class="secondary tiny open-person-admin" data-person="${p.id}">Abrir</button></td></tr>`);
+      const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador','tutor'].includes(r));
+      rows.push(`<tr><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r==='tutor'?'Tutor/Familia':r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td><td><button class="secondary tiny open-person-admin" data-person="${p.id}">Abrir</button></td></tr>`);
     }
     body.innerHTML=rows.join('')||'<tr><td colspan="7">No hay personas registradas.</td></tr>';$$('.open-person-admin').forEach(b=>b.onclick=()=>openPersonAdmin(b.dataset.person));
   }catch(err){body.innerHTML=`<tr><td colspan="7">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}

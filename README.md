@@ -1,3 +1,9 @@
+## V66 — Corrección visual del perfil Tutor/Familia (29/09/2026)
+
+- Corrige el directorio de Personas para mostrar el perfil `tutor` dentro de **Perfiles de acceso**.
+- La etiqueta visible se presenta como **Tutor/Familia**.
+- No modifica Supabase, la migración 021 ni las Edge Functions de V65.
+
 ## V65 — Identidad multirrol, invitaciones, mayoría de edad y entrenador menor (29/09/2026)
 
 - El Administrador crea únicamente perfiles internos: Administrador, Club y Entrenador.
