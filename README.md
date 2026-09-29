@@ -660,3 +660,11 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - Actualiza el texto del primer acceso para indicar que el usuario está creando su contraseña tras aceptar la invitación, no sustituyendo una contraseña temporal.
 - El alta administrativa espera a que el listado remoto de Personas se refresque antes de mostrar la confirmación.
 - Sin cambios en migraciones SQL ni Edge Functions respecto a V65/V66.
+
+
+## V68 - estado y reenvío de activación de cuentas internas
+
+- La ficha de Persona distingue entre cuenta vinculada pendiente de activación y cuenta ya activada.
+- El Administrador puede reenviar un enlace de activación a cuentas internas pendientes.
+- Para cuentas ya creadas en Supabase Auth se utiliza un enlace de recuperación/establecimiento de contraseña, evitando duplicar usuarios y el problema de re-invitar un correo ya registrado.
+- No modifica la migración 021 ni el modelo de datos.

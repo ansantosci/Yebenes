@@ -1,4 +1,4 @@
-const APP_VERSION='67';
+const APP_VERSION='68';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -894,6 +894,20 @@ async function createTemporaryAccessForSelectedPerson(){
   }catch(err){alert(`No se ha podido preparar el acceso: ${err.message||err}`)}finally{if(b){b.disabled=false;b.textContent='Enviar invitación de acceso'}}
 }
 
+async function getInternalAccessState(personId){
+  if(!personId)return null;
+  return await invokeAccessManager({action:'get_internal_access_state',persona_id:personId});
+}
+async function resendInternalInvitationForSelectedPerson(){
+  const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;
+  const b=$('#resendInternalInvitation');if(b){b.disabled=true;b.textContent='Enviando…'}
+  try{
+    await invokeAccessManager({action:'resend_internal_invitation',persona_id:p.id,redirect_to:AUTH_REDIRECT_URL});
+    await openPersonAdmin(p.id,'access');
+    alert('Nuevo enlace de activación enviado. Utiliza el correo más reciente para establecer la contraseña.');
+  }catch(err){alert(`No se ha podido reenviar el enlace de activación: ${err.message||err}`)}finally{if(b){b.disabled=false;b.textContent='Reenviar enlace de activación'}}
+}
+
 async function restoreSupabaseSession(){
   if(!sb){showAuth('login');alert('No se ha podido cargar el cliente de Supabase. Comprueba la conexión a Internet.');return;}
   try{
@@ -1174,8 +1188,19 @@ async function openPersonAdmin(personId,tab='identity'){
   $('#personPlayerRoleHint').textContent='Tutor/Familia y Jugador se adquieren por autoregistro. Si el Entrenador es menor, necesita autorización expresa del tutor para recibir asignaciones.';
   const isTutor=roles.includes('tutor')||rel.representations.length>0;
   $('#personDerivedRoles').innerHTML=`<div class="derived-role-row"><span>Tutor / Familia</span><strong>${isTutor?'✓ Activo':'—'}</strong></div><div class="derived-role-row"><span>Jugador federado</span><strong>${rel.players.length?`✓ ${rel.players.some(x=>x.activo!==false)?'Activo':'Histórico'}`:'—'}</strong></div>`;
-  $('#personAuthState').innerHTML=person.auth_user_id?`<span class="status complete">Cuenta vinculada</span><div class="meta">Auth: ${esc(person.auth_user_id)}</div>`:`<span class="status pending">Sin cuenta vinculada</span><div class="meta">${person.email_contacto?'Puedes enviar una invitación o vincular una cuenta Auth ya existente.':'Añade primero un correo de contacto.'}</div>`;
-  $('#linkPersonAuth').hidden=!!person.auth_user_id;$('#linkPersonAuth').disabled=!person.email_contacto;$('#createTemporaryAccess').hidden=!!person.auth_user_id;$('#createTemporaryAccess').disabled=!person.email_contacto;
+  let accessState=null;
+  if(person.auth_user_id){try{accessState=await getInternalAccessState(person.id)}catch(err){console.warn('No se pudo consultar el estado Auth',err)}}
+  const linked=!!person.auth_user_id,confirmed=!!accessState?.confirmed;
+  if(!linked){
+    $('#personAuthState').innerHTML=`<span class="status pending">Sin cuenta vinculada</span><div class="meta">${person.email_contacto?'Puedes enviar una invitación o vincular una cuenta Auth ya existente.':'Añade primero un correo de contacto.'}</div>`;
+  }else if(confirmed){
+    $('#personAuthState').innerHTML=`<span class="status complete">Cuenta activada</span><div class="meta">Auth: ${esc(person.auth_user_id)}</div>`;
+  }else{
+    $('#personAuthState').innerHTML=`<span class="status pending">Pendiente de activación</span><div class="meta">Auth: ${esc(person.auth_user_id)} · El usuario todavía no ha completado el acceso.</div>`;
+  }
+  $('#linkPersonAuth').hidden=linked;$('#linkPersonAuth').disabled=!person.email_contacto;
+  $('#createTemporaryAccess').hidden=linked;$('#createTemporaryAccess').disabled=!person.email_contacto;
+  const resendBtn=$('#resendInternalInvitation');if(resendBtn){resendBtn.hidden=!linked||confirmed;resendBtn.disabled=!person.email_contacto}
   const teamNames=rel.assignments.map(a=>{const t=dbTeams.find(x=>x.id===a.equipo_id);return `${t?.name||'Equipo'} · ${coachRoleLabel(a.funcion)}${a.fecha_hasta?' · hasta '+fmt(a.fecha_hasta):''}`});
   $('#personRelationsPanel').innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Jugador</span>${rel.players.length?rel.players.map(x=>`<div class="relation-line"><strong>Ficha de jugador</strong><span>${x.activo!==false?'Activa':'Inactiva'}</span></div>`).join(''):'<div class="meta">No tiene ficha de jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Familia / representación</span>${rel.representations.length?`<div class="relation-line"><strong>${rel.representations.length} representación(es) activa(s)</strong><span>Perfil Familia derivado</span></div>`:'<div class="meta">No representa actualmente a ningún jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Entrenador</span>${rel.coach?`<div class="relation-line"><strong>${rel.coach.activo!==false?'Entrenador activo':'Entrenador inactivo'}</strong><span>${teamNames.join('<br>')||'Sin asignaciones activas'}</span></div><button type="button" class="secondary small" id="openCoachFromPerson">Abrir ficha de entrenador</button>`:'<div class="meta">No tiene extensión de entrenador.</div>'}</section>`;
   const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id)}};
@@ -1453,7 +1478,7 @@ $('#addCoachAssignment').onclick=()=>addAssignmentFrom('coachAssignment',pending
   if(clubUserForm)clubUserForm.onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),email=String(fd.get('email')).toLowerCase(),role=fd.get('role');let u=users.find(x=>x.email.toLowerCase()===email);if(role==='coach'&&!pendingUserAssignments.length){alert('Añade al menos una asignación de equipo.');return}if(u){u=normalizeUser(u);if(hasRole(u,role)){alert('Esa persona ya tiene ese perfil.');return}u.roles.push(role);u.name=fd.get('name')||u.name;u.active=true;if(role==='coach'){let c=coaches.find(x=>x.userId===u.id);const data={name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true};if(c)Object.assign(c,data);else coaches.push({id:uid('c'),userId:u.id,...data})}recordAudit('Perfil añadido a persona','',`${u.name} · ${roleLabel(role)}`)}else{const password=fd.get('password');if(!password||String(password).length<6){alert('Para una cuenta nueva indica una contraseña inicial de al menos 6 caracteres.');return}const person={id:uid('person'),name:fd.get('name'),email,dni:'',createdAt:isoToday(),mergedFrom:[]};persons.push(person);u={id:uid('u-person'),personId:person.id,name:fd.get('name'),email,phone:'',password,roles:[role],active:true};users.push(u);if(role==='coach')coaches.push({id:uid('c'),userId:u.id,name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true});recordAudit('Persona interna creada','',`${u.name} · ${roleLabel(role)}`)}saveUsers();saveCoaches();writeJSON(K.persons,persons);pendingUserAssignments=[];clubUserModal?.close();renderClubUsers();renderCoaches()};
 }
 
-if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
+if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
