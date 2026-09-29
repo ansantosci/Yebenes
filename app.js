@@ -1,4 +1,4 @@
-const APP_VERSION='73';
+const APP_VERSION='74';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -338,6 +338,34 @@ function coachMinorConsentBadge(c){
   if(c.minorConsentStatus==='aceptada')return '<div class="meta"><span class="status complete">Autorización tutor: vigente</span></div>';
   if(c.minorConsentStatus==='pendiente')return '<div class="meta"><span class="status pending">Autorización tutor: pendiente</span></div>';
   return '<div class="meta"><span class="status returned">Autorización tutor: no vigente</span></div>';
+}
+function renderCoachMinorConsentPanel(){
+  const el=$('#coachMinorConsentPanel');if(!el)return;
+  const c=coaches.find(x=>x.id===editingCoachId);
+  if(!c?.isMinor){el.hidden=true;el.innerHTML='';return}
+  const status=c.minorConsentStatus||'sin_solicitud';
+  let badge='<span class="status returned">No vigente</span>',detail='El tutor debe autorizar expresamente la actividad como entrenador antes de poder añadir asignaciones.',action='';
+  if(status==='aceptada'){badge='<span class="status complete">Vigente</span>';detail='La autorización del tutor está vigente. Se pueden gestionar asignaciones deportivas.'}
+  else if(status==='pendiente'){badge='<span class="status pending">Pendiente</span>';detail='La solicitud ya ha sido enviada al tutor. Hasta que la autorice no se pueden añadir asignaciones.'}
+  else if(['club','admin'].includes(currentRole)){action='<button type="button" class="secondary small" id="requestMinorCoachConsent">Solicitar nueva autorización</button>'}
+  const label={revocada:'Revocada',rechazada:'Rechazada',finalizada_mayoria_edad:'Finalizada por mayoría de edad',sin_solicitud:'No solicitada'}[status]||status;
+  el.hidden=false;
+  el.className='workflow-box compact-consent';
+  el.innerHTML=`<span class="eyebrow dark">Autorización de entrenador menor</span><div class="checklist"><div class="check"><span>Estado</span><strong>${badge}</strong></div>${status!=='aceptada'&&status!=='pendiente'?`<div class="check"><span>Último estado</span><strong>${esc(label)}</strong></div>`:''}</div><p class="meta">${esc(detail)}</p>${action}`;
+  const b=$('#requestMinorCoachConsent');if(b)b.onclick=requestMinorCoachConsent;
+}
+async function requestMinorCoachConsent(){
+  const c=coaches.find(x=>x.id===editingCoachId);if(!c?.personId||!sb)return;
+  const b=$('#requestMinorCoachConsent');if(b){b.disabled=true;b.textContent='Solicitando…'}
+  try{
+    const {error}=await sb.rpc('solicitar_autorizacion_entrenador_menor',{p_persona_id:c.personId});
+    if(error)throw error;
+    await loadSupabaseCoaches();
+    renderCoaches();
+    renderCoachMinorConsentPanel();
+    setCoachAssignmentGuard('Solicitud enviada al tutor. Hasta que la autorice no se podrán añadir asignaciones.','info');
+  }catch(err){setCoachAssignmentGuard(`No se ha podido solicitar la autorización del tutor: ${err.message||err}`)}
+  finally{const x=$('#requestMinorCoachConsent');if(x){x.disabled=false;x.textContent='Solicitar nueva autorización'}}
 }
 async function ensureMinorCoachAssignmentAllowed(personId){
   if(!personId||!sb)return true;
@@ -1195,7 +1223,7 @@ function applyCoachPersonToForm(personId){
 }
 async function openCoachForNew(personId=null){
   if(currentRole!=='admin'){alert('Solo un administrador puede conceder el rol Entrenador.');return}
-  editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];setCoachAssignmentGuard('');const f=$('#coachForm');f.reset();
+  editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];setCoachAssignmentGuard('');const cp=$('#coachMinorConsentPanel');if(cp){cp.hidden=true;cp.innerHTML=''}const f=$('#coachForm');f.reset();
   ['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});
   f.elements.active.value='yes';f.elements.delegateCourse.value='no';fillAssignmentTeamSelect('#coachAssignmentTeam');$('#coachAssignmentStart').value=isoToday();$('#coachAssignmentEnd').value=dbActiveSeason()?.endDate||'';renderCoachAssignments();
   await fillCoachPersonSelect(personId);$('#coachPersonSelectorWrap').hidden=false;$('#coachModalTitle').textContent='Asignar rol Entrenador';
@@ -1205,7 +1233,7 @@ async function openCoachForNew(personId=null){
 function setCoachAssignmentGuard(message='',kind='warning'){
   const el=$('#coachAssignmentGuard');if(!el)return;el.textContent=message;el.hidden=!message;el.className=message?(kind==='ok'?'success-box':'warning-box'):'';
 }
-function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.licenseType.value=c.licenseType||'';f.elements.licenseNumber.value=c.licenseNumber||'';f.elements.delegateCourse.value=c.delegateCourse?'yes':'no';f.elements.active.value=c.active?'yes':'no';f.elements.notes.value=c.notes||'';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';$('#coachModal').showModal()}
+function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.licenseType.value=c.licenseType||'';f.elements.licenseNumber.value=c.licenseNumber||'';f.elements.delegateCourse.value=c.delegateCourse?'yes':'no';f.elements.active.value=c.active?'yes':'no';f.elements.notes.value=c.notes||'';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();$('#coachModal').showModal()}
 async function saveRemoteCoach(form){
   if(!['admin','club'].includes(currentRole))return;
   const fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');

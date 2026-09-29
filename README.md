@@ -706,9 +706,15 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 
 
 
-## V73
+## V74
 
 - Corrige el error `Invalid time value` al mostrar autorizaciones revocadas o históricas: el formateador de fechas admite tanto fechas SQL (`YYYY-MM-DD`) como timestamps de Supabase.
 - Las asignaciones de entrenador canceladas por revocación del tutor dejan de eliminarse físicamente: se conservan en `asignaciones_entrenador_equipo` con marca de cancelación y motivo.
 - Las vistas operativas excluyen las asignaciones canceladas, manteniéndolas disponibles para histórico y auditoría.
 - La revocación continúa bloqueando nuevas asignaciones mientras el entrenador siga siendo menor y no exista una nueva autorización vigente.
+
+
+## V74
+- El perfil Club puede solicitar o relanzar la autorización del tutor para un entrenador menor desde la propia ficha del entrenador.
+- Si la autorización está pendiente se informa del estado y se mantiene bloqueada la creación de asignaciones.
+- Si está revocada, rechazada o no existe, Club/Admin pueden solicitar una nueva autorización sin modificar el perfil Entrenador.
