@@ -272,3 +272,18 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 .person-auth-state{display:grid;gap:6px;margin:10px 0}.derived-role-row,.relation-line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #e7eaee}.derived-role-row:last-child,.relation-line:last-child{border-bottom:0}.relation-line span{color:var(--muted);text-align:right}
 .person-admin-card .modal-actions{margin-top:12px}.person-admin-card .secondary.small{margin-top:10px}
 @media(max-width:720px){.person-admin-modal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}.person-admin-detail{padding:14px}.person-access-grid,.person-relations-grid{grid-template-columns:1fr}.person-admin-modal .entity-tabs{position:sticky;top:0;background:#fff;z-index:4}.derived-role-row,.relation-line{align-items:flex-start;flex-direction:column}.relation-line span{text-align:left}}
+
+
+/* V63 · gestión segura de cuentas y contraseñas */
+.stacked-actions{display:flex;flex-direction:column;gap:.65rem;margin-top:.85rem}
+.credential-card{display:grid;gap:1rem;background:#f6f7f9;border:1px solid #e0e4ea;border-radius:16px;padding:1rem;margin:1rem 0}
+.credential-card label{display:grid;gap:.4rem;font-weight:700}
+.credential-copy-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem;align-items:center}
+.credential-copy-row input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1rem}
+.account-access-modal{width:min(620px,calc(100vw - 24px));max-width:620px}
+.form-grid.single-column{grid-template-columns:1fr}
+@media (max-width:640px){
+  .credential-copy-row{grid-template-columns:1fr}
+  .credential-copy-row button,.account-access-modal .modal-actions button{width:100%}
+  .account-access-modal{width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}
+}

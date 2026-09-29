@@ -1,3 +1,30 @@
+## V63 — Alta de cuentas internas desde Administrador (29/09/2026)
+
+### Objetivo
+La aplicación ya puede crear cuentas de Supabase Auth para Personas internas sin entrar manualmente en el Dashboard de Supabase. El flujo queda centrado en **Persona → perfiles → cuenta de acceso**.
+
+### Flujo de alta
+1. Administrador crea o abre una Persona.
+2. Asigna al menos un perfil de acceso (por ejemplo, **Club**).
+3. En **Acceso y roles → Cuenta de acceso** pulsa **Crear cuenta con contraseña temporal**.
+4. La Edge Function `gestionar-acceso` crea el usuario Auth, confirma el correo internamente, vincula `personas.auth_user_id` y devuelve una contraseña aleatoria de 14 caracteres que solo se muestra una vez al administrador.
+5. En el primer login, `app_metadata.must_change_password=true` obliga a cambiar la contraseña antes de cargar cualquier perfil de la aplicación.
+6. Después, cualquier usuario puede volver a cambiar su contraseña desde **Perfil**.
+
+### Seguridad
+- La creación de usuarios se ejecuta exclusivamente en una **Supabase Edge Function**; la clave secreta/service-role nunca se expone en el navegador.
+- La función valida que quien solicita el alta tenga un rol `administrador` activo.
+- La obligación de cambio se guarda en `app_metadata`, que no puede modificar directamente el usuario desde el cliente.
+- La función también gestiona el cambio de contraseña propio y elimina `must_change_password` una vez realizado.
+- No se almacena la contraseña temporal en tablas ni en localStorage.
+
+### Edge Function nueva
+Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-acceso**. No necesita secretos personalizados: utiliza las variables de Supabase disponibles en Edge Functions (`SUPABASE_URL`, `SUPABASE_SECRET_KEYS`/`SUPABASE_SERVICE_ROLE_KEY` y `SUPABASE_PUBLISHABLE_KEYS`/`SUPABASE_ANON_KEY`).
+
+### Base de datos
+- No requiere migración SQL nueva.
+- Se apoya en el modelo de Personas y roles de la migración 021.
+
 ## V61 — Administración integral de Personas (29/09/2026)
 
 ## V62 — Corrección de carga de perfil tras consolidar Usuarios en Personas

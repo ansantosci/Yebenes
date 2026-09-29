@@ -1,4 +1,4 @@
-const APP_VERSION='62';
+const APP_VERSION='63';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -823,13 +823,67 @@ async function returnRemoteSelected(){const v=remoteClubPlayers.find(x=>x.id===s
 async function toggleRemotePlayerActive(){const v=remoteClubPlayers.find(x=>x.id===selectedRemotePlayerId);if(!v||!['admin','club'].includes(currentRole))return;try{const next=!v.active;const patch={activo:next};if(!next){patch.fecha_baja=isoToday();patch.motivo_baja='Baja operativa desde panel del club'}else{patch.fecha_baja=null;patch.motivo_baja=null}const {error}=await sb.from('jugadores').update(patch).eq('id',v.id);if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido cambiar el estado del jugador: ${err.message||err}`)}}
 async function openRemoteFamilyEdit(id){const p=remoteFamilyPlayers.find(x=>x.id===id);if(!p||currentRole!=='family')return;editingPlayerId=id;const parts=p.name.split(' '),f=$('#playerForm');f.reset();f.elements.name.value=parts[0]||'';f.elements.surname1.value=parts[1]||'';f.elements.surname2.value=parts.slice(2).join(' ');f.elements.birth.value=p.birth||'';f.elements.email.value=currentUser.email||'';f.elements.phone.value=currentUser.phone||'';syncGuardianDocumentField();$('#playerModalTitle').textContent='Revisar datos del jugador';$('#savePlayer').textContent='Guardar cambios';refreshCalculatedCategory(f);$('#playerModal').showModal()}
 
+
+function mustChangeTemporaryPassword(authUser){return authUser?.app_metadata?.must_change_password===true}
+async function invokeAccessManager(body){
+  if(!sb)throw new Error('No se ha podido cargar Supabase.');
+  const {data,error}=await sb.functions.invoke('gestionar-acceso',{body});
+  if(error){
+    const msg=data?.error||data?.message||error.message||'Error en la gestión de acceso';
+    throw new Error(msg);
+  }
+  if(data?.error)throw new Error(data.error);
+  return data;
+}
+async function changeOwnPassword(password){
+  const data=await invokeAccessManager({action:'change_own_password',new_password:password});
+  const {error}=await sb.auth.refreshSession();if(error)throw error;
+  return data;
+}
+function promptMandatoryPasswordChange(authUser){
+  return new Promise(resolve=>{
+    const dialog=$('#forcePasswordChangeModal'),form=$('#forcePasswordChangeForm');
+    if(!dialog||!form){resolve(authUser);return}
+    form.reset();dialog.oncancel=e=>e.preventDefault();
+    $('#forcePasswordLogout').onclick=async()=>{await sb.auth.signOut();dialog.close();currentUser=null;currentRole=null;showAuth('login');resolve(null)};
+    form.onsubmit=async e=>{e.preventDefault();const fd=new FormData(form),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),btn=form.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}btn.disabled=true;btn.textContent='Actualizando…';try{await changeOwnPassword(p);const {data,error}=await sb.auth.getUser();if(error)throw error;dialog.close();resolve(data.user)}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Cambiar contraseña y continuar'}};
+    dialog.showModal();
+  });
+}
+async function prepareAuthenticatedUser(authUser){
+  if(!authUser)return null;
+  if(mustChangeTemporaryPassword(authUser))return await promptMandatoryPasswordChange(authUser);
+  return authUser;
+}
+function openAccountProfile(){
+  if(!currentUser)return;const d=$('#accountProfileModal');if(!d)return;
+  $('#accountProfileMeta').textContent=currentUser.email||currentUser.name||'';
+  $('#accountProfileRoles').innerHTML=availableRoles(currentUser).map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('');
+  $('#accountPasswordForm').reset();d.showModal();
+}
+async function createTemporaryAccessForSelectedPerson(){
+  const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;
+  if(!p.email_contacto){alert('La Persona necesita un correo electrónico antes de crear la cuenta.');return}
+  if(p.auth_user_id){alert('Esta Persona ya tiene una cuenta de acceso vinculada.');return}
+  const roles=remotePersonRoleCodes(p.id);if(!roles.some(r=>['administrador','club','entrenador','jugador','tutor'].includes(r))){alert('Asigna primero al menos un perfil de acceso.');return}
+  const b=$('#createTemporaryAccess');if(b){b.disabled=true;b.textContent='Creando cuenta…'}
+  try{
+    const data=await invokeAccessManager({action:'create_internal_user',persona_id:p.id});
+    $('#temporaryAccessEmail').value=data.email||p.email_contacto;
+    $('#temporaryAccessPassword').value=data.temporary_password||'';
+    await loadSupabasePersons();renderPersons();await openPersonAdmin(p.id,'access');
+    $('#temporaryAccessModal').showModal();
+  }catch(err){alert(`No se ha podido crear la cuenta: ${err.message||err}`)}finally{if(b){b.disabled=false;b.textContent='Crear cuenta con contraseña temporal'}}
+}
+
 async function restoreSupabaseSession(){
   if(!sb){showAuth('login');alert('No se ha podido cargar el cliente de Supabase. Comprueba la conexión a Internet.');return;}
   try{
     const {data,error}=await sb.auth.getSession();
     if(error)throw error;
-    const authUser=data.session?.user||null;
+    let authUser=data.session?.user||null;
     if(!authUser){currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');return;}
+    authUser=await prepareAuthenticatedUser(authUser);if(!authUser)return;
     currentUser=await loadIdentityWithPending(authUser);
     await loadSupabaseStructure();
     const savedRole=localStorage.getItem(K.sessionRole);
@@ -1103,12 +1157,12 @@ async function openPersonAdmin(personId,tab='identity'){
   $('#personPlayerRoleHint').textContent=!person.fecha_nacimiento?'Indica la fecha de nacimiento para valorar el acceso propio como Jugador.':adult?'El perfil Jugador da acceso a su propia ficha. No requiere representante ordinario.':'Menor de edad: la condición de jugador se gestiona por su ficha; el acceso propio se habilita al alcanzar la mayoría de edad.';
   const isTutor=roles.includes('tutor')||rel.representations.length>0;
   $('#personDerivedRoles').innerHTML=`<div class="derived-role-row"><span>Tutor / Familia</span><strong>${isTutor?'✓ Activo':'—'}</strong></div><div class="derived-role-row"><span>Jugador federado</span><strong>${rel.players.length?`✓ ${rel.players.some(x=>x.activo!==false)?'Activo':'Histórico'}`:'—'}</strong></div>`;
-  $('#personAuthState').innerHTML=person.auth_user_id?`<span class="status complete">Cuenta vinculada</span><div class="meta">Auth: ${esc(person.auth_user_id)}</div>`:`<span class="status pending">Sin cuenta vinculada</span><div class="meta">${person.email_contacto?'Puedes intentar vincular una cuenta Auth existente con este correo.':'Añade primero un correo de contacto.'}</div>`;
-  $('#linkPersonAuth').hidden=!!person.auth_user_id;$('#linkPersonAuth').disabled=!person.email_contacto;
+  $('#personAuthState').innerHTML=person.auth_user_id?`<span class="status complete">Cuenta vinculada</span><div class="meta">Auth: ${esc(person.auth_user_id)}</div>`:`<span class="status pending">Sin cuenta vinculada</span><div class="meta">${person.email_contacto?'Puedes crear una cuenta nueva con contraseña temporal o vincular una cuenta Auth ya existente.':'Añade primero un correo de contacto.'}</div>`;
+  $('#linkPersonAuth').hidden=!!person.auth_user_id;$('#linkPersonAuth').disabled=!person.email_contacto;$('#createTemporaryAccess').hidden=!!person.auth_user_id;$('#createTemporaryAccess').disabled=!person.email_contacto;
   const teamNames=rel.assignments.map(a=>{const t=dbTeams.find(x=>x.id===a.equipo_id);return `${t?.name||'Equipo'} · ${coachRoleLabel(a.funcion)}${a.fecha_hasta?' · hasta '+fmt(a.fecha_hasta):''}`});
   $('#personRelationsPanel').innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Jugador</span>${rel.players.length?rel.players.map(x=>`<div class="relation-line"><strong>Ficha de jugador</strong><span>${x.activo!==false?'Activa':'Inactiva'}</span></div>`).join(''):'<div class="meta">No tiene ficha de jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Familia / representación</span>${rel.representations.length?`<div class="relation-line"><strong>${rel.representations.length} representación(es) activa(s)</strong><span>Perfil Familia derivado</span></div>`:'<div class="meta">No representa actualmente a ningún jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Entrenador</span>${rel.coach?`<div class="relation-line"><strong>${rel.coach.activo!==false?'Entrenador activo':'Entrenador inactivo'}</strong><span>${teamNames.join('<br>')||'Sin asignaciones activas'}</span></div><button type="button" class="secondary small" id="openCoachFromPerson">Abrir ficha de entrenador</button>`:'<div class="meta">No tiene extensión de entrenador.</div>'}</section>`;
   const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id)}};
-  setPersonAdminTab(tab);$('#personAdminModal').showModal();
+  setPersonAdminTab(tab);if(!$('#personAdminModal').open)$('#personAdminModal').showModal();
 }
 async function renderRemotePersons(){
   const body=$('#personsTable');if(!body||currentRole!=='admin')return;
@@ -1261,7 +1315,7 @@ function syncCoachUserFields(){const role=$('#clubUserRole'),fields=$('#coachUse
 $('#showLogin').onclick=()=>showAuth('login');$('#showFamilySignup').onclick=()=>showAuth('signup');
 function syncSignupMode(){const self=document.querySelector('input[name="signupMode"]:checked')?.value==='self';$('#selfSignupFields').classList.toggle('hidden',!self);$('#guardianSignupFields').classList.toggle('hidden',self);const f=$('#familySignupForm'),tutorDni=f?.elements?.tutorDni,tutorType=f?.elements?.tutorDocumentType,selfDni=f?.elements?.selfDni,selfType=f?.elements?.selfDocumentType;if(tutorDni){tutorDni.required=!self;tutorDni.disabled=self}if(tutorType)tutorType.disabled=self;if(selfDni)selfDni.disabled=!self;if(selfType)selfType.disabled=!self;refreshCalculatedCategory(f)}
 $$('input[name="signupMode"]').forEach(r=>r.onchange=syncSignupMode);syncSignupMode();
-$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;currentUser=await loadIdentityWithPending(data.user);await loadSupabaseStructure();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);alert(err?.message==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;const readyUser=await prepareAuthenticatedUser(data.user);if(!readyUser)return;currentUser=await loadIdentityWithPending(readyUser);await loadSupabaseStructure();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);alert(err?.message==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
 $('#familySignupForm').onsubmit=async e=>{
   e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase.');return}
   const fd=new FormData(form),mode=String(fd.get('signupMode')||'guardian'),password=String(fd.get('password')||''),password2=String(fd.get('password2')||''),email=String(fd.get('email')||'').trim().toLowerCase(),birth=String(fd.get('birth')||'');
@@ -1324,7 +1378,7 @@ function showAuthRedirectError(){
 }
 showAuthRedirectError();
 
-$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await sb.auth.signOut();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();
+$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await sb.auth.signOut();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();if($('#clubProfileButton'))$('#clubProfileButton').onclick=openAccountProfile;if($('#closeAccountProfileModal'))$('#closeAccountProfileModal').onclick=()=>$('#accountProfileModal').close();if($('#closeTemporaryAccessModal'))$('#closeTemporaryAccessModal').onclick=()=>$('#temporaryAccessModal').close();if($('#acceptTemporaryAccess'))$('#acceptTemporaryAccess').onclick=()=>$('#temporaryAccessModal').close();if($('#copyTemporaryPassword'))$('#copyTemporaryPassword').onclick=async()=>{const v=$('#temporaryAccessPassword').value;try{await navigator.clipboard.writeText(v);$('#copyTemporaryPassword').textContent='Copiada';setTimeout(()=>$('#copyTemporaryPassword').textContent='Copiar',1200)}catch{alert('No se ha podido copiar automáticamente. Selecciona la contraseña manualmente.')}};if($('#accountPasswordForm'))$('#accountPasswordForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),b=f.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}b.disabled=true;b.textContent='Actualizando…';try{await changeOwnPassword(p);f.reset();$('#accountProfileModal').close();alert('Contraseña actualizada correctamente.')}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Cambiar contraseña'}};
 
 function refreshCalculatedCategory(form){const birth=form?.elements?.birth?.value||'',cat=(currentUser?.source==='supabase'&&dbStructureLoaded)?dbCategoryForBirth(birth):categoryForBirth(birth,currentSeasonId),out=form?.querySelector?.('[data-category-calculated]');if(out)out.value=cat?cat.name:'Fuera de categorías configuradas'}
 $('#familySignupForm')?.elements?.birth?.addEventListener('change',()=>refreshCalculatedCategory($('#familySignupForm')));
@@ -1343,7 +1397,7 @@ function setFamilyMainTab(tab){
   $('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha federativa':'Gestiona la ficha de tus hijos desde el móvil';
   $('#familyHeroText').textContent='Completa datos, adjunta documentación y consulta el estado de cada inscripción.';
   if(tab==='players'&&playersSec){playersSec.scrollIntoView({behavior:'smooth'});return;}
-  if(tab==='profile'){window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});return;}
+  if(tab==='profile'){openAccountProfile();return;}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 $$('[data-family-tab]').forEach(b=>b.onclick=()=>setFamilyMainTab(b.dataset.familyTab));
@@ -1372,7 +1426,7 @@ $('#addCoachAssignment').onclick=()=>addAssignmentFrom('coachAssignment',pending
   if(clubUserForm)clubUserForm.onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),email=String(fd.get('email')).toLowerCase(),role=fd.get('role');let u=users.find(x=>x.email.toLowerCase()===email);if(role==='coach'&&!pendingUserAssignments.length){alert('Añade al menos una asignación de equipo.');return}if(u){u=normalizeUser(u);if(hasRole(u,role)){alert('Esa persona ya tiene ese perfil.');return}u.roles.push(role);u.name=fd.get('name')||u.name;u.active=true;if(role==='coach'){let c=coaches.find(x=>x.userId===u.id);const data={name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true};if(c)Object.assign(c,data);else coaches.push({id:uid('c'),userId:u.id,...data})}recordAudit('Perfil añadido a persona','',`${u.name} · ${roleLabel(role)}`)}else{const password=fd.get('password');if(!password||String(password).length<6){alert('Para una cuenta nueva indica una contraseña inicial de al menos 6 caracteres.');return}const person={id:uid('person'),name:fd.get('name'),email,dni:'',createdAt:isoToday(),mergedFrom:[]};persons.push(person);u={id:uid('u-person'),personId:person.id,name:fd.get('name'),email,phone:'',password,roles:[role],active:true};users.push(u);if(role==='coach')coaches.push({id:uid('c'),userId:u.id,name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true});recordAudit('Persona interna creada','',`${u.name} · ${roleLabel(role)}`)}saveUsers();saveCoaches();writeJSON(K.persons,persons);pendingUserAssignments=[];clubUserModal?.close();renderClubUsers();renderCoaches()};
 }
 
-if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
+if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
