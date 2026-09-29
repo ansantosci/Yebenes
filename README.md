@@ -1,3 +1,15 @@
+## V65 — Identidad multirrol, invitaciones, mayoría de edad y entrenador menor (29/09/2026)
+
+- El Administrador crea únicamente perfiles internos: Administrador, Club y Entrenador.
+- Las cuentas internas se crean/vinculan mediante invitación por correo; el usuario establece su propia contraseña.
+- Tutor/Familia y Jugador se adquieren por autoregistro y reutilizan la Persona existente cuando coincide el correo.
+- La mayoría de edad finaliza la representación ordinaria, activa el perfil Jugador y genera avisos al jugador y al tutor.
+- El alta/edición del menor permite guardar un correo propio para preparar esa transición.
+- Un Entrenador menor necesita representación activa como jugador y una autorización específica de su tutor antes de recibir asignaciones de equipo.
+- Se añade la gestión de esa autorización desde el área Tutor/Familia.
+- Migración asociada: `021_v65_identidad_mayoria_y_entrenadores_menores.sql`.
+- Edge Function asociada: `gestionar-acceso` V2 (`gestionar-acceso-v2-index.ts`).
+
 ## V64 — Corrección de versionado visible (29/09/2026)
 
 - Corrige la etiqueta de la pantalla de inicio, que seguía mostrando V62.
