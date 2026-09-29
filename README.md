@@ -652,3 +652,11 @@ V61 consolida **Persona** como identidad maestra y mueve la administración de u
 - `vincular_auth_persona_por_email_admin(...)`
 
 La baja es lógica. No se eliminan identidades con histórico operativo.
+
+
+## V67 - corrección del flujo de invitación
+
+- Evita forzar `refreshSession()` después de cambiar la contraseña desde una invitación, corrigiendo `Invalid Refresh Token: Refresh Token Not Found`.
+- Actualiza el texto del primer acceso para indicar que el usuario está creando su contraseña tras aceptar la invitación, no sustituyendo una contraseña temporal.
+- El alta administrativa espera a que el listado remoto de Personas se refresque antes de mostrar la confirmación.
+- Sin cambios en migraciones SQL ni Edge Functions respecto a V65/V66.

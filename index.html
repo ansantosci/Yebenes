@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '66';
+    window.YEBENES_APP_VERSION = '67';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -38,7 +38,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v66</div>
+      <div class="version-badge" aria-label="Versión de prueba">v67</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -229,7 +229,7 @@
 
   <dialog id="temporaryAccessModal" class="account-access-modal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Cuenta creada</span><h2>Credenciales temporales</h2><div class="meta">Entrega estas credenciales de forma segura a la persona. La contraseña solo se muestra ahora.</div></div><button type="button" class="icon-button" id="closeTemporaryAccessModal">✕</button></div><div class="credential-card"><label>Correo<input id="temporaryAccessEmail" readonly /></label><label>Contraseña temporal<div class="credential-copy-row"><input id="temporaryAccessPassword" readonly /><button type="button" class="secondary" id="copyTemporaryPassword">Copiar</button></div></label></div><div class="warning-box">En el primer acceso la aplicación bloqueará el resto de funciones hasta que la persona cambie esta contraseña.</div><div class="modal-actions"><button type="button" class="primary" id="acceptTemporaryAccess">Entendido</button></div></div></dialog>
 
-  <dialog id="forcePasswordChangeModal" class="account-access-modal"><form id="forcePasswordChangeForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Seguridad</span><h2>Cambia tu contraseña</h2><div class="meta">Estás usando una contraseña temporal. Debes sustituirla antes de acceder a la aplicación.</div></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="warning-box">Usa al menos 8 caracteres. Después podrás volver a cambiarla desde Perfil cuando quieras.</div><div class="modal-actions"><button type="button" class="secondary" id="forcePasswordLogout">Cerrar sesión</button><button type="submit" class="primary">Cambiar contraseña y continuar</button></div></form></dialog>
+  <dialog id="forcePasswordChangeModal" class="account-access-modal"><form id="forcePasswordChangeForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Seguridad</span><h2>Crea tu contraseña</h2><div class="meta">Has aceptado la invitación del C.D. Los Yébenes San Bruno. Define ahora tu contraseña para completar la activación de tu cuenta.</div></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="warning-box">Usa al menos 8 caracteres. Después podrás volver a cambiarla desde Perfil cuando quieras.</div><div class="modal-actions"><button type="button" class="secondary" id="forcePasswordLogout">Cerrar sesión</button><button type="submit" class="primary">Guardar contraseña y continuar</button></div></form></dialog>
 
   <dialog id="accountProfileModal" class="account-access-modal"><form id="accountPasswordForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Mi cuenta</span><h2>Perfil y seguridad</h2><div class="meta" id="accountProfileMeta"></div></div><button type="button" class="icon-button" id="closeAccountProfileModal">✕</button></div><div class="person-admin-card"><span class="eyebrow dark">Perfiles activos</span><div id="accountProfileRoles" class="role-badges"></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="modal-actions"><button type="submit" class="primary">Cambiar contraseña</button></div></form></dialog>
 

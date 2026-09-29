@@ -1,4 +1,4 @@
-const APP_VERSION='66';
+const APP_VERSION='67';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -855,9 +855,11 @@ async function invokeAccessManager(body){
   return data;
 }
 async function changeOwnPassword(password){
-  const data=await invokeAccessManager({action:'change_own_password',new_password:password});
-  const {error}=await sb.auth.refreshSession();if(error)throw error;
-  return data;
+  // La Edge Function actualiza la contraseña y limpia must_change_password.
+  // No forzamos refreshSession aquí: en una sesión nacida de una invitación
+  // el refresh token puede no estar disponible todavía y Supabase devolvería
+  // 'Invalid Refresh Token' aunque la actualización ya se hubiera realizado.
+  return await invokeAccessManager({action:'change_own_password',new_password:password});
 }
 function promptMandatoryPasswordChange(authUser){
   return new Promise(resolve=>{
@@ -865,7 +867,7 @@ function promptMandatoryPasswordChange(authUser){
     if(!dialog||!form){resolve(authUser);return}
     form.reset();dialog.oncancel=e=>e.preventDefault();
     $('#forcePasswordLogout').onclick=async()=>{await sb.auth.signOut();dialog.close();currentUser=null;currentRole=null;showAuth('login');resolve(null)};
-    form.onsubmit=async e=>{e.preventDefault();const fd=new FormData(form),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),btn=form.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}btn.disabled=true;btn.textContent='Actualizando…';try{await changeOwnPassword(p);const {data,error}=await sb.auth.getUser();if(error)throw error;dialog.close();resolve(data.user)}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Cambiar contraseña y continuar'}};
+    form.onsubmit=async e=>{e.preventDefault();const fd=new FormData(form),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),btn=form.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}btn.disabled=true;btn.textContent='Actualizando…';try{await changeOwnPassword(p);const {data,error}=await sb.auth.getUser();if(error)throw error;dialog.close();resolve(data.user)}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Guardar contraseña y continuar'}};
     dialog.showModal();
   });
 }
@@ -1201,7 +1203,7 @@ async function createRemotePerson(form){
     const {data,error}=await sb.rpc('guardar_persona_admin',{p_persona_id:null,p_nombre:String(fd.get('firstName')||'').trim(),p_primer_apellido:String(fd.get('lastName1')||'').trim(),p_segundo_apellido:String(fd.get('lastName2')||'').trim()||null,p_email:email||null,p_telefono:String(fd.get('phone')||'').trim()||null,p_fecha_nacimiento:String(fd.get('birth')||'')||null,p_activo:true});if(error)throw error;
     if(roleAdmin||roleClub||roleCoach){const rr=await sb.rpc('actualizar_perfiles_persona_admin',{p_persona_id:data,p_administrador:roleAdmin,p_club:roleClub,p_entrenador:roleCoach,p_jugador:null});if(rr.error)throw rr.error;await tryProcessNotifications()}
     if(sendInvite){await invokeAccessManager({action:'invite_internal_user',persona_id:data,redirect_to:AUTH_REDIRECT_URL})}
-    form.reset();$('#personModal').close();await loadSupabasePersons();await loadSupabaseCoaches();renderPersons();renderCoaches();renderStructure();await openPersonAdmin(data,'access');
+    form.reset();$('#personModal').close();await loadSupabasePersons();await loadSupabaseCoaches();await renderRemotePersons();renderCoaches();renderStructure();await openPersonAdmin(data,'access');
     if(sendInvite)alert('Persona creada e invitación enviada. El usuario establecerá su propia contraseña.');
   }catch(err){alert(`No se ha podido crear la Persona: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Crear persona'}}
 }
