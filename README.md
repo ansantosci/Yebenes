@@ -704,3 +704,11 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - El histórico del consentimiento queda asociado visualmente al menor, evitando ocupar espacio en familias con varios jugadores.
 - Sin cambios de backend respecto a V71; la migración 023 sigue siendo la vigente.
 
+
+
+## V73
+
+- Corrige el error `Invalid time value` al mostrar autorizaciones revocadas o históricas: el formateador de fechas admite tanto fechas SQL (`YYYY-MM-DD`) como timestamps de Supabase.
+- Las asignaciones de entrenador canceladas por revocación del tutor dejan de eliminarse físicamente: se conservan en `asignaciones_entrenador_equipo` con marca de cancelación y motivo.
+- Las vistas operativas excluyen las asignaciones canceladas, manteniéndolas disponibles para histórico y auditoría.
+- La revocación continúa bloqueando nuevas asignaciones mientras el entrenador siga siendo menor y no exista una nueva autorización vigente.

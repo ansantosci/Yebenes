@@ -1,4 +1,4 @@
-const APP_VERSION='72';
+const APP_VERSION='73';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -50,7 +50,14 @@ const esc=(s='')=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const readJSON=(k,f)=>{try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}};
 const writeJSON=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const isoToday=()=>new Date().toISOString().slice(0,10);
-const parseDate=v=>{if(!v)return null;const [y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d)};
+const parseDate=v=>{
+  if(!v)return null;
+  const raw=String(v).trim();
+  let d=null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(raw)){const [y,m,day]=raw.split('-').map(Number);d=new Date(y,m-1,day)}
+  else d=new Date(raw);
+  return Number.isNaN(d.getTime())?null:d;
+};
 const fmt=v=>{const d=parseDate(v);return d?new Intl.DateTimeFormat('es-ES').format(d):'—'};
 const addYears=(v,n)=>{const d=parseDate(v);if(!d)return '';d.setFullYear(d.getFullYear()+n);return d.toISOString().slice(0,10)};
 const dayDiff=(a,b)=>Math.ceil((parseDate(b)-parseDate(a))/86400000);
@@ -298,7 +305,7 @@ async function loadSupabaseCoaches(){
   if(!internal){coaches=[];return []}
   const [coachRes,assignmentRes]=await Promise.all([
     sb.from('entrenadores').select('id,persona_id,activo,licencia_tipo,licencia_numero,curso_delegado,observaciones'),
-    sb.from('asignaciones_entrenador_equipo').select('id,entrenador_id,equipo_id,fecha_desde,fecha_hasta,funcion')
+    sb.from('asignaciones_entrenador_equipo').select('id,entrenador_id,equipo_id,fecha_desde,fecha_hasta,funcion,cancelada_at,motivo_fin')
   ]);
   if(coachRes.error)throw coachRes.error;
   if(assignmentRes.error)throw assignmentRes.error;
@@ -318,7 +325,7 @@ async function loadSupabaseCoaches(){
   for(const a of consentRows){const prev=consentMap.get(a.persona_menor_id);if(!prev||(consentPriority[a.estado]||0)>(consentPriority[prev.estado]||0))consentMap.set(a.persona_menor_id,a)}
   coaches=(coachRes.data||[]).map(c=>{
     const person=pm.get(c.persona_id)||{};
-    const assignments=(assignmentRes.data||[]).filter(a=>a.entrenador_id===c.id).map(a=>({id:a.id,teamId:a.equipo_id,coachRole:a.funcion||'first',startDate:a.fecha_desde||'',endDate:a.fecha_hasta||''}));
+    const assignments=(assignmentRes.data||[]).filter(a=>a.entrenador_id===c.id&&!a.cancelada_at).map(a=>({id:a.id,teamId:a.equipo_id,coachRole:a.funcion||'first',startDate:a.fecha_desde||'',endDate:a.fecha_hasta||'',cancelledAt:a.cancelada_at||null,endReason:a.motivo_fin||''}));
     const isMinor=!!person.fecha_nacimiento&&person.fecha_nacimiento>new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().slice(0,10);
     const consent=consentMap.get(c.persona_id)||null;
     return {id:c.id,personId:c.persona_id,userId:person.auth_user_id||null,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' ')||'Entrenador',firstName:person.nombre||'',lastName1:person.primer_apellido||'',lastName2:person.segundo_apellido||'',email:person.email_contacto||'',phone:person.telefono||'',birth:person.fecha_nacimiento||'',isMinor,minorConsentStatus:consent?.estado||null,minorConsentVersion:consent?.version_texto||null,assignments,hasLicense:!!c.licencia_tipo,licenseType:c.licencia_tipo||'',licenseNumber:c.licencia_numero||'',delegateCourse:!!c.curso_delegado,notes:c.observaciones||'',active:c.activo!==false};
@@ -1239,7 +1246,7 @@ async function loadRemotePersonRelations(personId){
   const reps=(repRes.data||[]).filter(r=>(!r.fecha_desde||r.fecha_desde<=today)&&(!r.fecha_hasta||r.fecha_hasta>=today));
   const coach=(coachRes.data||[])[0]||null;
   let assignments=[];
-  if(coach){const ar=await sb.from('asignaciones_entrenador_equipo').select('id,equipo_id,funcion,fecha_desde,fecha_hasta').eq('entrenador_id',coach.id);if(ar.error)throw ar.error;assignments=ar.data||[]}
+  if(coach){const ar=await sb.from('asignaciones_entrenador_equipo').select('id,equipo_id,funcion,fecha_desde,fecha_hasta,cancelada_at,motivo_fin').eq('entrenador_id',coach.id);if(ar.error)throw ar.error;assignments=(ar.data||[]).filter(a=>!a.cancelada_at)}
   return {players:playerRes.data||[],representations:reps,coach,assignments};
 }
 function setPersonAdminTab(tab){
