@@ -1,4 +1,4 @@
-## V58 - 2026-09-28 
+## V59 - 2026-09-28
 
 ### Entrenadores reales en Supabase
 - La pantalla **Entrenadores** deja de depender del inventario local/demo cuando la sesión procede de Supabase.
@@ -98,7 +98,7 @@
 
 Prototipo web de gestión del club para la temporada 2026/2027. Frontend estático publicado en GitHub Pages y backend en Supabase (Auth, PostgreSQL, RLS, Storage y Edge Functions).
 
-**Versión actual: V58 — 28/09/2026**
+**Versión actual: V59 — 28/09/2026**
 
 ## Estado funcional actual
 
@@ -125,7 +125,7 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 
 | Versión | Fecha | BD / backend | Cambios principales |
 |---|---|---|---|
-| V58 | 28/09/2026 | Migración 017 | Entrenadores reales, asignaciones por equipo, licencia/curso delegado, contadores y notificaciones RRMM. |
+| V59 | 28/09/2026 | Migración 017 | Entrenadores reales, asignaciones por equipo, licencia/curso delegado, contadores y notificaciones RRMM. |
 | V1 modelo | 24/09/2026 | Modelo de datos V1 | Modelo relacional congelado; adopción de UUID como identificadores. |
 | V20 | 24/09/2026 | Supabase Auth/RLS | Primer login real contra Supabase y resolución Persona → Roles. |
 | V21 | 25/09/2026 | — | Corrige el error de login por uso de `event.currentTarget` tras un `await`. |
@@ -540,3 +540,14 @@ La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la 
 
 ### Base de datos
 - V56 no requiere migración SQL. Continúa utilizando la lógica de versionado documental introducida en las migraciones 013 y 014.
+
+## V59 — Persona como origen de Entrenadores
+
+- El alta de entrenadores deja de crear identidades independientes: **Persona → rol Entrenador → datos técnicos → asignaciones**.
+- `Entrenadores` queda como vista exclusivamente operativa de técnicos; se elimina el listado duplicado de equipos.
+- El número de entrenadores por equipo se consulta en `Estructura`, dentro del listado único de equipos.
+- `Personas` usa datos reales de Supabase para Administrador, permite crear una identidad base y asignar/revisar el rol Entrenador.
+- Si una Persona ya tiene otros roles o usuario Auth, se reutilizan sin crear duplicados.
+- El formulario de Entrenador selecciona una Persona existente y usa la RPC `asignar_rol_entrenador`; los datos de identidad quedan de solo lectura en esta vista.
+- Se conservan función por equipo, vigencia, licencia, curso de delegado, estado e histórico de asignaciones.
+- No requiere nueva migración: depende de las migraciones 018–020 ya aplicadas.
