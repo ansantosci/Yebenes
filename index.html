@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '68';
+    window.YEBENES_APP_VERSION = '69';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -38,7 +38,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v68</div>
+      <div class="version-badge" aria-label="Versión de prueba">v69</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -54,8 +54,9 @@
         <label>Correo electrónico<input name="email" type="email" required autocomplete="username" /></label>
         <label>Contraseña<input name="password" type="password" required autocomplete="current-password" /></label>
         <button class="primary" type="submit">Entrar</button>
-        <button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar correo de confirmación</button>
-        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con el usuario creado en Supabase Auth.</span><span>En V27 la autenticación, altas, fichas del club y asignaciones deportivas se realizan contra Supabase. Si no recibes el correo de confirmación, puedes reenviarlo desde aquí.</span></div>
+        <button class="secondary auth-resend" id="forgotPasswordButton" type="button">¿Has olvidado tu contraseña?</button>
+        <button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar confirmación de alta</button>
+        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación. “Reenviar confirmación de alta” es solo para cuentas creadas mediante autoregistro que aún no hayan confirmado su correo.</span></div>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -228,6 +229,8 @@
 
 
   <dialog id="temporaryAccessModal" class="account-access-modal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Cuenta creada</span><h2>Credenciales temporales</h2><div class="meta">Entrega estas credenciales de forma segura a la persona. La contraseña solo se muestra ahora.</div></div><button type="button" class="icon-button" id="closeTemporaryAccessModal">✕</button></div><div class="credential-card"><label>Correo<input id="temporaryAccessEmail" readonly /></label><label>Contraseña temporal<div class="credential-copy-row"><input id="temporaryAccessPassword" readonly /><button type="button" class="secondary" id="copyTemporaryPassword">Copiar</button></div></label></div><div class="warning-box">En el primer acceso la aplicación bloqueará el resto de funciones hasta que la persona cambie esta contraseña.</div><div class="modal-actions"><button type="button" class="primary" id="acceptTemporaryAccess">Entendido</button></div></div></dialog>
+
+  <dialog id="passwordRecoveryModal" class="account-access-modal"><form id="passwordRecoveryForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Recuperar acceso</span><h2>Crea una nueva contraseña</h2><div class="meta">El enlace de recuperación ha sido validado. Define una nueva contraseña para tu cuenta.</div></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="warning-box">Usa al menos 8 caracteres. Al terminar volverás a la pantalla de inicio de sesión.</div><div class="modal-actions"><button type="button" class="secondary" id="recoveryCancel">Cancelar</button><button type="submit" class="primary">Guardar nueva contraseña</button></div></form></dialog>
 
   <dialog id="forcePasswordChangeModal" class="account-access-modal"><form id="forcePasswordChangeForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Seguridad</span><h2>Crea tu contraseña</h2><div class="meta">Has aceptado la invitación del C.D. Los Yébenes San Bruno. Define ahora tu contraseña para completar la activación de tu cuenta.</div></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="warning-box">Usa al menos 8 caracteres. Después podrás volver a cambiarla desde Perfil cuando quieras.</div><div class="modal-actions"><button type="button" class="secondary" id="forcePasswordLogout">Cerrar sesión</button><button type="submit" class="primary">Guardar contraseña y continuar</button></div></form></dialog>
 

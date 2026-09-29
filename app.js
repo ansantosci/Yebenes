@@ -1,4 +1,4 @@
-const APP_VERSION='68';
+const APP_VERSION='69';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1388,6 +1388,7 @@ $('#familySignupForm').onsubmit=async e=>{
     }
   }catch(err){console.error('Alta Supabase',err);alert(`No se ha podido crear la cuenta: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Crear cuenta'}}
 };
+$('#forgotPasswordButton').onclick=requestPasswordRecovery;
 $('#resendConfirmationButton').onclick=async()=>{
   if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}
   const button=$('#resendConfirmationButton');
@@ -1396,24 +1397,51 @@ $('#resendConfirmationButton').onclick=async()=>{
   const email=String(loginEmail?.value||pending?.email||'').trim().toLowerCase();
   if(!email){alert('Introduce primero el correo electrónico de la cuenta que quieres confirmar.');loginEmail?.focus();return}
   if(loginEmail&&!loginEmail.value)loginEmail.value=email;
-  const originalText=button?.textContent||'Reenviar correo de confirmación';
+  const originalText=button?.textContent||'Reenviar confirmación de alta';
   if(button){button.disabled=true;button.textContent='Enviando…'}
   try{
     const {error}=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:AUTH_REDIRECT_URL}});
     if(error)throw error;
-    alert(`Correo de confirmación reenviado a ${email}. Usa únicamente el enlace del mensaje más reciente.`);
+    alert(`Confirmación de alta reenviada a ${email}. Usa únicamente el enlace del mensaje más reciente.`);
   }catch(err){
     console.error('Reenvío confirmación Supabase',err);
     const msg=String(err?.message||err||'');
     if(/rate limit|security purposes|seconds/i.test(msg)){
       alert('Supabase limita temporalmente los reenvíos por seguridad. Espera unos segundos y vuelve a intentarlo.');
     }else{
-      alert(`No se ha podido reenviar el correo de confirmación: ${msg}`);
+      alert(`No se ha podido reenviar la confirmación de alta: ${msg}`);
     }
   }finally{
     if(button){button.disabled=false;button.textContent=originalText}
   }
 };
+
+function authRedirectType(){
+  const url=new URL(window.location.href),search=new URLSearchParams(url.search),hash=new URLSearchParams((url.hash||'').replace(/^#/,''));
+  return String(search.get('type')||hash.get('type')||'').toLowerCase();
+}
+function clearAuthCallbackUrl(){
+  const url=new URL(window.location.href);['code','type','token','token_hash','error','error_code','error_description'].forEach(k=>url.searchParams.delete(k));url.hash='';history.replaceState({},document.title,url.toString());
+}
+async function requestPasswordRecovery(){
+  if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}
+  const email=String($('#loginForm')?.elements?.email?.value||'').trim().toLowerCase();
+  if(!email){alert('Introduce primero tu correo electrónico.');$('#loginForm')?.elements?.email?.focus();return}
+  const b=$('#forgotPasswordButton'),txt=b?.textContent||'¿Has olvidado tu contraseña?';if(b){b.disabled=true;b.textContent='Enviando…'}
+  try{const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:AUTH_REDIRECT_URL});if(error)throw error;alert(`Te hemos enviado un enlace de recuperación a ${email}. Usa el mensaje más reciente.`)}catch(err){const msg=String(err?.message||err||'');alert(/rate limit|security purposes|seconds/i.test(msg)?'Supabase limita temporalmente los envíos por seguridad. Espera unos segundos y vuelve a intentarlo.':`No se ha podido enviar el correo de recuperación: ${msg}`)}finally{if(b){b.disabled=false;b.textContent=txt}}
+}
+async function handlePasswordRecovery(){
+  if(authRedirectType()!=='recovery')return false;
+  const dialog=$('#passwordRecoveryModal'),form=$('#passwordRecoveryForm');if(!dialog||!form)return false;
+  try{const {data,error}=await sb.auth.getSession();if(error)throw error;if(!data.session)throw new Error('La sesión de recuperación no está disponible o ha caducado.');
+    showAuth('login');form.reset();
+    return await new Promise(resolve=>{
+      $('#recoveryCancel').onclick=async()=>{await sb.auth.signOut();dialog.close();clearAuthCallbackUrl();resolve(true)};
+      form.onsubmit=async e=>{e.preventDefault();const fd=new FormData(form),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),btn=form.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}btn.disabled=true;btn.textContent='Guardando…';try{const {error}=await sb.auth.updateUser({password:p});if(error)throw error;await sb.auth.signOut();dialog.close();clearAuthCallbackUrl();showAuth('login');alert('Contraseña actualizada correctamente. Ya puedes iniciar sesión con la nueva contraseña.');resolve(true)}catch(err){alert(`No se ha podido actualizar la contraseña: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Guardar nueva contraseña'}};
+      dialog.showModal();
+    });
+  }catch(err){clearAuthCallbackUrl();showAuth('login');alert(`No se ha podido abrir la recuperación de contraseña: ${err.message||err}`);return true}
+}
 
 function showAuthRedirectError(){
   const url=new URL(window.location.href);
@@ -1423,7 +1451,7 @@ function showAuthRedirectError(){
   const description=params.get('error_description')||hashParams.get('error_description');
   if(!code&&!description)return;
   const expired=code==='otp_expired'||/expired|invalid/i.test(description||'');
-  setTimeout(()=>alert(expired?'El enlace de confirmación no es válido o ha caducado. Introduce tu correo y pulsa “Reenviar correo de confirmación” para generar uno nuevo.':`No se ha podido completar la confirmación: ${description||code}`),0);
+  setTimeout(()=>alert(expired?'El enlace no es válido o ha caducado. Si era un alta propia, solicita una nueva confirmación; si era una recuperación de contraseña, vuelve a pedir un enlace de recuperación.':`No se ha podido completar la confirmación: ${description||code}`),0);
   ['error','error_code','error_description'].forEach(k=>url.searchParams.delete(k));
   if(url.hash)url.hash='';
   history.replaceState({},document.title,url.toString());
@@ -1483,7 +1511,7 @@ $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)ret
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 window.addEventListener('storage',()=>{reload();applyAgeTransitions();if(currentUser)showApp()});
-initData();reload();restoreSupabaseSession();
+initData();reload();(async()=>{if(await handlePasswordRecovery())return;await restoreSupabaseSession()})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.

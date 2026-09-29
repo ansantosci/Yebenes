@@ -662,9 +662,16 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - Sin cambios en migraciones SQL ni Edge Functions respecto a V65/V66.
 
 
-## V68 - estado y reenvío de activación de cuentas internas
+## V69 - estado y reenvío de activación de cuentas internas
 
 - La ficha de Persona distingue entre cuenta vinculada pendiente de activación y cuenta ya activada.
 - El Administrador puede reenviar un enlace de activación a cuentas internas pendientes.
 - Para cuentas ya creadas en Supabase Auth se utiliza un enlace de recuperación/establecimiento de contraseña, evitando duplicar usuarios y el problema de re-invitar un correo ya registrado.
 - No modifica la migración 021 ni el modelo de datos.
+
+
+## V69
+- Recuperación de contraseña desde la pantalla de acceso.
+- Flujo específico para enlaces de recuperación con establecimiento de nueva contraseña.
+- Diferenciación entre confirmación de autoregistro y recuperación de contraseña.
+- Mensajes de autenticación revisados.
