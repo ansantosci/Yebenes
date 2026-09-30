@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '76';
+    window.YEBENES_APP_VERSION = '77';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -38,7 +38,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v76</div>
+      <div class="version-badge" aria-label="Versión de prueba">v77</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -55,8 +55,8 @@
         <label>Contraseña<input name="password" type="password" required autocomplete="current-password" /></label>
         <button class="primary" type="submit">Entrar</button>
         <button class="secondary auth-resend" id="forgotPasswordButton" type="button">¿Has olvidado tu contraseña?</button>
-        <button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar confirmación de alta</button>
-        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación. “Reenviar confirmación de alta” es solo para cuentas creadas mediante autoregistro que aún no hayan confirmado su correo.</span></div>
+        <div class="auth-confirmation-context hidden" id="confirmationContext"><strong>Cuenta pendiente de confirmar</strong><span id="confirmationContextText">Revisa el correo que te enviamos al registrarte.</span><button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar correo de confirmación</button></div>
+        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación.</span></div>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -297,6 +297,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=76"></script>
+  <script src="app.js?v=77"></script>
 </body>
 </html>

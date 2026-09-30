@@ -1,4 +1,4 @@
-const APP_VERSION='76';
+const APP_VERSION='77';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1065,7 +1065,9 @@ async function restoreSupabaseSession(){
   }
 }
 
-function showAuth(mode='login'){ $('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027' }
+function setConfirmationContext(email='',message=''){const box=$('#confirmationContext'),input=$('#loginForm')?.elements?.email,text=$('#confirmationContextText');if(!box)return;const value=String(email||input?.value||'').trim().toLowerCase();if(value&&input&&!input.value)input.value=value;if(text)text.textContent=message||`Revisa el correo que enviamos a ${value||'tu dirección'} al registrarte.`;box.classList.remove('hidden')}
+function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
+function showAuth(mode='login'){ $('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
 function setView(id){['clubView','medicalView','coachesView','structureView','usersView','personsView'].forEach(v=>$('#'+v)?.classList.toggle('active',v===id));$$('.club-nav .nav-item').forEach(x=>x.classList.toggle('active',x.dataset.clubView===id))}
 function showRoleChooser(force=false){
   if(!currentUser)return;const roles=availableRoles(currentUser);if(!roles.length){alert('Tu cuenta todavía no tiene ningún perfil activo.');return}if(roles.length<=1&&!force){currentRole=roles[0]||'family';localStorage.setItem(K.sessionRole,currentRole);showApp();return}
@@ -1515,7 +1517,7 @@ function syncCoachUserFields(){const role=$('#clubUserRole'),fields=$('#coachUse
 $('#showLogin').onclick=()=>showAuth('login');$('#showFamilySignup').onclick=()=>showAuth('signup');
 function syncSignupMode(){const self=document.querySelector('input[name="signupMode"]:checked')?.value==='self';$('#selfSignupFields').classList.toggle('hidden',!self);$('#guardianSignupFields').classList.toggle('hidden',self);const f=$('#familySignupForm'),tutorDni=f?.elements?.tutorDni,tutorType=f?.elements?.tutorDocumentType,selfDni=f?.elements?.selfDni,selfType=f?.elements?.selfDocumentType;if(tutorDni){tutorDni.required=!self;tutorDni.disabled=self}if(tutorType)tutorType.disabled=self;if(selfDni)selfDni.disabled=!self;if(selfType)selfType.disabled=!self;refreshCalculatedCategory(f)}
 $$('input[name="signupMode"]').forEach(r=>r.onchange=syncSignupMode);syncSignupMode();
-$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;const readyUser=await prepareAuthenticatedUser(data.user);if(!readyUser)return;await processAdultTransitions();currentUser=await loadIdentityWithPending(readyUser);await loadSupabaseStructure();await tryProcessNotifications();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);alert(err?.message==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}clearConfirmationContext();try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;const readyUser=await prepareAuthenticatedUser(data.user);if(!readyUser)return;await processAdultTransitions();currentUser=await loadIdentityWithPending(readyUser);await loadSupabaseStructure();await tryProcessNotifications();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);const msg=String(err?.message||err||'');if(/email.*not.*confirm|not.*confirmed|confirm.*email/i.test(msg)){setConfirmationContext(email,'Tu cuenta todavía no está confirmada. Revisa el correo de alta o solicita uno nuevo.');alert('Tu cuenta todavía no está confirmada. Revisa tu correo o utiliza “Reenviar correo de confirmación”.')}else{alert(msg==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${msg}`)}}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
 $('#familySignupForm').onsubmit=async e=>{
   e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase.');return}
   const fd=new FormData(form),mode=String(fd.get('signupMode')||'guardian'),password=String(fd.get('password')||''),password2=String(fd.get('password2')||''),email=String(fd.get('email')||'').trim().toLowerCase(),birth=String(fd.get('birth')||'');
@@ -1533,7 +1535,7 @@ $('#familySignupForm').onsubmit=async e=>{
     if(data.session){
       await registerProfileFromPayload(payload);currentUser=await loadSupabaseIdentity(data.user);await loadSupabaseStructure();currentRole=mode==='guardian'?'family':'player';localStorage.setItem(K.sessionRole,currentRole);form.reset();showApp();
     }else{
-      form.reset();showAuth('login');const loginEmail=$('#loginForm')?.elements?.email;if(loginEmail)loginEmail.value=email;alert('Cuenta creada. Revisa tu correo y confirma la dirección. Si no recibes el mensaje, usa “Reenviar correo de confirmación”. Después inicia sesión: la aplicación completará automáticamente tu perfil.');
+      form.reset();showAuth('login');const loginEmail=$('#loginForm')?.elements?.email;if(loginEmail)loginEmail.value=email;setConfirmationContext(email,`Cuenta creada. Hemos enviado un correo de confirmación a ${email}. Si no lo recibes, puedes solicitar uno nuevo aquí.`);alert('Cuenta creada. Revisa tu correo y confirma la dirección antes de iniciar sesión.');
     }
   }catch(err){console.error('Alta Supabase',err);alert(`No se ha podido crear la cuenta: ${err.message||err}`)}finally{if(submit){submit.disabled=false;submit.textContent='Crear cuenta'}}
 };
@@ -1546,7 +1548,7 @@ $('#resendConfirmationButton').onclick=async()=>{
   const email=String(loginEmail?.value||pending?.email||'').trim().toLowerCase();
   if(!email){alert('Introduce primero el correo electrónico de la cuenta que quieres confirmar.');loginEmail?.focus();return}
   if(loginEmail&&!loginEmail.value)loginEmail.value=email;
-  const originalText=button?.textContent||'Reenviar confirmación de alta';
+  const originalText=button?.textContent||'Reenviar correo de confirmación';
   if(button){button.disabled=true;button.textContent='Enviando…'}
   try{
     const {error}=await sb.auth.resend({type:'signup',email,options:{emailRedirectTo:AUTH_REDIRECT_URL}});

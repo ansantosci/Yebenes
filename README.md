@@ -720,7 +720,7 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - Si está revocada, rechazada o no existe, Club/Admin pueden solicitar una nueva autorización sin modificar el perfil Entrenador.
 
 
-## V76 - Ciclo de email y mayoría de edad
+## V77 - Ciclo de email y mayoría de edad
 - Avisos visibles de acciones pendientes en Familia.
 - Correo propio obligatorio desde 16 años y para entrenador menor.
 - Preparación a 90/30 días antes de los 18.
