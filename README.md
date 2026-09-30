@@ -718,3 +718,12 @@ La baja es lógica. No se eliminan identidades con histórico operativo.
 - El perfil Club puede solicitar o relanzar la autorización del tutor para un entrenador menor desde la propia ficha del entrenador.
 - Si la autorización está pendiente se informa del estado y se mantiene bloqueada la creación de asignaciones.
 - Si está revocada, rechazada o no existe, Club/Admin pueden solicitar una nueva autorización sin modificar el perfil Entrenador.
+
+
+## V76 - Ciclo de email y mayoría de edad
+- Avisos visibles de acciones pendientes en Familia.
+- Correo propio obligatorio desde 16 años y para entrenador menor.
+- Preparación a 90/30 días antes de los 18.
+- Mayoría de edad no cierra representación si falta correo.
+- Cambio de correo sin perder identidad ni historial; sincroniza login cuando existe Auth.
+- Club puede editar datos deportivos de equipos.
