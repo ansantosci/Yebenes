@@ -1,3 +1,83 @@
+## V78 — Validaciones de menores y correo verificado (30/09/2026)
+
+- Corrige el alta de menores en Supabase eliminando la ambigüedad `persona_id` de `registrar_menor`.
+- Desde los 14 años se exige DNI/NIE propio del jugador, tanto en frontend como en backend.
+- Todos los DNI/NIE que se introduzcan o modifiquen se validan por formato y letra de control: DNI (8 cifras + letra) y NIE (X/Y/Z + 7 cifras + letra). La validación existe en frontend y también en base de datos mediante trigger, por lo que no puede omitirse llamando directamente al backend.
+- Se mantiene correo propio obligatorio desde los 16 años y para cualquier entrenador menor.
+- Los formularios de alta/cambio de correo relevantes piden escribir el correo dos veces; el segundo campo bloquea pegar y arrastrar texto.
+- En alta/edición de menores, correo y teléfono del tutor se muestran en solo lectura y proceden de la Persona autenticada.
+- Familia muestra acciones pendientes si un entrenador menor autorizado carece de correo y si un jugador de 14+ carece de DNI/NIE.
+- Las fichas de Familia cargan el documento principal del jugador para su revisión.
+- README ordenado de más reciente a más antiguo.
+- Migración asociada: `026_v78_validaciones_menor_y_correccion_registrar.sql`.
+- Edge Function: sin cambios respecto a V76/V77 (`gestionar-acceso` V4).
+
+## V77 - Ciclo de email y mayoría de edad
+- Avisos visibles de acciones pendientes en Familia.
+- Correo propio obligatorio desde 16 años y para entrenador menor.
+- Preparación a 90/30 días antes de los 18.
+- Mayoría de edad no cierra representación si falta correo.
+- Cambio de correo sin perder identidad ni historial; sincroniza login cuando existe Auth.
+- Club puede editar datos deportivos de equipos.
+
+## V74
+
+- Corrige el error `Invalid time value` al mostrar autorizaciones revocadas o históricas: el formateador de fechas admite tanto fechas SQL (`YYYY-MM-DD`) como timestamps de Supabase.
+- Las asignaciones de entrenador canceladas por revocación del tutor dejan de eliminarse físicamente: se conservan en `asignaciones_entrenador_equipo` con marca de cancelación y motivo.
+- Las vistas operativas excluyen las asignaciones canceladas, manteniéndolas disponibles para histórico y auditoría.
+- La revocación continúa bloqueando nuevas asignaciones mientras el entrenador siga siendo menor y no exista una nueva autorización vigente.
+
+## V74
+- El perfil Club puede solicitar o relanzar la autorización del tutor para un entrenador menor desde la propia ficha del entrenador.
+- Si la autorización está pendiente se informa del estado y se mantiene bloqueada la creación de asignaciones.
+- Si está revocada, rechazada o no existe, Club/Admin pueden solicitar una nueva autorización sin modificar el perfil Entrenador.
+
+## V72
+
+- Las autorizaciones de entrenador menor dejan de ocupar un bloque general en la portada de Familia.
+- Autorizar, rechazar y revocar se gestionan dentro de la ficha del menor afectado, en la pestaña **Datos**.
+- Una autorización vigente muestra su fecha y el botón **Revocar autorización** dentro de la ficha del niño.
+- Las solicitudes pendientes aparecen también dentro de la ficha correspondiente con **Autorizar / Rechazar**.
+- El histórico del consentimiento queda asociado visualmente al menor, evitando ocupar espacio en familias con varios jugadores.
+- Sin cambios de backend respecto a V71; la migración 023 sigue siendo la vigente.
+
+## V71
+
+- Tutor/Familia puede consultar autorizaciones vigentes e histórico de entrenador menor.
+- Se añade revocación expresa por el mismo tutor que concedió la autorización.
+- Revocar finaliza inmediatamente las asignaciones activas del entrenador menor y cancela las futuras, conservando trazabilidad en auditoría.
+- El perfil Entrenador no se elimina al revocar: simplemente vuelve a quedar bloqueado para asignaciones mientras sea menor.
+- Se mantiene la validación backend de autorización antes de guardar asignaciones.
+
+## V70
+- Mejora el circuito de entrenadores menores: la autorización del tutor se comprueba ya al pulsar **Añadir asignación**, manteniendo además el bloqueo de backend al guardar.
+- Tras un rechazo de backend se restaura la lista persistida y no queda una asignación ficticia marcada como activa.
+- La autorización del tutor usa un diálogo integrado con texto explícito e independiente de la representación como jugador.
+- El listado de entrenadores muestra el estado de autorización del tutor para técnicos menores.
+- La ficha de perfiles del Administrador muestra feedback claro cuando un entrenador menor queda pendiente de autorización.
+- Los datos maestros de Persona en la ficha de Entrenador permanecen en solo lectura; el estado mostrado se etiqueta expresamente como estado del entrenador.
+- Se mantiene la separación entre Jugador deportivo (`jugadores.activo`) y perfil de acceso Jugador: los menores son representados por su tutor y no necesitan perfil de acceso Jugador activo hasta la mayoría de edad.
+
+## V69 - estado y reenvío de activación de cuentas internas
+
+- La ficha de Persona distingue entre cuenta vinculada pendiente de activación y cuenta ya activada.
+- El Administrador puede reenviar un enlace de activación a cuentas internas pendientes.
+- Para cuentas ya creadas en Supabase Auth se utiliza un enlace de recuperación/establecimiento de contraseña, evitando duplicar usuarios y el problema de re-invitar un correo ya registrado.
+- No modifica la migración 021 ni el modelo de datos.
+
+## V69
+- Recuperación de contraseña desde la pantalla de acceso.
+- Flujo específico para enlaces de recuperación con establecimiento de nueva contraseña.
+- Diferenciación entre confirmación de autoregistro y recuperación de contraseña.
+- Mensajes de autenticación revisados.
+
+## V67 - corrección del flujo de invitación
+
+- Evita forzar `refreshSession()` después de cambiar la contraseña desde una invitación, corrigiendo `Invalid Refresh Token: Refresh Token Not Found`.
+- Actualiza el texto del primer acceso para indicar que el usuario está creando su contraseña tras aceptar la invitación, no sustituyendo una contraseña temporal.
+- El alta administrativa espera a que el listado remoto de Personas se refresque antes de mostrar la confirmación.
+- Sin cambios en migraciones SQL ni Edge Functions respecto a V65/V66.
+
 ## V66 — Corrección visual del perfil Tutor/Familia (29/09/2026)
 
 - Corrige el directorio de Personas para mostrar el perfil `tutor` dentro de **Perfiles de acceso**.
@@ -48,8 +128,6 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - No requiere migración SQL nueva.
 - Se apoya en el modelo de Personas y roles de la migración 021.
 
-## V61 — Administración integral de Personas (29/09/2026)
-
 ## V62 — Corrección de carga de perfil tras consolidar Usuarios en Personas
 
 - Corrige una regresión de V61 que impedía iniciar sesión con `Cannot read properties of null (reading 'style')`.
@@ -73,6 +151,32 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - Se apoya en el saneamiento Persona/Entrenador de las migraciones 018–020.
 - La asignación real del entrenador se toma exclusivamente de `asignaciones_entrenador_equipo`; no se infieren equipos por categoría ni por datos de la interfaz.
 
+## V61 — Administración integral de Personas (29/09/2026)
+
+## V61 - Administración integral de Personas (2026-09-29)
+
+V61 consolida **Persona** como identidad maestra y mueve la administración de usuarios y perfiles a la vista Personas.
+
+### Cambios funcionales
+- La tabla Personas muestra identidad, correo, perfiles de acceso, relaciones, cuenta Auth y estado.
+- Cada Persona se abre en una ficha con pestañas **Identidad / Acceso y roles / Relaciones**.
+- El administrador puede modificar los datos de identidad y realizar una baja lógica (Activo/Inactivo) conservando el histórico.
+- Los perfiles **Administrador, Club y Entrenador** se administran con checks.
+- **Jugador · acceso propio** solo puede concederse a una Persona adulta. Al activarlo se reutiliza/crea su extensión `jugadores`; no necesita representación ordinaria para gestionarse a sí misma.
+- **Tutor/Familia** no se concede manualmente: se muestra como perfil derivado de una representación activa.
+- La condición de **Jugador federado** se muestra como relación derivada de la extensión `jugadores`, diferenciándola del perfil de acceso propio.
+- Si existe una cuenta de Supabase Auth con el mismo correo, el administrador puede vincularla a la Persona desde la ficha.
+- Se elimina del menú la vista separada **Usuarios**, al quedar su función consolidada en Personas.
+- Entrenador sigue siendo una extensión de Persona; si se retira el perfil Entrenador con asignaciones activas, la operación se bloquea hasta finalizar dichas asignaciones.
+
+### Migración 021
+`021_administracion_personas_roles.sql` añade RPC seguras para:
+- `guardar_persona_admin(...)`
+- `actualizar_perfiles_persona_admin(...)`
+- `vincular_auth_persona_por_email_admin(...)`
+
+La baja es lógica. No se eliminan identidades con histórico operativo.
+
 ## V59 - 2026-09-28
 
 ### Entrenadores reales en Supabase
@@ -89,6 +193,17 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 ### Base de datos
 - Requiere **migración 017 — Entrenadores reales**.
 - Añade metadatos federativos a `entrenadores`, función a `asignaciones_entrenador_equipo` y RPC seguras `guardar_entrenador` / `guardar_asignaciones_entrenador`.
+
+## V59 — Persona como origen de Entrenadores
+
+- El alta de entrenadores deja de crear identidades independientes: **Persona → rol Entrenador → datos técnicos → asignaciones**.
+- `Entrenadores` queda como vista exclusivamente operativa de técnicos; se elimina el listado duplicado de equipos.
+- El número de entrenadores por equipo se consulta en `Estructura`, dentro del listado único de equipos.
+- `Personas` usa datos reales de Supabase para Administrador, permite crear una identidad base y asignar/revisar el rol Entrenador.
+- Si una Persona ya tiene otros roles o usuario Auth, se reutilizan sin crear duplicados.
+- El formulario de Entrenador selecciona una Persona existente y usa la RPC `asignar_rol_entrenador`; los datos de identidad quedan de solo lectura en esta vista.
+- Se conservan función por equipo, vigencia, licencia, curso de delegado, estado e histórico de asignaciones.
+- No requiere nueva migración: depende de las migraciones 018–020 ya aplicadas.
 
 ## V57 - 2026-09-28
 
@@ -108,6 +223,20 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - Se evita reabrir con `showModal()` un diálogo documental ya abierto durante el refresco.
 - Sin cambios de base de datos ni migraciones.
 
+## V56 — Sustitución documental sincronizada (28/09/2026)
+
+### Correcciones funcionales
+- Tras sustituir un documento desde Familia, la tarjeta se actualiza inmediatamente con la **nueva versión activa**.
+- El modo **Sustituir documento** se cierra automáticamente después de una subida correcta; desaparecen el selector y el botón `Subir`.
+- El nombre, tipo y enlace de **Ver documento** pasan a apuntar a la última versión aportada.
+- La versión anterior queda únicamente como histórico/sustituida conforme a la función de base de datos existente.
+- La subida se refresca primero de forma optimista en pantalla y después se reconcilia con Supabase, evitando estados visuales obsoletos por latencia.
+- Se evita volver a ejecutar `showModal()` sobre un diálogo documental que ya está abierto, eliminando una posible interrupción del refresco.
+- Los selectores de archivo y subtipo se resuelven dentro del formulario concreto que disparó la acción, evitando tomar controles de otra versión del mismo requisito.
+
+### Base de datos
+- V56 no requiere migración SQL. Continúa utilizando la lógica de versionado documental introducida en las migraciones 013 y 014.
+
 ## V55 - 2026-09-28
 
 ### Documentación familiar responsive y navegación simplificada
@@ -119,6 +248,14 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - La ficha de cada jugador sigue siendo accesible desde Inicio y conserva sus pestañas internas `Resumen | Datos | Documentos | RRMM | Inscripción`.
 - Sin cambios de base de datos ni migraciones.
 
+## V55 — Estado visible de documentos aportados
+- La vista Familia distingue de forma robusta entre documento pendiente sin archivo y documento ya aportado pendiente de revisión.
+- Tras una subida correcta, se muestra nombre de archivo, estado **Aportado · pendiente de revisión**, botón **Ver documento** y **Sustituir documento**.
+- Mientras el club no valide, la familia puede reemplazar el archivo.
+- Los documentos validados continúan bloqueados salvo solicitud de nueva versión por el club.
+- Se añade una salvaguarda de render: si existe un documento activo para el requisito, la interfaz lo trata como aportado aunque el estado del requisito llegue momentáneamente desfasado.
+- Sin cambios de base de datos.
+
 ## V53 - 2026-09-28
 
 ### Simplificación de navegación en Familia
@@ -129,7 +266,6 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - La barra inferior se adapta a tres opciones y conserva el comportamiento responsive.
 - Versionado visible e interno alineado a V53.
 - Sin cambios de base de datos ni migraciones.
-
 
 ## V52 - 2026-09-28
 
@@ -150,6 +286,24 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - Sin cambios de esquema ni migraciones SQL.
 
 # C.D. Los Yébenes San Bruno — Gestión de inscripciones y fichas
+
+## V50 — Navegación Familia y documentación sin redundancias (28/09/2026)
+
+### Cambios funcionales
+- Se corrige el acceso a documentación desde Familia: tanto **Gestionar documentación** en la ficha del jugador como **Abrir documentación** en la vista global abren el mismo gestor documental.
+- Se centraliza el evento mediante delegación sobre la vista Familia para evitar botones sin respuesta tras rerenders dinámicos.
+- La opción inferior **Documentos** pasa a ser una vista específica: oculta temporalmente el bloque completo de fichas de jugadores y el resumen familiar para evitar mostrar dos veces la misma información.
+- En la vista Documentos solo se muestra el listado documental por jugador con progreso y acceso al gestor.
+- Al volver a **Inicio** o **Jugadores** se restaura la ficha completa con sus pestañas.
+- El hero de Familia adapta título y descripción cuando se entra en Documentos.
+- Se mantiene una única fuente de detalle documental (`openDocumentManager`) independientemente del punto de entrada.
+
+### Cambios técnicos
+- `APP_VERSION` y `YEBENES_APP_VERSION` pasan a 50.
+- Cache-busting de `styles.css` y `app.js` actualizado a `?v=50`.
+- `version.json` actualizado a 50.
+- No requiere migración SQL.
+
 ## V49 - 2026-09-28
 
 - La pestaña **Economía mantiene una alerta mientras la inscripción no esté abonada al 100 %**, aunque exista fraccionamiento Cluber validado.
@@ -160,6 +314,46 @@ Desplegar `supabase/functions/gestionar-acceso/index.ts` con nombre **gestionar-
 - Se mantiene en la ficha individual la información necesaria para cada jugador: IDs Cluber, estado económico, validación/revocación de fraccionamiento y histórico de pagos.
 - El registro manual continúa limitado a **Efectivo**. El modelo de datos conserva otros métodos para futuras activaciones sin migraciones destructivas.
 - Sin cambios de base de datos.
+
+## V47 — 28/09/2026 — Política de cobros y Cluber
+
+### Operativa actual
+- **Registro manual:** únicamente efectivo.
+- **Cluber:** los cobros no se registran manualmente; se incorporarán mediante conciliación de fichero exportado o API cuando esté disponible.
+- **Fraccionamiento Cluber:** el Club/Administrador puede seguir validando manualmente que la domiciliación de cuotas está correctamente configurada. Esa validación puede habilitar la ficha aunque el importe total aún no esté cobrado.
+- Los pagos Cluber previamente registrados durante pruebas permanecen en el histórico; V47 no altera ni elimina datos existentes.
+
+### Parametrización
+`PAYMENT_FEATURES` mantiene separada la política operativa de la estructura de datos:
+- `efectivo`: habilitado;
+- otros medios manuales: deshabilitados;
+- tarjeta: deshabilitada;
+- importación Cluber: todavía deshabilitada.
+
+Esto permite activar nuevas formas de cobro en el futuro sin eliminar la estructura económica existente. Si una futura forma de pago requiere un código específico nuevo en PostgreSQL, se realizará entonces la migración correspondiente.
+
+### Compatibilidad técnica
+La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la migración 016 (`vinculos_clubber`, `validar_fraccionamiento_clubber`, etc.) no se renombran en V47 para evitar una migración destructiva o innecesaria.
+
+## V45 — 28/09/2026 — Responsive mobile-first y alertas de pestaña corregidas
+
+### Corrección funcional
+- La alerta roja de la pestaña **Datos** ya no depende de que exista una asignación de equipo.
+- **Datos** solo muestra alerta cuando los datos personales todavía no han sido validados por el club, reutilizando la misma regla que el requisito `Datos personales validados` del motor de preparación federativa.
+- La falta de equipo queda representada únicamente en el requisito de equipo correspondiente y no contamina la pestaña Datos.
+
+### Consolidación responsive
+- La ficha de jugador de Club/Administrador pasa a comportamiento **mobile-first**.
+- En <=720 px ocupa el viewport útil completo, sin scroll horizontal global y con scroll vertical interno.
+- Cabecera y botón cerrar permanecen accesibles; la barra de pestañas queda sticky y es desplazable horizontalmente.
+- Pestañas y controles tienen altura táctil mínima aproximada de 44 px.
+- Resúmenes, requisitos, formularios, acciones y economía se apilan a una sola columna en móvil.
+- Botones principales pasan a ancho completo cuando el espacio es reducido.
+- Textos largos, históricos y estados pueden envolver sin ensanchar la ficha.
+- El mismo criterio de controles táctiles, formularios apilados y ausencia de scroll horizontal se extiende a fichas de Familia y al resto de diálogos.
+
+### Base de datos
+- V45 no requiere migración. La última migración funcional sigue siendo la **016**.
 
 ## V44 — Corrección de maquetación de la ficha por pestañas
 
@@ -230,6 +424,243 @@ Prototipo web de gestión del club para la temporada 2026/2027. Frontend estáti
 | **V47** | **28/09/2026** | Sin migración | Cobro manual solo en efectivo; Cluber reservado a conciliación/importación futura; parametrización de medios de pago. |
 | **V48** | **28/09/2026** | Sin migración | Alerta económica persiste hasta pago 100 %; ámbar si el fraccionamiento Cluber habilita la ficha con saldo pendiente; conciliación Cluber retirada de la ficha individual y reservada a backoffice masivo futuro. |
 
+## V43 · 28/09/2026 · Fichas por pestañas y alertas contextuales
+
+- La ficha de jugador para Club/Administrador se reorganiza en **Resumen, Datos, Documentación, RRMM, Economía e Histórico**.
+- Las pestañas muestran alerta roja cuando existe un bloqueo que requiere atención y alerta ámbar para RRMM vigente que vence en <=90 días.
+- El resumen de preparación es navegable: pulsar Datos/Equipo, Documentación, RRMM o Pago abre directamente la pestaña correspondiente.
+- **Economía queda integrada dentro de la propia ficha**, eliminando el diálogo secundario que provocaba el fallo de `Gestionar pago / Cluber`.
+- La ficha de Familia/Jugador adopta el mismo lenguaje visual, simplificado a **Resumen, Datos, Documentos, RRMM e Inscripción**. Las alertas de Familia se reservan a tareas que puede resolver o debe conocer el tutor/jugador; la falta de equipo no se presenta como tarea familiar.
+- Se mantiene el patrón global de diseño: **listados = KPIs + filtros + tabla; fichas = pestañas + resumen + alertas contextuales**.
+- Sin cambios de base de datos. Se mantiene migración 016 como última migración funcional.
+
+## V42 — 28/09/2026 — Sin migración
+
+### Corrección de gestión económica desde la ficha
+- Corrige el botón **Gestionar pago / Cluber** de la ficha de Club/Administrador, que podía no abrir el formulario económico.
+- La causa era la apertura de un segundo `dialog.showModal()` mientras la ficha del jugador seguía abierta como diálogo modal; el comportamiento no es consistente entre navegadores.
+- Al entrar en Economía, V42 cierra temporalmente la ficha del jugador y abre la gestión económica como único modal activo.
+- Al cerrar Economía (botón X o tecla Escape) se reabre automáticamente la ficha del mismo jugador.
+- Se mantiene el formulario económico; desde V47 el alta manual de cobros queda limitada a efectivo. Se conservan IDs Cluber, referencias, histórico y validación/revocación de fraccionamiento Cluber.
+- Si por cualquier motivo el diálogo económico no pudiera abrirse, ahora se informa al usuario en lugar de fallar silenciosamente.
+
+### Versionado
+- Se corrige también `window.YEBENES_APP_VERSION`, que había quedado rezagado respecto al número visible de release.
+- `index.html`, `app.js`, `version.json`, CSS y JS quedan alineados en **V42**.
+
+### Base de datos
+- V42 no requiere nueva migración. Continúa utilizando la **migración 016** para configuración económica, pagos y Cluber.
+
+## V41 — 28/09/2026 — Sin migración
+
+### Ordenación deportiva de Estructura
+- El listado único de equipos se ordena por la edad de la categoría, de menor a mayor: **Chupetín → Prebenjamín → Benjamín → Alevín → Infantil → Cadete → Juvenil → Senior**.
+- El orden se apoya en el campo maestro `categorias.orden` de PostgreSQL, por lo que no depende del nombre textual de la categoría.
+- Dentro de una misma categoría se aplica orden natural por nombre de equipo (`A`, `B`, `C`, etc.).
+- El mismo criterio se conserva como fallback en el modo local del prototipo.
+
+### Base de datos
+- V41 no requiere migración.
+- Reutiliza `categorias.orden`, ya cargado en el Modelo de Datos V1.
+
+## V40 — 28/09/2026 — Sin migración
+
+### Estructura unificada por equipo
+- Se elimina de **Estructura** el segundo listado independiente de configuración económica.
+- La tabla de equipos pasa a mostrar en una única vista los datos deportivos y económicos de cada equipo.
+- Nuevas columnas visibles: importe de inscripción, fraccionamiento Cluber y requisito de pago para ficha, junto con categoría, modalidad, jugadores, entrenadores y estado.
+- Cada fila de equipo es navegable/clicable y abre una única ficha de edición.
+
+### Ficha única de equipo
+- La ficha reúne **Datos deportivos** y **Configuración económica**.
+- Datos deportivos editables por Administrador: nombre, categoría, código, modalidad, género y estado activo/inactivo.
+- Datos económicos editables por Club y Administrador: importe de inscripción, admisión de fraccionamiento Cluber, requisito de pago para tramitar ficha y observaciones.
+- El perfil Club puede consultar los datos deportivos pero no modificarlos; sí puede gestionar la configuración económica.
+- La configuración sigue perteneciendo a `equipo + temporada`, conservando el modelo histórico ya establecido.
+
+### UX
+- Se elimina la duplicidad conceptual `Equipos / Economía` dentro de Estructura.
+- La fila muestra `Economía pendiente` cuando el equipo está activo pero su configuración económica requerida aún no está completa.
+- La edición se realiza desde un único punto, reduciendo navegación y riesgo de inconsistencias.
+
+### Base de datos
+- V40 no requiere migración.
+- Reutiliza `equipos`, `configuracion_economica_equipo` y la RPC `configurar_economia_equipo` de la migración 016.
+
+
+---
+
+## V39 — 28/09/2026 — Migración 016
+
+### Configuración económica por equipo y temporada
+- Club y Administrador pueden definir el **importe total de inscripción** para cada equipo de la temporada.
+- Se configura si el equipo admite **fraccionamiento mediante Cluber** y si el pago es requisito para tramitar la ficha.
+- La configuración queda ligada a `equipo + temporada`, de modo que puede cambiar en temporadas posteriores sin alterar el modelo histórico.
+- Por defecto no se activa todavía ninguna excepción: Senior A se trata igual que el resto hasta que se decida lo contrario.
+
+### Situación económica de cada inscripción
+- Cada inscripción mantiene importe total, importe cobrado, estado económico y condición **Apto para ficha**.
+- Estados operativos: `pendiente`, `parcial`, `pagado` y movimientos anulados/devueltos en histórico.
+- El modelo admite históricamente `efectivo`, `clubber` y `otro`; desde V47 la interfaz solo permite registrar manualmente **efectivo**. Los pagos Cluber se reservan a conciliación/importación.
+- Un pago solo figura como **Pagado** cuando la suma cobrada alcanza el 100 % del importe de inscripción.
+
+### Fraccionamiento Cluber
+- El club puede marcar que ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.
+- Una inscripción con cobro parcial puede quedar **habilitada para tramitar ficha** cuando el fraccionamiento Cluber está validado y el equipo lo admite.
+- Se diferencia expresamente `pagado al 100 %` de `habilitado para ficha por fraccionamiento validado`.
+- La validación queda fechada y asociada al usuario Club/Administrador que la realizó.
+
+### IDs Cluber
+- Se pueden registrar el **ID Cluber de deportista** y el **ID Cluber del tutor**.
+- Los IDs se almacenan en una entidad separada para mantenerlos fuera del acceso del perfil Entrenador.
+- El modelo queda preparado para una futura API/webhook de Cluber sin necesidad de rediseñar la ficha.
+
+### Motor de preparación federativa
+El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
+1. Datos personales validados.
+2. Equipo asignado.
+3. Documentación RFFM al 100 %.
+4. Reconocimiento médico vigente.
+5. Inscripción económicamente habilitada.
+
+- `Listo para federar` y `Ficha tramitada` quedan bloqueados si el quinto requisito no está cumplido.
+- El contador **Completos** y su filtro rápido utilizan también el nuevo requisito económico.
+- Se añade el KPI/filtro rápido **Pago pendiente** en Fichas.
+
+### UX
+- La ficha de Club/Administrador incorpora un bloque **Situación económica**.
+- Desde la ficha se pueden registrar cobros **en efectivo**, guardar IDs Cluber y validar/revocar el fraccionamiento. Los pagos Cluber no se introducen manualmente desde V47.
+- Estructura incorpora una tabla específica para configurar importes y reglas económicas por equipo.
+- Familia/Jugador ve el estado económico dentro del checklist de su inscripción.
+
+### Base de datos
+- **Migración 016:** `016_economia_inscripcion_clubber.sql`.
+- Nuevas tablas:
+  - `configuracion_economica_equipo`;
+  - `situacion_economica_inscripcion`;
+  - `pagos_inscripcion`;
+  - `vinculos_clubber`.
+- Nuevas RPC principales:
+  - `configurar_economia_equipo`;
+  - `registrar_pago_inscripcion`;
+  - `anular_pago_inscripcion`;
+  - `validar_fraccionamiento_clubber`;
+  - `actualizar_vinculos_clubber`.
+
+---
+
+## V38 — 28/09/2026 — Sin migración
+
+### Reconocimiento médico integrado en la ficha
+- La ficha del Club/Administrador muestra de forma explícita el estado del RRMM y su fecha de validez.
+- Un RRMM `Vigente >90 días` se muestra en verde.
+- Un RRMM que `Vence <=90 días` se muestra en ámbar pero sigue siendo válido para tramitar.
+- `Vencido` o `Sin RRMM` se muestran en rojo y bloquean `Listo para federar`.
+- Familia/Jugador ve también el estado RRMM dentro del checklist de su ficha.
+
+### Preparación integral de la ficha
+Se incorpora un bloque **Preparación para tramitar ficha** con porcentaje y cuatro requisitos actualmente implantados:
+1. Datos personales validados por el club.
+2. Equipo asignado.
+3. Documentación RFFM al 100 %.
+4. Reconocimiento médico vigente.
+
+- El indicador muestra `X de 4 requisitos cumplidos` y una barra de progreso.
+- El contador superior **Completos** pasa a contar jugadores que cumplen realmente los cuatro requisitos, no solo un estado manual del workflow.
+- El filtro rápido `Completos` utiliza el mismo criterio.
+- `Listo para federar` y `Ficha tramitada` quedan bloqueados si falta cualquiera de esos requisitos.
+- El pago de inscripción queda señalado como futuro quinto requisito cuando se implemente el módulo económico/Cluber.
+
+### Base de datos
+- V38 no requiere migración. Usa los datos ya existentes de inscripciones, asignaciones, requisitos documentales y reconocimientos médicos.
+
+
+---
+
+## V37 — 25/09/2026 — Sin migración
+
+### Filtros rápidos desde indicadores KPI
+- Las tarjetas numéricas de **Fichas** pasan a ser filtros rápidos clicables: Jugadores, Completos, Documentos pendientes, Por revisar, RRMM ≤90 días y Mayoría de edad ≤30 días.
+- Las tarjetas de **RRMM** también filtran el listado: Jugadores, Vigente >90 días, Vence ≤90 días y Vencidos/sin RRMM.
+- El filtro rápido se combina con búsqueda, categoría, activo/inactivo y estado existentes.
+- La tarjeta activa queda resaltada y se muestra una etiqueta de filtro sobre la tabla.
+- Pulsar de nuevo la tarjeta activa, la tarjeta `Jugadores` o la `×` de la etiqueta elimina el filtro rápido.
+- Se añade soporte de teclado (Enter/Espacio) para las tarjetas KPI.
+
+### Base de datos
+- V37 no requiere migración.
+
+
+---
+
+## V36 — 25/09/2026 — Migración 015
+
+### Progreso documental RFFM
+- Se incorpora un indicador gráfico de porcentaje de documentación completada.
+- El porcentaje se calcula **solo con requisitos obligatorios validados por el club**; un documento meramente aportado o un paso comunicado por la familia todavía no suma como completado.
+- Se muestra el porcentaje junto con el detalle `X de Y requisitos validados` en:
+  - resumen de Documentos de Familia/Jugador;
+  - modal de gestión documental;
+  - ficha del Club/Administrador;
+  - listado de Fichas.
+- La documentación se considera completa únicamente al alcanzar el 100% de requisitos obligatorios validados.
+
+### Autorización del tutor y firma online RFFM
+- Se mantiene el criterio de no duplicar en la aplicación procesos de firma que se realizan en el circuito oficial de la RFFM.
+- Para los requisitos sin archivo (`autorizacion_tutor` y `firma_rffm`), Familia/Jugador puede comunicar: **“Ya lo he realizado en RFFM”**.
+- Esa comunicación cambia el requisito a **Comunicado · pendiente de verificación**; no equivale a una validación automática.
+- Club/Administrador dispone entonces de:
+  - **Verificar y validar**;
+  - **No verificado**, con motivo obligatorio.
+- Si el club no puede verificarlo, Familia/Jugador ve el motivo y puede comunicar de nuevo que el paso ha sido subsanado/realizado.
+- Los requisitos ya validados permanecen bloqueados para Familia/Jugador y solo Club/Administrador puede cambiar su validación.
+
+### Seguridad y trazabilidad
+- La transición de “realizado en RFFM” se ejecuta mediante RPC `declarar_requisito_rffm_realizado` con `SECURITY DEFINER` y comprobación de representación activa o autorrepresentación.
+- El backend impide que Club/Administrador valide un requisito externo si Familia/Jugador no lo ha comunicado previamente como realizado.
+- Cada comunicación queda registrada en `historial_requisitos_federativos` con usuario y fecha.
+
+### Base de datos
+- **Migración 015:** `015_declaracion_familia_rffm_y_progreso.sql`.
+- Nuevo estado de requisito: `declarado_realizado`.
+- Nuevos campos:
+  - `declarado_realizado_at`;
+  - `declarado_realizado_por`.
+- Nueva función:
+  - `declarar_requisito_rffm_realizado(uuid)`.
+
+### Pendiente relacionado
+- Si la RFFM habilita en el futuro una API/webhook para consultar autorización/firma de licencia, sustituir la verificación manual por consulta automática manteniendo el mismo modelo de estados.
+
+
+---
+
+## V35 — 25/09/2026 — Migración 014
+
+### Documentación federativa: bloqueo tras validación
+- Un documento **validado por Club/Administrador queda bloqueado para Familia/Jugador**.
+- La familia puede consultar el archivo validado, pero ya no puede sustituirlo unilateralmente.
+- Club/Administrador dispone de **Solicitar nueva versión**, con motivo obligatorio.
+- Mientras existe una solicitud de nueva versión, el documento validado anterior se conserva y sigue siendo consultable como última versión aceptada.
+- Cuando la familia aporta la nueva versión, el requisito pasa automáticamente a **Aportado · pendiente de revisión**.
+- Un documento rechazado que se corrige también vuelve automáticamente a **Aportado · pendiente de revisión**; el rechazo anterior deja de ser el estado vigente.
+- Los documentos pendientes de revisión pueden sustituirse por la familia antes de que el club los valide.
+- Un requisito rechazado no puede ser validado de nuevo sin que exista una nueva versión aportada.
+
+### Trazabilidad
+- Se crea `historial_requisitos_federativos` para conservar las transiciones principales: aportación, corrección, validación, rechazo y solicitud/aportación de nueva versión.
+- La versión validada anterior no se marca como sustituida hasta que se aporta realmente un nuevo archivo.
+
+### UX
+- Familia: documento validado muestra solo `Ver documento` y la indicación de que está bloqueado.
+- Familia: solicitud de nueva versión muestra el motivo del club, permite ver la versión validada anterior y aportar el nuevo archivo.
+- Administrador/Club: documentos validados con archivo muestran `Solicitar nueva versión`; los rechazados quedan a la espera de corrección.
+
+### Base de datos
+- **Migración 014:** `014_documentos_validados_bloqueados.sql`.
+
+---
+
 ## V34 — detalle
 
 ### Familia / Jugador
@@ -297,433 +728,3 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 
 ---
 
-## V35 — 25/09/2026 — Migración 014
-
-### Documentación federativa: bloqueo tras validación
-- Un documento **validado por Club/Administrador queda bloqueado para Familia/Jugador**.
-- La familia puede consultar el archivo validado, pero ya no puede sustituirlo unilateralmente.
-- Club/Administrador dispone de **Solicitar nueva versión**, con motivo obligatorio.
-- Mientras existe una solicitud de nueva versión, el documento validado anterior se conserva y sigue siendo consultable como última versión aceptada.
-- Cuando la familia aporta la nueva versión, el requisito pasa automáticamente a **Aportado · pendiente de revisión**.
-- Un documento rechazado que se corrige también vuelve automáticamente a **Aportado · pendiente de revisión**; el rechazo anterior deja de ser el estado vigente.
-- Los documentos pendientes de revisión pueden sustituirse por la familia antes de que el club los valide.
-- Un requisito rechazado no puede ser validado de nuevo sin que exista una nueva versión aportada.
-
-### Trazabilidad
-- Se crea `historial_requisitos_federativos` para conservar las transiciones principales: aportación, corrección, validación, rechazo y solicitud/aportación de nueva versión.
-- La versión validada anterior no se marca como sustituida hasta que se aporta realmente un nuevo archivo.
-
-### UX
-- Familia: documento validado muestra solo `Ver documento` y la indicación de que está bloqueado.
-- Familia: solicitud de nueva versión muestra el motivo del club, permite ver la versión validada anterior y aportar el nuevo archivo.
-- Administrador/Club: documentos validados con archivo muestran `Solicitar nueva versión`; los rechazados quedan a la espera de corrección.
-
-### Base de datos
-- **Migración 014:** `014_documentos_validados_bloqueados.sql`.
-
----
-
-## V36 — 25/09/2026 — Migración 015
-
-### Progreso documental RFFM
-- Se incorpora un indicador gráfico de porcentaje de documentación completada.
-- El porcentaje se calcula **solo con requisitos obligatorios validados por el club**; un documento meramente aportado o un paso comunicado por la familia todavía no suma como completado.
-- Se muestra el porcentaje junto con el detalle `X de Y requisitos validados` en:
-  - resumen de Documentos de Familia/Jugador;
-  - modal de gestión documental;
-  - ficha del Club/Administrador;
-  - listado de Fichas.
-- La documentación se considera completa únicamente al alcanzar el 100% de requisitos obligatorios validados.
-
-### Autorización del tutor y firma online RFFM
-- Se mantiene el criterio de no duplicar en la aplicación procesos de firma que se realizan en el circuito oficial de la RFFM.
-- Para los requisitos sin archivo (`autorizacion_tutor` y `firma_rffm`), Familia/Jugador puede comunicar: **“Ya lo he realizado en RFFM”**.
-- Esa comunicación cambia el requisito a **Comunicado · pendiente de verificación**; no equivale a una validación automática.
-- Club/Administrador dispone entonces de:
-  - **Verificar y validar**;
-  - **No verificado**, con motivo obligatorio.
-- Si el club no puede verificarlo, Familia/Jugador ve el motivo y puede comunicar de nuevo que el paso ha sido subsanado/realizado.
-- Los requisitos ya validados permanecen bloqueados para Familia/Jugador y solo Club/Administrador puede cambiar su validación.
-
-### Seguridad y trazabilidad
-- La transición de “realizado en RFFM” se ejecuta mediante RPC `declarar_requisito_rffm_realizado` con `SECURITY DEFINER` y comprobación de representación activa o autorrepresentación.
-- El backend impide que Club/Administrador valide un requisito externo si Familia/Jugador no lo ha comunicado previamente como realizado.
-- Cada comunicación queda registrada en `historial_requisitos_federativos` con usuario y fecha.
-
-### Base de datos
-- **Migración 015:** `015_declaracion_familia_rffm_y_progreso.sql`.
-- Nuevo estado de requisito: `declarado_realizado`.
-- Nuevos campos:
-  - `declarado_realizado_at`;
-  - `declarado_realizado_por`.
-- Nueva función:
-  - `declarar_requisito_rffm_realizado(uuid)`.
-
-### Pendiente relacionado
-- Si la RFFM habilita en el futuro una API/webhook para consultar autorización/firma de licencia, sustituir la verificación manual por consulta automática manteniendo el mismo modelo de estados.
-
-
----
-
-## V37 — 25/09/2026 — Sin migración
-
-### Filtros rápidos desde indicadores KPI
-- Las tarjetas numéricas de **Fichas** pasan a ser filtros rápidos clicables: Jugadores, Completos, Documentos pendientes, Por revisar, RRMM ≤90 días y Mayoría de edad ≤30 días.
-- Las tarjetas de **RRMM** también filtran el listado: Jugadores, Vigente >90 días, Vence ≤90 días y Vencidos/sin RRMM.
-- El filtro rápido se combina con búsqueda, categoría, activo/inactivo y estado existentes.
-- La tarjeta activa queda resaltada y se muestra una etiqueta de filtro sobre la tabla.
-- Pulsar de nuevo la tarjeta activa, la tarjeta `Jugadores` o la `×` de la etiqueta elimina el filtro rápido.
-- Se añade soporte de teclado (Enter/Espacio) para las tarjetas KPI.
-
-### Base de datos
-- V37 no requiere migración.
-
-
----
-
-## V38 — 28/09/2026 — Sin migración
-
-### Reconocimiento médico integrado en la ficha
-- La ficha del Club/Administrador muestra de forma explícita el estado del RRMM y su fecha de validez.
-- Un RRMM `Vigente >90 días` se muestra en verde.
-- Un RRMM que `Vence <=90 días` se muestra en ámbar pero sigue siendo válido para tramitar.
-- `Vencido` o `Sin RRMM` se muestran en rojo y bloquean `Listo para federar`.
-- Familia/Jugador ve también el estado RRMM dentro del checklist de su ficha.
-
-### Preparación integral de la ficha
-Se incorpora un bloque **Preparación para tramitar ficha** con porcentaje y cuatro requisitos actualmente implantados:
-1. Datos personales validados por el club.
-2. Equipo asignado.
-3. Documentación RFFM al 100 %.
-4. Reconocimiento médico vigente.
-
-- El indicador muestra `X de 4 requisitos cumplidos` y una barra de progreso.
-- El contador superior **Completos** pasa a contar jugadores que cumplen realmente los cuatro requisitos, no solo un estado manual del workflow.
-- El filtro rápido `Completos` utiliza el mismo criterio.
-- `Listo para federar` y `Ficha tramitada` quedan bloqueados si falta cualquiera de esos requisitos.
-- El pago de inscripción queda señalado como futuro quinto requisito cuando se implemente el módulo económico/Cluber.
-
-### Base de datos
-- V38 no requiere migración. Usa los datos ya existentes de inscripciones, asignaciones, requisitos documentales y reconocimientos médicos.
-
-
----
-
-## V39 — 28/09/2026 — Migración 016
-
-### Configuración económica por equipo y temporada
-- Club y Administrador pueden definir el **importe total de inscripción** para cada equipo de la temporada.
-- Se configura si el equipo admite **fraccionamiento mediante Cluber** y si el pago es requisito para tramitar la ficha.
-- La configuración queda ligada a `equipo + temporada`, de modo que puede cambiar en temporadas posteriores sin alterar el modelo histórico.
-- Por defecto no se activa todavía ninguna excepción: Senior A se trata igual que el resto hasta que se decida lo contrario.
-
-### Situación económica de cada inscripción
-- Cada inscripción mantiene importe total, importe cobrado, estado económico y condición **Apto para ficha**.
-- Estados operativos: `pendiente`, `parcial`, `pagado` y movimientos anulados/devueltos en histórico.
-- El modelo admite históricamente `efectivo`, `clubber` y `otro`; desde V47 la interfaz solo permite registrar manualmente **efectivo**. Los pagos Cluber se reservan a conciliación/importación.
-- Un pago solo figura como **Pagado** cuando la suma cobrada alcanza el 100 % del importe de inscripción.
-
-### Fraccionamiento Cluber
-- El club puede marcar que ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.
-- Una inscripción con cobro parcial puede quedar **habilitada para tramitar ficha** cuando el fraccionamiento Cluber está validado y el equipo lo admite.
-- Se diferencia expresamente `pagado al 100 %` de `habilitado para ficha por fraccionamiento validado`.
-- La validación queda fechada y asociada al usuario Club/Administrador que la realizó.
-
-### IDs Cluber
-- Se pueden registrar el **ID Cluber de deportista** y el **ID Cluber del tutor**.
-- Los IDs se almacenan en una entidad separada para mantenerlos fuera del acceso del perfil Entrenador.
-- El modelo queda preparado para una futura API/webhook de Cluber sin necesidad de rediseñar la ficha.
-
-### Motor de preparación federativa
-El cálculo de **Preparación para tramitar ficha** pasa de 4 a 5 requisitos:
-1. Datos personales validados.
-2. Equipo asignado.
-3. Documentación RFFM al 100 %.
-4. Reconocimiento médico vigente.
-5. Inscripción económicamente habilitada.
-
-- `Listo para federar` y `Ficha tramitada` quedan bloqueados si el quinto requisito no está cumplido.
-- El contador **Completos** y su filtro rápido utilizan también el nuevo requisito económico.
-- Se añade el KPI/filtro rápido **Pago pendiente** en Fichas.
-
-### UX
-- La ficha de Club/Administrador incorpora un bloque **Situación económica**.
-- Desde la ficha se pueden registrar cobros **en efectivo**, guardar IDs Cluber y validar/revocar el fraccionamiento. Los pagos Cluber no se introducen manualmente desde V47.
-- Estructura incorpora una tabla específica para configurar importes y reglas económicas por equipo.
-- Familia/Jugador ve el estado económico dentro del checklist de su inscripción.
-
-### Base de datos
-- **Migración 016:** `016_economia_inscripcion_clubber.sql`.
-- Nuevas tablas:
-  - `configuracion_economica_equipo`;
-  - `situacion_economica_inscripcion`;
-  - `pagos_inscripcion`;
-  - `vinculos_clubber`.
-- Nuevas RPC principales:
-  - `configurar_economia_equipo`;
-  - `registrar_pago_inscripcion`;
-  - `anular_pago_inscripcion`;
-  - `validar_fraccionamiento_clubber`;
-  - `actualizar_vinculos_clubber`.
-
----
-
-## V40 — 28/09/2026 — Sin migración
-
-### Estructura unificada por equipo
-- Se elimina de **Estructura** el segundo listado independiente de configuración económica.
-- La tabla de equipos pasa a mostrar en una única vista los datos deportivos y económicos de cada equipo.
-- Nuevas columnas visibles: importe de inscripción, fraccionamiento Cluber y requisito de pago para ficha, junto con categoría, modalidad, jugadores, entrenadores y estado.
-- Cada fila de equipo es navegable/clicable y abre una única ficha de edición.
-
-### Ficha única de equipo
-- La ficha reúne **Datos deportivos** y **Configuración económica**.
-- Datos deportivos editables por Administrador: nombre, categoría, código, modalidad, género y estado activo/inactivo.
-- Datos económicos editables por Club y Administrador: importe de inscripción, admisión de fraccionamiento Cluber, requisito de pago para tramitar ficha y observaciones.
-- El perfil Club puede consultar los datos deportivos pero no modificarlos; sí puede gestionar la configuración económica.
-- La configuración sigue perteneciendo a `equipo + temporada`, conservando el modelo histórico ya establecido.
-
-### UX
-- Se elimina la duplicidad conceptual `Equipos / Economía` dentro de Estructura.
-- La fila muestra `Economía pendiente` cuando el equipo está activo pero su configuración económica requerida aún no está completa.
-- La edición se realiza desde un único punto, reduciendo navegación y riesgo de inconsistencias.
-
-### Base de datos
-- V40 no requiere migración.
-- Reutiliza `equipos`, `configuracion_economica_equipo` y la RPC `configurar_economia_equipo` de la migración 016.
-
-
----
-
-## V41 — 28/09/2026 — Sin migración
-
-### Ordenación deportiva de Estructura
-- El listado único de equipos se ordena por la edad de la categoría, de menor a mayor: **Chupetín → Prebenjamín → Benjamín → Alevín → Infantil → Cadete → Juvenil → Senior**.
-- El orden se apoya en el campo maestro `categorias.orden` de PostgreSQL, por lo que no depende del nombre textual de la categoría.
-- Dentro de una misma categoría se aplica orden natural por nombre de equipo (`A`, `B`, `C`, etc.).
-- El mismo criterio se conserva como fallback en el modo local del prototipo.
-
-### Base de datos
-- V41 no requiere migración.
-- Reutiliza `categorias.orden`, ya cargado en el Modelo de Datos V1.
-
-## V42 — 28/09/2026 — Sin migración
-
-### Corrección de gestión económica desde la ficha
-- Corrige el botón **Gestionar pago / Cluber** de la ficha de Club/Administrador, que podía no abrir el formulario económico.
-- La causa era la apertura de un segundo `dialog.showModal()` mientras la ficha del jugador seguía abierta como diálogo modal; el comportamiento no es consistente entre navegadores.
-- Al entrar en Economía, V42 cierra temporalmente la ficha del jugador y abre la gestión económica como único modal activo.
-- Al cerrar Economía (botón X o tecla Escape) se reabre automáticamente la ficha del mismo jugador.
-- Se mantiene el formulario económico; desde V47 el alta manual de cobros queda limitada a efectivo. Se conservan IDs Cluber, referencias, histórico y validación/revocación de fraccionamiento Cluber.
-- Si por cualquier motivo el diálogo económico no pudiera abrirse, ahora se informa al usuario en lugar de fallar silenciosamente.
-
-### Versionado
-- Se corrige también `window.YEBENES_APP_VERSION`, que había quedado rezagado respecto al número visible de release.
-- `index.html`, `app.js`, `version.json`, CSS y JS quedan alineados en **V42**.
-
-### Base de datos
-- V42 no requiere nueva migración. Continúa utilizando la **migración 016** para configuración económica, pagos y Cluber.
-
-
-
-## V43 · 28/09/2026 · Fichas por pestañas y alertas contextuales
-
-- La ficha de jugador para Club/Administrador se reorganiza en **Resumen, Datos, Documentación, RRMM, Economía e Histórico**.
-- Las pestañas muestran alerta roja cuando existe un bloqueo que requiere atención y alerta ámbar para RRMM vigente que vence en <=90 días.
-- El resumen de preparación es navegable: pulsar Datos/Equipo, Documentación, RRMM o Pago abre directamente la pestaña correspondiente.
-- **Economía queda integrada dentro de la propia ficha**, eliminando el diálogo secundario que provocaba el fallo de `Gestionar pago / Cluber`.
-- La ficha de Familia/Jugador adopta el mismo lenguaje visual, simplificado a **Resumen, Datos, Documentos, RRMM e Inscripción**. Las alertas de Familia se reservan a tareas que puede resolver o debe conocer el tutor/jugador; la falta de equipo no se presenta como tarea familiar.
-- Se mantiene el patrón global de diseño: **listados = KPIs + filtros + tabla; fichas = pestañas + resumen + alertas contextuales**.
-- Sin cambios de base de datos. Se mantiene migración 016 como última migración funcional.
-
-
-## V45 — 28/09/2026 — Responsive mobile-first y alertas de pestaña corregidas
-
-### Corrección funcional
-- La alerta roja de la pestaña **Datos** ya no depende de que exista una asignación de equipo.
-- **Datos** solo muestra alerta cuando los datos personales todavía no han sido validados por el club, reutilizando la misma regla que el requisito `Datos personales validados` del motor de preparación federativa.
-- La falta de equipo queda representada únicamente en el requisito de equipo correspondiente y no contamina la pestaña Datos.
-
-### Consolidación responsive
-- La ficha de jugador de Club/Administrador pasa a comportamiento **mobile-first**.
-- En <=720 px ocupa el viewport útil completo, sin scroll horizontal global y con scroll vertical interno.
-- Cabecera y botón cerrar permanecen accesibles; la barra de pestañas queda sticky y es desplazable horizontalmente.
-- Pestañas y controles tienen altura táctil mínima aproximada de 44 px.
-- Resúmenes, requisitos, formularios, acciones y economía se apilan a una sola columna en móvil.
-- Botones principales pasan a ancho completo cuando el espacio es reducido.
-- Textos largos, históricos y estados pueden envolver sin ensanchar la ficha.
-- El mismo criterio de controles táctiles, formularios apilados y ausencia de scroll horizontal se extiende a fichas de Familia y al resto de diálogos.
-
-### Base de datos
-- V45 no requiere migración. La última migración funcional sigue siendo la **016**.
-
-## V47 — 28/09/2026 — Política de cobros y Cluber
-
-### Operativa actual
-- **Registro manual:** únicamente efectivo.
-- **Cluber:** los cobros no se registran manualmente; se incorporarán mediante conciliación de fichero exportado o API cuando esté disponible.
-- **Fraccionamiento Cluber:** el Club/Administrador puede seguir validando manualmente que la domiciliación de cuotas está correctamente configurada. Esa validación puede habilitar la ficha aunque el importe total aún no esté cobrado.
-- Los pagos Cluber previamente registrados durante pruebas permanecen en el histórico; V47 no altera ni elimina datos existentes.
-
-### Parametrización
-`PAYMENT_FEATURES` mantiene separada la política operativa de la estructura de datos:
-- `efectivo`: habilitado;
-- otros medios manuales: deshabilitados;
-- tarjeta: deshabilitada;
-- importación Cluber: todavía deshabilitada.
-
-Esto permite activar nuevas formas de cobro en el futuro sin eliminar la estructura económica existente. Si una futura forma de pago requiere un código específico nuevo en PostgreSQL, se realizará entonces la migración correspondiente.
-
-### Compatibilidad técnica
-La marca visible se escribe **Cluber**. Los nombres técnicos históricos de la migración 016 (`vinculos_clubber`, `validar_fraccionamiento_clubber`, etc.) no se renombran en V47 para evitar una migración destructiva o innecesaria.
-
-## V50 — Navegación Familia y documentación sin redundancias (28/09/2026)
-
-### Cambios funcionales
-- Se corrige el acceso a documentación desde Familia: tanto **Gestionar documentación** en la ficha del jugador como **Abrir documentación** en la vista global abren el mismo gestor documental.
-- Se centraliza el evento mediante delegación sobre la vista Familia para evitar botones sin respuesta tras rerenders dinámicos.
-- La opción inferior **Documentos** pasa a ser una vista específica: oculta temporalmente el bloque completo de fichas de jugadores y el resumen familiar para evitar mostrar dos veces la misma información.
-- En la vista Documentos solo se muestra el listado documental por jugador con progreso y acceso al gestor.
-- Al volver a **Inicio** o **Jugadores** se restaura la ficha completa con sus pestañas.
-- El hero de Familia adapta título y descripción cuando se entra en Documentos.
-- Se mantiene una única fuente de detalle documental (`openDocumentManager`) independientemente del punto de entrada.
-
-### Cambios técnicos
-- `APP_VERSION` y `YEBENES_APP_VERSION` pasan a 50.
-- Cache-busting de `styles.css` y `app.js` actualizado a `?v=50`.
-- `version.json` actualizado a 50.
-- No requiere migración SQL.
-
-
-## V55 — Estado visible de documentos aportados
-- La vista Familia distingue de forma robusta entre documento pendiente sin archivo y documento ya aportado pendiente de revisión.
-- Tras una subida correcta, se muestra nombre de archivo, estado **Aportado · pendiente de revisión**, botón **Ver documento** y **Sustituir documento**.
-- Mientras el club no valide, la familia puede reemplazar el archivo.
-- Los documentos validados continúan bloqueados salvo solicitud de nueva versión por el club.
-- Se añade una salvaguarda de render: si existe un documento activo para el requisito, la interfaz lo trata como aportado aunque el estado del requisito llegue momentáneamente desfasado.
-- Sin cambios de base de datos.
-
-
-## V56 — Sustitución documental sincronizada (28/09/2026)
-
-### Correcciones funcionales
-- Tras sustituir un documento desde Familia, la tarjeta se actualiza inmediatamente con la **nueva versión activa**.
-- El modo **Sustituir documento** se cierra automáticamente después de una subida correcta; desaparecen el selector y el botón `Subir`.
-- El nombre, tipo y enlace de **Ver documento** pasan a apuntar a la última versión aportada.
-- La versión anterior queda únicamente como histórico/sustituida conforme a la función de base de datos existente.
-- La subida se refresca primero de forma optimista en pantalla y después se reconcilia con Supabase, evitando estados visuales obsoletos por latencia.
-- Se evita volver a ejecutar `showModal()` sobre un diálogo documental que ya está abierto, eliminando una posible interrupción del refresco.
-- Los selectores de archivo y subtipo se resuelven dentro del formulario concreto que disparó la acción, evitando tomar controles de otra versión del mismo requisito.
-
-### Base de datos
-- V56 no requiere migración SQL. Continúa utilizando la lógica de versionado documental introducida en las migraciones 013 y 014.
-
-## V59 — Persona como origen de Entrenadores
-
-- El alta de entrenadores deja de crear identidades independientes: **Persona → rol Entrenador → datos técnicos → asignaciones**.
-- `Entrenadores` queda como vista exclusivamente operativa de técnicos; se elimina el listado duplicado de equipos.
-- El número de entrenadores por equipo se consulta en `Estructura`, dentro del listado único de equipos.
-- `Personas` usa datos reales de Supabase para Administrador, permite crear una identidad base y asignar/revisar el rol Entrenador.
-- Si una Persona ya tiene otros roles o usuario Auth, se reutilizan sin crear duplicados.
-- El formulario de Entrenador selecciona una Persona existente y usa la RPC `asignar_rol_entrenador`; los datos de identidad quedan de solo lectura en esta vista.
-- Se conservan función por equipo, vigencia, licencia, curso de delegado, estado e histórico de asignaciones.
-- No requiere nueva migración: depende de las migraciones 018–020 ya aplicadas.
-
-## V61 - Administración integral de Personas (2026-09-29)
-
-V61 consolida **Persona** como identidad maestra y mueve la administración de usuarios y perfiles a la vista Personas.
-
-### Cambios funcionales
-- La tabla Personas muestra identidad, correo, perfiles de acceso, relaciones, cuenta Auth y estado.
-- Cada Persona se abre en una ficha con pestañas **Identidad / Acceso y roles / Relaciones**.
-- El administrador puede modificar los datos de identidad y realizar una baja lógica (Activo/Inactivo) conservando el histórico.
-- Los perfiles **Administrador, Club y Entrenador** se administran con checks.
-- **Jugador · acceso propio** solo puede concederse a una Persona adulta. Al activarlo se reutiliza/crea su extensión `jugadores`; no necesita representación ordinaria para gestionarse a sí misma.
-- **Tutor/Familia** no se concede manualmente: se muestra como perfil derivado de una representación activa.
-- La condición de **Jugador federado** se muestra como relación derivada de la extensión `jugadores`, diferenciándola del perfil de acceso propio.
-- Si existe una cuenta de Supabase Auth con el mismo correo, el administrador puede vincularla a la Persona desde la ficha.
-- Se elimina del menú la vista separada **Usuarios**, al quedar su función consolidada en Personas.
-- Entrenador sigue siendo una extensión de Persona; si se retira el perfil Entrenador con asignaciones activas, la operación se bloquea hasta finalizar dichas asignaciones.
-
-### Migración 021
-`021_administracion_personas_roles.sql` añade RPC seguras para:
-- `guardar_persona_admin(...)`
-- `actualizar_perfiles_persona_admin(...)`
-- `vincular_auth_persona_por_email_admin(...)`
-
-La baja es lógica. No se eliminan identidades con histórico operativo.
-
-
-## V67 - corrección del flujo de invitación
-
-- Evita forzar `refreshSession()` después de cambiar la contraseña desde una invitación, corrigiendo `Invalid Refresh Token: Refresh Token Not Found`.
-- Actualiza el texto del primer acceso para indicar que el usuario está creando su contraseña tras aceptar la invitación, no sustituyendo una contraseña temporal.
-- El alta administrativa espera a que el listado remoto de Personas se refresque antes de mostrar la confirmación.
-- Sin cambios en migraciones SQL ni Edge Functions respecto a V65/V66.
-
-
-## V69 - estado y reenvío de activación de cuentas internas
-
-- La ficha de Persona distingue entre cuenta vinculada pendiente de activación y cuenta ya activada.
-- El Administrador puede reenviar un enlace de activación a cuentas internas pendientes.
-- Para cuentas ya creadas en Supabase Auth se utiliza un enlace de recuperación/establecimiento de contraseña, evitando duplicar usuarios y el problema de re-invitar un correo ya registrado.
-- No modifica la migración 021 ni el modelo de datos.
-
-
-## V69
-- Recuperación de contraseña desde la pantalla de acceso.
-- Flujo específico para enlaces de recuperación con establecimiento de nueva contraseña.
-- Diferenciación entre confirmación de autoregistro y recuperación de contraseña.
-- Mensajes de autenticación revisados.
-
-
-## V70
-- Mejora el circuito de entrenadores menores: la autorización del tutor se comprueba ya al pulsar **Añadir asignación**, manteniendo además el bloqueo de backend al guardar.
-- Tras un rechazo de backend se restaura la lista persistida y no queda una asignación ficticia marcada como activa.
-- La autorización del tutor usa un diálogo integrado con texto explícito e independiente de la representación como jugador.
-- El listado de entrenadores muestra el estado de autorización del tutor para técnicos menores.
-- La ficha de perfiles del Administrador muestra feedback claro cuando un entrenador menor queda pendiente de autorización.
-- Los datos maestros de Persona en la ficha de Entrenador permanecen en solo lectura; el estado mostrado se etiqueta expresamente como estado del entrenador.
-- Se mantiene la separación entre Jugador deportivo (`jugadores.activo`) y perfil de acceso Jugador: los menores son representados por su tutor y no necesitan perfil de acceso Jugador activo hasta la mayoría de edad.
-
-
-## V71
-
-- Tutor/Familia puede consultar autorizaciones vigentes e histórico de entrenador menor.
-- Se añade revocación expresa por el mismo tutor que concedió la autorización.
-- Revocar finaliza inmediatamente las asignaciones activas del entrenador menor y cancela las futuras, conservando trazabilidad en auditoría.
-- El perfil Entrenador no se elimina al revocar: simplemente vuelve a quedar bloqueado para asignaciones mientras sea menor.
-- Se mantiene la validación backend de autorización antes de guardar asignaciones.
-
-## V72
-
-- Las autorizaciones de entrenador menor dejan de ocupar un bloque general en la portada de Familia.
-- Autorizar, rechazar y revocar se gestionan dentro de la ficha del menor afectado, en la pestaña **Datos**.
-- Una autorización vigente muestra su fecha y el botón **Revocar autorización** dentro de la ficha del niño.
-- Las solicitudes pendientes aparecen también dentro de la ficha correspondiente con **Autorizar / Rechazar**.
-- El histórico del consentimiento queda asociado visualmente al menor, evitando ocupar espacio en familias con varios jugadores.
-- Sin cambios de backend respecto a V71; la migración 023 sigue siendo la vigente.
-
-
-
-## V74
-
-- Corrige el error `Invalid time value` al mostrar autorizaciones revocadas o históricas: el formateador de fechas admite tanto fechas SQL (`YYYY-MM-DD`) como timestamps de Supabase.
-- Las asignaciones de entrenador canceladas por revocación del tutor dejan de eliminarse físicamente: se conservan en `asignaciones_entrenador_equipo` con marca de cancelación y motivo.
-- Las vistas operativas excluyen las asignaciones canceladas, manteniéndolas disponibles para histórico y auditoría.
-- La revocación continúa bloqueando nuevas asignaciones mientras el entrenador siga siendo menor y no exista una nueva autorización vigente.
-
-
-## V74
-- El perfil Club puede solicitar o relanzar la autorización del tutor para un entrenador menor desde la propia ficha del entrenador.
-- Si la autorización está pendiente se informa del estado y se mantiene bloqueada la creación de asignaciones.
-- Si está revocada, rechazada o no existe, Club/Admin pueden solicitar una nueva autorización sin modificar el perfil Entrenador.
-
-
-## V77 - Ciclo de email y mayoría de edad
-- Avisos visibles de acciones pendientes en Familia.
-- Correo propio obligatorio desde 16 años y para entrenador menor.
-- Preparación a 90/30 días antes de los 18.
-- Mayoría de edad no cierra representación si falta correo.
-- Cambio de correo sin perder identidad ni historial; sincroniza login cuando existe Auth.
-- Club puede editar datos deportivos de equipos.
