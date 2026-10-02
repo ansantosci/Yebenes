@@ -1,3 +1,18 @@
+# C.D. Los Yebenes San Bruno - V79
+
+## V79 - 02/10/2026
+- Autorrepresentacion visible para jugadores adultos en Familia y Club.
+- Los adultos dejan de computar la autorizacion paterna RFFM: pasa de 4 a 3 requisitos aplicables.
+- El jugador adulto puede modificar sus propios datos; el correo se mantiene en Perfil.
+- DNI/NIE, telefono y correo visibles en Datos del jugador.
+- Campos de tutor de solo lectura con estilo gris coherente.
+- Correccion del zoom automatico de Safari/iPhone en inputs (16 px + viewport-fit).
+- Textos del perfil Jugador adaptados: Mi ficha / Estado de mi ficha.
+- Backend preparado para mantenimiento programado y procesamiento automatico de notificaciones.
+- Cadencia Mailtrap aumentada para reducir errores 429.
+
+## Historico
+
 ## V78 — Validaciones de menores y correo verificado (30/09/2026)
 
 - Corrige el alta de menores en Supabase eliminando la ambigüedad `persona_id` de `registrar_menor`.
