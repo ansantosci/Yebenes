@@ -303,3 +303,35 @@ dialog{width:min(680px,calc(100% - 24px));border:0;border-radius:22px;padding:0;
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media (max-width: 768px){input,select,textarea{font-size:16px!important}}
 input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field{background:#f1f3f6!important;color:#4b5563!important;cursor:not-allowed}
+
+/* V80 - Tramitacion contextual y acciones avanzadas. */
+.workflow-context {
+  margin: 10px 0 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f7f8fa;
+}
+.workflow-context strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.workflow-context p {
+  margin: 0;
+  color: var(--muted, #667085);
+  line-height: 1.45;
+}
+.workflow-advanced {
+  margin-top: 14px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+.workflow-advanced summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #475467;
+}
+.workflow-advanced-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}

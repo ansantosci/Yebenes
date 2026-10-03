@@ -1,4 +1,17 @@
-# C.D. Los Yebenes San Bruno - V79
+# C.D. Los Yebenes San Bruno - V80
+
+## V80 - 03/10/2026
+- Tramitacion del Club simplificada: la accion principal explica que debe hacerse en cada estado; el cambio manual de estado queda bajo **Acciones avanzadas**.
+- La devolucion de una ficha se adapta al destinatario: **Solicitar correcciones al jugador** para adultos autorrepresentados y **Solicitar correcciones a la familia** cuando existe tutor activo.
+- Nueva RPC `solicitar_correcciones_inscripcion`: registra historico y auditoria y genera una notificacion al destinatario correcto.
+- Cambiar solo el telefono de un jugador adulto ya no devuelve la inscripcion a revision. Nombre, apellidos, nacimiento y DNI/NIE siguen considerandose cambios sensibles.
+- El historico del Club incorpora los eventos de representacion, incluido el fin por mayoria de edad y el paso a autorrepresentacion.
+- Se elimina la etiqueta residual `MIS JUGADORES` del perfil Jugador; se muestra `MI FICHA`.
+- Mantiene todas las mejoras V79: autorrepresentacion, 3 requisitos RFFM para adultos, responsive iOS y mantenimiento automatico.
+- Migracion asociada: `028_v80_tramitacion_adulto_e_historico.sql`.
+
+## Historico
+
 
 ## V79 - 02/10/2026
 - Autorrepresentacion visible para jugadores adultos en Familia y Club.
@@ -10,8 +23,6 @@
 - Textos del perfil Jugador adaptados: Mi ficha / Estado de mi ficha.
 - Backend preparado para mantenimiento programado y procesamiento automatico de notificaciones.
 - Cadencia Mailtrap aumentada para reducir errores 429.
-
-## Historico
 
 ## V78 — Validaciones de menores y correo verificado (30/09/2026)
 
