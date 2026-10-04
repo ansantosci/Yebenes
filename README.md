@@ -1,5 +1,14 @@
-# C.D. Los Yebenes San Bruno - V80
+# C.D. Los Yébenes San Bruno — Frontend
 
+## V82 — Consolidación documental y robustez UX (04/10/2026)
+
+- Corrige la excepción `formatDate is not defined` al abrir desde Club una ficha con requisitos RFFM declarados como realizados.
+- Mantiene accesible `Gestionar documentación` aunque un requisito esté pendiente de verificación: el bloqueo es por requisito, no por toda la documentación.
+- `Confirmar documentación` queda deshabilitado mientras falten requisitos obligatorios por validar, manteniendo además la validación de backend.
+- Añade protección de doble clic al solicitar correcciones.
+- Amplía el indicador visual de Documentos para incluir requisitos aportados o pendientes de verificación.
+- Mantiene el circuito V81 de correcciones, cola operativa y emails HTML corporativos.
+- Migración asociada: `030_v82_robustez_documental_e_idempotencia.sql`.
 
 ## V81 — Respuesta a correcciones, cola operativa y correos con identidad visual (03/10/2026)
 
@@ -767,4 +776,3 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - No exponer `service_role`, JWT secret, contraseña PostgreSQL ni tokens de Mailtrap.
 
 ---
-
