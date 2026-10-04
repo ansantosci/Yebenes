@@ -1,5 +1,19 @@
 # C.D. Los Yebenes San Bruno - V80
 
+
+## V81 — Respuesta a correcciones, cola operativa y correos con identidad visual (03/10/2026)
+
+- Las solicitudes de correcciones se responden desde un modo contextual tanto para Jugador adulto como para Tutor/Familia.
+- Se muestra el motivo enviado por el Club dentro del formulario de revisión.
+- La acción pasa a ser `Guardar y enviar al club para revisión` y funciona aunque no se modifique ningún campo.
+- Al responder, la ficha abandona `Correcciones solicitadas/Devuelto a familia` y vuelve a `Pendiente de revisión`.
+- Se registra el evento de respuesta en histórico y auditoría y se genera aviso al Club.
+- Un guardado ordinario sin ningún cambio ya no muestra falsamente `Datos de contacto actualizados`.
+- Los correos operativos tienen un procesador cada minuto, mientras el mantenimiento diario se conserva para procesos de fecha y como respaldo.
+- La identidad visual se centraliza en `configuracion_visual_club`: web y correos consumen el mismo logo y paleta.
+- `procesar-notificaciones` envía ahora HTML con cabecera del club, escudo y estética coherente con la web, manteniendo también versión de texto plano.
+- Migración asociada: `029_v81_respuesta_correcciones_tema_y_cola.sql`.
+
 ## V80 - 03/10/2026
 - Tramitacion del Club simplificada: la accion principal explica que debe hacerse en cada estado; el cambio manual de estado queda bajo **Acciones avanzadas**.
 - La devolucion de una ficha se adapta al destinatario: **Solicitar correcciones al jugador** para adultos autorrepresentados y **Solicitar correcciones a la familia** cuando existe tutor activo.
