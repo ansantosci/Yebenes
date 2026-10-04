@@ -337,3 +337,6 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 }
 
 .correction-context{margin:0 0 14px}.correction-context p{margin:.4rem 0 0}.email-theme-note{font-size:.78rem;color:var(--muted)}
+
+/* V83: acciones RFFM equilibradas */
+@media(min-width:721px){#adminPlayerModal .federation-requirement .workflow-actions .validate-fed-req,#adminPlayerModal .federation-requirement .workflow-actions .reject-fed-req{width:220px;min-height:44px;margin-top:0}}

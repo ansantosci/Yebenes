@@ -1,3 +1,15 @@
+## V83 — Estado automático, RRMM y avisos operativos RFFM (04/10/2026)
+
+- La tramitación avanza automáticamente: 4/4 documentos validados => documentación validada; si además hay equipo, RRMM vigente y economía habilitada => Listo para federar.
+- Se eliminan las confirmaciones manuales redundantes de documentación/listo para federar del flujo ordinario.
+- El fraccionamiento Cluber validado se representa como requisito económico cumplido (verde), aunque exista saldo pendiente.
+- Cuando tutor/jugador comunica autorización o firma RFFM, Club y Administrador reciben una notificación operativa.
+- El contador/filtro Por revisar incluye requisitos RFFM aportados o comunicados pendientes de comprobación.
+- Acciones RFFM con tamaño equivalente y texto más claro: “No se ha podido verificar”.
+- RRMM propone automáticamente +2 años al cambiar la fecha del reconocimiento y bloquea fechas de validez incoherentes.
+- Registrar un reconocimiento cierra como realizada la cita programada anterior correspondiente y deja de mostrarla como próxima.
+- Migración asociada: `031_v83_estado_automatico_rrmm_y_avisos.sql`.
+
 # C.D. Los Yébenes San Bruno — Frontend
 
 ## V82 — Consolidación documental y robustez UX (04/10/2026)
