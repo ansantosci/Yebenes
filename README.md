@@ -1,3 +1,14 @@
+## V88 — Cambio de función y sustitución coordinada de entrenador (06/10/2026)
+
+- Corrige el caso detectado en V87 al convertir en **Entrenador principal** a una Persona que ya tiene otra función activa en el mismo equipo.
+- El frontend deja de tratarlo como un solapamiento inválido y propone explícitamente un **cambio de función**.
+- Si la nueva función empieza el mismo día que la etapa existente, sustituye la función pendiente sin crear una etapa de duración cero.
+- Si empieza más tarde, conserva la función anterior hasta el día previo y abre la nueva etapa desde la fecha indicada.
+- Si la nueva función es Principal y existe otro Principal, coordina ambos cambios: finaliza al Principal anterior y cambia la función del nuevo Principal en una única operación de guardado.
+- El RPC conserva la reconciliación segura introducida en V87 y admite el ajuste explícito de `fecha_hasta` de la etapa anterior para preservar correctamente el histórico.
+- Migración asociada: `035_v88_cambio_funcion_entrenador.sql`.
+- Edge Functions, cron, Vault y secrets: sin cambios.
+
 ## V87 — Reconciliación segura de asignaciones de entrenador (06/10/2026)
 
 - Corrige el fallo de V85/V86 por el que añadir a Andrés como **Segundo entrenador** de Prebenjamín A terminaba con `El equipo ya tiene un entrenador principal en ese periodo`.
