@@ -340,3 +340,7 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 
 /* V83: acciones RFFM equilibradas */
 @media(min-width:721px){#adminPlayerModal .federation-requirement .workflow-actions .validate-fed-req,#adminPlayerModal .federation-requirement .workflow-actions .reject-fed-req{width:220px;min-height:44px;margin-top:0}}
+/* V84 · Entrenadores */
+.coach-search-row{margin:0 0 10px}.coach-search-row input{width:100%;border:1px solid #d7dce2;border-radius:10px;padding:11px 12px;background:#fff;font-size:1rem}.coach-stats-grid .danger-stat strong{color:var(--danger,#b42318)}
+#coachNormalizedSummary{display:grid;grid-template-columns:1fr;gap:10px}.relation-line{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #edf0f2}.relation-line:last-child{border-bottom:0}
+@media(min-width:820px){#coachNormalizedSummary{grid-template-columns:repeat(3,minmax(0,1fr))}.coach-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}

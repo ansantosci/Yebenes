@@ -1,3 +1,15 @@
+## V84 — Base del nuevo módulo Entrenadores + RRMM por Persona (06/10/2026)
+
+- Inicia la implantación del diseño funcional consolidado de Entrenadores sobre Persona, temporadas, formación, licencias RFFM, disponibilidad, privacidad y horarios de equipo.
+- El listado de Entrenadores pasa a ser operativo y compacto, con búsqueda, filtros, indicadores de RRMM/Delegado/licencia/habilitación y detección jugador+entrenador.
+- Las funciones de equipo se normalizan a Entrenador principal, Segundo entrenador, Entrenador de porteros y Preparador físico; Delegado deja de ser función de equipo y se trata como formación/licencia RFFM.
+- El alta desde Club puede reutilizar una Persona existente, dejar al entrenador sin equipo y exige correo propio. Si el entrenador activo necesita cuenta, se solicita invitación automática mediante `gestionar-acceso` V5.
+- RRMM propone 18 meses como fecha estimada al cambiar la fecha de reconocimiento, indicando que la fecha oficial RFFM es la autoritativa.
+- Corrige el CHECK del histórico RRMM que impedía registrar `realizada_por_registro_rrmm` y prepara `reconocimientos_medicos.persona_id` para compartir RRMM entre facetas de una Persona.
+- Esta release es una primera implantación del módulo: crea y migra el modelo normalizado, pero el CRUD completo de múltiples titulaciones/licencias, disponibilidad, Excel y renovaciones asistidas se desarrollará en releases sucesivas sobre esta base.
+- Migración asociada: `032_v84_entrenadores_rrmm_base.sql`.
+- Edge Function que cambia: `gestionar-acceso` V5. `procesar-notificaciones` y `mantenimiento-programado` no cambian.
+
 ## V83 — Estado automático, RRMM y avisos operativos RFFM (04/10/2026)
 
 - La tramitación avanza automáticamente: 4/4 documentos validados => documentación validada; si además hay equipo, RRMM vigente y economía habilitada => Listo para federar.

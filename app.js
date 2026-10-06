@@ -1,4 +1,4 @@
-const APP_VERSION='83';
+const APP_VERSION='84';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -91,6 +91,7 @@ const parseDate=v=>{
 };
 const fmt=v=>{const d=parseDate(v);return d?new Intl.DateTimeFormat('es-ES').format(d):'—'};
 const addYears=(v,n)=>{const d=parseDate(v);if(!d)return '';d.setFullYear(d.getFullYear()+n);return d.toISOString().slice(0,10)};
+const addMonths=(v,n)=>{const d=parseDate(v);if(!d)return '';const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d.toISOString().slice(0,10)};
 const dayDiff=(a,b)=>Math.ceil((parseDate(b)-parseDate(a))/86400000);
 const ROLE_LABELS={admin:'Administrador',club:'Usuario del club',coach:'Entrenador',family:'Tutor / Familia',player:'Jugador'};
 const roleLabel=r=>ROLE_LABELS[r]||r;
@@ -147,7 +148,7 @@ const internalRoles=u=>normalizeUser(u).roles.filter(r=>['admin','club','coach']
 const roleAvailable=(u,r,when=isoToday())=>hasRole(u,r)&&!(r==='player'&&u.pendingActivationDate&&when<u.pendingActivationDate);
 const availableRoles=u=>normalizeUser(u).roles.filter(r=>roleAvailable(u,r));
 const workflowLabel=k=>WORKFLOW.find(x=>x.key===k)?.label||'Pendiente de revisión';
-const coachRoleLabel=v=>v==='first'?'Primer entrenador':v==='second'?'Segundo entrenador':'Delegado';
+const coachRoleLabel=v=>v==='first'?'Entrenador principal':v==='second'?'Segundo entrenador':v==='goalkeeper'?'Entrenador de porteros':v==='fitness'?'Preparador físico':String(v||'—');
 const uid=p=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 
 const seedSeasons=[{id:'s-2026',name:'2026/2027',startDate:'2026-07-01',endDate:'2027-06-30',active:true},{id:'s-2027',name:'2027/2028',startDate:'2027-07-01',endDate:'2028-06-30',active:false}];
@@ -217,6 +218,7 @@ let users=[],players=[],persons=[],seasons=[],categories=[],teams=[],inscription
 let dbCoachesLoaded=false;
 let clubQuickFilter='all',medicalQuickFilter='all';
 let dbSeasons=[],dbCategories=[],dbTeams=[],dbCategoryRules=[],dbEconomicConfigs=[],dbPersons=[],dbPersonRoles=[],dbRoleCatalog=[],dbStructureLoaded=false;
+let dbCoachFormations=[],dbCoachLicenses=[],dbCoachSeasonRows=[],dbCoachAvailability=[],dbCoachPrivacy=[],dbTeamSchedules=[];
 let remoteClubPlayers=[],selectedRemotePlayerId=null;
 let selectedEconomicTeamId=null,selectedEconomicPlayerId=null,economicReturnPlayerId=null;
 let remoteFamilyPlayers=[];
@@ -346,7 +348,7 @@ async function loadSupabaseStructure(){
   if((currentUser.roles||[]).includes('admin')) await loadSupabasePersons();
 }
 async function loadSupabasePersons(){
-  if(!sb||!currentUser||(currentRole&&currentRole!=='admin'&&!(currentUser.roles||[]).includes('admin')))return [];
+  if(!sb||!currentUser||!(currentRole&&['admin','club'].includes(currentRole))&&!(currentUser.roles||[]).some(r=>['admin','club'].includes(r)))return [];
   const [personRes,roleRes,prRes]=await Promise.all([
     sb.from('personas').select('id,auth_user_id,nombre,primer_apellido,segundo_apellido,email_contacto,telefono,fecha_nacimiento,activo').order('primer_apellido',{ascending:true}),
     sb.from('roles').select('id,codigo,nombre'),
@@ -362,19 +364,29 @@ async function loadSupabaseCoaches(){
   if(!sb||!currentUser)return [];
   const internal=(currentUser.roles||[]).some(r=>['admin','club','coach'].includes(r));
   if(!internal){coaches=[];return []}
-  const [coachRes,assignmentRes]=await Promise.all([
+  const seasonId=dbActiveSeason()?.id||null;
+  const [coachRes,assignmentRes,formationRes,licenseRes,seasonRes,availabilityRes,privacyRes]=await Promise.all([
     sb.from('entrenadores').select('id,persona_id,activo,licencia_tipo,licencia_numero,curso_delegado,observaciones'),
-    sb.from('asignaciones_entrenador_equipo').select('id,entrenador_id,equipo_id,fecha_desde,fecha_hasta,funcion,cancelada_at,motivo_fin')
+    sb.from('asignaciones_entrenador_equipo').select('id,entrenador_id,equipo_id,fecha_desde,fecha_hasta,funcion,cancelada_at,motivo_fin'),
+    sb.from('entrenador_formaciones').select('id,entrenador_id,tipo,nombre_otro,estado,fecha_inicio,fecha_obtencion,entidad_emisora,numero_acreditacion,fecha_caducidad,verificacion_estado'),
+    seasonId?sb.from('entrenador_licencias_rffm').select('id,entrenador_id,temporada_id,tipo,nombre_otro,numero,fecha_expedicion,fecha_caducidad,estado_excepcional,verificacion_estado').eq('temporada_id',seasonId):Promise.resolve({data:[],error:null}),
+    seasonId?sb.from('entrenador_temporadas').select('entrenador_id,temporada_id,estado,disponibilidad_confirmada_at').eq('temporada_id',seasonId):Promise.resolve({data:[],error:null}),
+    seasonId?sb.from('entrenador_disponibilidad').select('entrenador_id,temporada_id,dia_semana,tipo,hora_desde,hora_hasta').eq('temporada_id',seasonId):Promise.resolve({data:[],error:null}),
+    sb.from('entrenador_privacidad').select('entrenador_id,compartir_email,compartir_telefono,compartir_foto')
   ]);
-  if(coachRes.error)throw coachRes.error;
-  if(assignmentRes.error)throw assignmentRes.error;
+  for(const r of [coachRes,assignmentRes,formationRes,licenseRes,seasonRes,availabilityRes,privacyRes])if(r?.error)throw r.error;
+  dbCoachFormations=formationRes.data||[];dbCoachLicenses=licenseRes.data||[];dbCoachSeasonRows=seasonRes.data||[];dbCoachAvailability=availabilityRes.data||[];dbCoachPrivacy=privacyRes.data||[];
   const personIds=[...new Set((coachRes.data||[]).map(x=>x.persona_id).filter(Boolean))];
-  let personRows=[];
+  let personRows=[],consentRows=[],medicalRows=[],playerRows=[];
   if(personIds.length){
-    const {data,error}=await sb.from('personas').select('id,auth_user_id,nombre,primer_apellido,segundo_apellido,email_contacto,telefono,fecha_nacimiento,activo').in('id',personIds);
-    if(error)throw error;personRows=data||[];
+    const [pr,mr,jr]=await Promise.all([
+      sb.from('personas').select('id,auth_user_id,nombre,primer_apellido,segundo_apellido,email_contacto,telefono,fecha_nacimiento,activo').in('id',personIds),
+      sb.from('reconocimientos_medicos').select('id,persona_id,jugador_id,fecha_reconocimiento,fecha_valido_hasta,fecha_validacion_rffm').in('persona_id',personIds).order('fecha_reconocimiento',{ascending:false}),
+      sb.from('jugadores').select('id,persona_id,activo').in('persona_id',personIds)
+    ]);
+    if(pr.error)throw pr.error;if(mr.error)throw mr.error;if(jr.error)throw jr.error;
+    personRows=pr.data||[];medicalRows=mr.data||[];playerRows=jr.data||[];
   }
-  let consentRows=[];
   if(personIds.length&&['admin','club'].includes(currentRole)){
     const {data,error}=await sb.from('autorizaciones_menor').select('persona_menor_id,estado,fecha_desde,fecha_hasta,version_texto').in('persona_menor_id',personIds).eq('tipo','entrenador_menor');
     if(error)console.warn('No se pudo cargar el estado de autorizaciones de entrenadores menores',error);else consentRows=data||[];
@@ -382,16 +394,36 @@ async function loadSupabaseCoaches(){
   const pm=new Map(personRows.map(x=>[x.id,x]));
   const consentMap=new Map(),consentPriority={aceptada:4,pendiente:3,pendiente_email:2,revocada:1,rechazada:1,finalizada_mayoria_edad:1};
   for(const a of consentRows){const prev=consentMap.get(a.persona_menor_id);if(!prev||(consentPriority[a.estado]||0)>(consentPriority[prev.estado]||0))consentMap.set(a.persona_menor_id,a)}
+  const today=isoToday();
+  const validLicense=l=>l.verificacion_estado==='verificada'&&!l.estado_excepcional&&(!l.fecha_caducidad||l.fecha_caducidad>=today);
   coaches=(coachRes.data||[]).map(c=>{
     const person=pm.get(c.persona_id)||{};
     const assignments=(assignmentRes.data||[]).filter(a=>a.entrenador_id===c.id&&!a.cancelada_at).map(a=>({id:a.id,teamId:a.equipo_id,coachRole:a.funcion||'first',startDate:a.fecha_desde||'',endDate:a.fecha_hasta||'',cancelledAt:a.cancelada_at||null,endReason:a.motivo_fin||''}));
     const isMinor=!!person.fecha_nacimiento&&person.fecha_nacimiento>new Date(new Date().setFullYear(new Date().getFullYear()-18)).toISOString().slice(0,10);
     const consent=consentMap.get(c.persona_id)||null;
-    return {id:c.id,personId:c.persona_id,userId:person.auth_user_id||null,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' ')||'Entrenador',firstName:person.nombre||'',lastName1:person.primer_apellido||'',lastName2:person.segundo_apellido||'',email:person.email_contacto||'',phone:person.telefono||'',birth:person.fecha_nacimiento||'',isMinor,minorConsentStatus:consent?.estado||null,minorConsentVersion:consent?.version_texto||null,assignments,hasLicense:!!c.licencia_tipo,licenseType:c.licencia_tipo||'',licenseNumber:c.licencia_numero||'',delegateCourse:!!c.curso_delegado,notes:c.observaciones||'',active:c.activo!==false};
+    const formations=dbCoachFormations.filter(x=>x.entrenador_id===c.id);
+    const licenses=dbCoachLicenses.filter(x=>x.entrenador_id===c.id);
+    const validLicenses=licenses.filter(validLicense);
+    const delegate=formations.find(x=>x.tipo==='delegado'&&x.estado==='vigente'&&x.verificacion_estado==='verificada');
+    const delegateInProgress=formations.some(x=>x.tipo==='delegado'&&x.estado==='en_curso');
+    const technical=formations.filter(x=>['uefa_c','uefa_b','uefa_a','uefa_pro','tecnico_deportivo','tecnico_deportivo_superior'].includes(x.tipo)&&x.estado==='vigente');
+    const inProgress=formations.filter(x=>x.estado==='en_curso');
+    const latestMedical=medicalRows.find(x=>x.persona_id===c.persona_id)||null;
+    const medState=medicalState(latestMedical?{date:latestMedical.fecha_reconocimiento,expiry:latestMedical.fecha_valido_hasta}:null);
+    const seasonRow=dbCoachSeasonRows.find(x=>x.entrenador_id===c.id)||null;
+    const hasCurrentAssignment=assignments.some(a=>assignmentState(a)==='active'&&(!seasonId||dbTeams.find(t=>t.id===a.teamId)?.seasonId===seasonId));
+    const seasonState=!c.activo?'baja':hasCurrentAssignment?'activo':'sin_asignacion';
+    const benchLicensed=validLicenses.length>0;
+    const minorOk=!isMinor||consent?.estado==='aceptada';
+    const benchState=benchLicensed&&minorOk?'acreditada':(validLicenses.length||delegate||delegateInProgress||technical.length||inProgress.length)?'pendiente':'sin_habilitacion';
+    return {id:c.id,personId:c.persona_id,userId:person.auth_user_id||null,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' ')||'Entrenador',firstName:person.nombre||'',lastName1:person.primer_apellido||'',lastName2:person.segundo_apellido||'',email:person.email_contacto||'',phone:person.telefono||'',birth:person.fecha_nacimiento||'',isMinor,minorConsentStatus:consent?.estado||null,minorConsentVersion:consent?.version_texto||null,assignments,hasLicense:validLicenses.length>0,licenseType:validLicenses.map(x=>x.tipo).join(', '),licenseNumber:validLicenses.map(x=>x.numero).filter(Boolean).join(', '),delegateCourse:!!delegate,delegateInProgress,formations,licenses,validLicenses,technicalFormations:technical,trainingInProgress:inProgress,medical:latestMedical,medicalState:medState,seasonState,availabilityConfirmed:!!seasonRow?.disponibilidad_confirmada_at,availability:dbCoachAvailability.filter(x=>x.entrenador_id===c.id),benchState,isPlayer:playerRows.some(x=>x.persona_id===c.persona_id&&x.activo!==false),notes:c.observaciones||'',active:c.activo!==false};
   });
   dbCoachesLoaded=true;
   return coaches;
 }
+function coachFormationLabel(f){const labels={delegado:'Curso de Delegado',uefa_c:'UEFA C',uefa_b:'UEFA B',uefa_a:'UEFA A',uefa_pro:'UEFA PRO',tecnico_deportivo:'Técnico Deportivo',tecnico_deportivo_superior:'Técnico Deportivo Superior',otra:f?.nombre_otro||'Otra'};return labels[f?.tipo]||f?.tipo||'—'}
+function coachBenchLabel(c){return c?.benchState==='acreditada'?'Habilitación acreditada':c?.benchState==='pendiente'?'Pendiente de acreditar':'Sin habilitación registrada'}
+function coachBenchClass(c){return c?.benchState==='acreditada'?'complete':c?.benchState==='pendiente'?'pending':'returned'}
 function coachMinorConsentBadge(c){
   if(!c?.isMinor)return '';
   if(c.minorConsentStatus==='aceptada')return '<div class="meta"><span class="status complete">Autorización tutor: vigente</span></div>';
@@ -1256,7 +1288,7 @@ async function openRemoteMedical(id){
   setMedicalAppointmentEditor(v,false);
   const hist=(v.medicals||[]).slice().sort((a,b)=>String(b.fecha_reconocimiento||'').localeCompare(String(a.fecha_reconocimiento||'')));
   $('#medicalHistory').innerHTML=hist.length?hist.map(x=>`<div class="history-item"><strong>${fmt(x.fecha_reconocimiento)} → ${fmt(x.fecha_valido_hasta)}</strong><span>${x.fecha_validacion_rffm?'Validado '+fmt(x.fecha_validacion_rffm):'Registrado por el club'}${x.centro_medico?' · '+esc(x.centro_medico):''}</span></div>`).join(''):'<div class="meta">Sin reconocimientos anteriores.</div>';
-  const dateInput=f.elements.medicalDate,expiryInput=f.elements.medicalExpiry;if(dateInput&&!dateInput.dataset.v83Bound){dateInput.dataset.v83Bound='1';dateInput.addEventListener('change',()=>{if(dateInput.value)expiryInput.value=addYears(dateInput.value,2)})}
+  const dateInput=f.elements.medicalDate,expiryInput=f.elements.medicalExpiry;if(dateInput&&!dateInput.dataset.v83Bound){dateInput.dataset.v83Bound='1';dateInput.addEventListener('change',()=>{if(dateInput.value)expiryInput.value=addMonths(dateInput.value,18)})}
   $('#medicalModal').showModal();
 }
 async function tryProcessNotifications(){
@@ -1301,7 +1333,7 @@ async function cancelRemoteMedicalAppointment(){
   try{const {error}=await sb.rpc('cancelar_cita_rrmm',{p_cita_id:ap.id});if(error)throw error;await tryProcessNotifications();await renderRemoteMedical();await openRemoteMedical(selectedMedicalPlayerId);await renderRemoteFamily?.()}catch(err){alert(`No se ha podido cancelar la cita: ${err.message||err}`)}finally{const b=$('#cancelMedicalAppointment');if(b){b.disabled=false;b.removeAttribute('aria-busy');if(b.textContent==='Cancelando…')b.textContent=previousText}}
 }
 async function saveRemoteMedical(form){
-  if(!['admin','club'].includes(currentRole))return;const fd=new FormData(form),date=String(fd.get('medicalDate')||''),expiry=String(fd.get('medicalExpiry')||'');if(!date){alert('Indica la fecha del reconocimiento.');return}const calculated=expiry||addYears(date,2);if(calculated<date){alert('La fecha de validez no puede ser anterior a la fecha del reconocimiento.');return}
+  if(!['admin','club'].includes(currentRole))return;const fd=new FormData(form),date=String(fd.get('medicalDate')||''),expiry=String(fd.get('medicalExpiry')||'');if(!date){alert('Indica la fecha del reconocimiento.');return}const calculated=expiry||addMonths(date,18);if(calculated<date){alert('La fecha de validez no puede ser anterior a la fecha del reconocimiento.');return}
   try{
     const payload={jugador_id:selectedMedicalPlayerId,fecha_reconocimiento:date,fecha_valido_hasta:calculated,fecha_validacion_rffm:isoToday(),registrado_por:currentUser.authUserId||currentUser.id};
     const {error}=await sb.from('reconocimientos_medicos').insert(payload);if(error)throw error;
@@ -1334,13 +1366,42 @@ function renderCoaches(){
   const remote=dbStructureLoaded;
   const teamSource=remote?sortTeamsByCategoryAge(dbSeasonTeams(),true):sortTeamsByCategoryAge(currentSeasonTeams(),false);
   const catSource=remote?dbCategories:categories;
-  const teamSel=$('#coachTeamFilter'),catSel=$('#coachCategoryFilter');const tv=teamSel.value,cv=catSel.value;
-  teamSel.innerHTML='<option value="all">Todos los equipos</option>'+teamSource.filter(t=>t.active).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');if([...teamSel.options].some(o=>o.value===tv))teamSel.value=tv;
-  catSel.innerHTML='<option value="all">Todas las categorías</option>'+catSource.filter(c=>c.active).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');if([...catSel.options].some(o=>o.value===cv))catSel.value=cv;
-  const cf=catSel.value,tf=teamSel.value,rf=$('#coachRoleFilter').value,lf=$('#coachLicenseFilter').value,df=$('#coachDelegateFilter').value;
-  const rows=coaches.filter(c=>{const aa=c.assignments||[];return(cf==='all'||aa.some(a=>coachTeamCategoryId(a.teamId)===cf))&&(tf==='all'||aa.some(a=>a.teamId===tf))&&(rf==='all'||aa.some(a=>a.coachRole===rf))&&(lf==='all'||(lf==='yes')===!!c.hasLicense)&&(df==='all'||(df==='yes')===!!c.delegateCourse)});
-  $('#coachesTable').innerHTML=rows.length?rows.map(c=>{const ah=(c.assignments||[]).map(a=>`<div class="assignment-inline"><div><strong>${esc(coachTeamName(a.teamId))}</strong><div class="meta">${coachRoleLabel(a.coachRole)} · ${fmt(a.startDate)} → ${fmt(a.endDate)}</div></div><span class="status ${assignmentStateClass(assignmentState(a))}">${assignmentStateLabel(assignmentState(a))}</span></div>`).join('')||'—';const any=(c.assignments||[]).some(a=>assignmentState(a)==='active');return`<tr><td><strong>${esc(c.name)}</strong><div class="meta">${esc(c.email||'Sin email')}${c.phone?' · '+esc(c.phone):''}</div>${c.userId?'<div class="meta">Acceso de entrenador vinculado</div>':''}${coachMinorConsentBadge(c)}</td><td>${ah}</td><td><span class="dot ${c.hasLicense?'ok':'warn'}">${c.hasLicense?'✓ '+esc(c.licenseType||'Sí')+(c.licenseNumber?' · '+esc(c.licenseNumber):''):'⚠ No informada'}</span></td><td><span class="dot ${c.delegateCourse?'ok':'warn'}">${c.delegateCourse?'✓ Hecho':'⚠ Pendiente'}</span></td><td><span class="status ${c.active&&any?'complete':'returned'}">${!c.active?'Inactivo':any?'Con asignación activa':'Sin asignación activa'}</span></td><td>${['admin','club'].includes(currentRole)?`<button class="secondary tiny edit-coach" data-id="${c.id}">Editar</button>`:''}</td></tr>`}).join(''):'<tr><td colspan="6">No hay entrenadores que coincidan con los filtros.</td></tr>';
+  const teamSel=$('#coachTeamFilter'),catSel=$('#coachCategoryFilter');const tv=teamSel?.value||'all',cv=catSel?.value||'all';
+  if(teamSel){teamSel.innerHTML='<option value="all">Todos los equipos</option>'+teamSource.filter(t=>t.active).map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');if([...teamSel.options].some(o=>o.value===tv))teamSel.value=tv}
+  if(catSel){catSel.innerHTML='<option value="all">Todas las categorías</option>'+catSource.filter(c=>c.active).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');if([...catSel.options].some(o=>o.value===cv))catSel.value=cv}
+  const q=String($('#coachSearch')?.value||'').trim().toLowerCase();
+  const cf=catSel?.value||'all',tf=teamSel?.value||'all',rf=$('#coachRoleFilter')?.value||'all',mf=$('#coachMedicalFilter')?.value||'all',df=$('#coachDelegateFilter')?.value||'all',lf=$('#coachLicenseFilter')?.value||'all',bf=$('#coachBenchFilter')?.value||'all',pf=$('#coachPlayerFilter')?.value||'all',sf=$('#coachStatusFilter')?.value||'all';
+  const rows=coaches.filter(c=>{
+    const aa=c.assignments||[],searchText=[c.name,c.email,...aa.map(a=>coachTeamName(a.teamId)),...(c.formations||[]).map(coachFormationLabel),...(c.licenses||[]).map(x=>x.tipo)].join(' ').toLowerCase();
+    const delegateMatch=df==='all'||(df==='yes'&&c.delegateCourse)||(df==='progress'&&c.delegateInProgress)||(df==='no'&&!c.delegateCourse&&!c.delegateInProgress);
+    const med=c.medicalState?.key||'missing';
+    return(!q||searchText.includes(q))&&(cf==='all'||aa.some(a=>coachTeamCategoryId(a.teamId)===cf))&&(tf==='all'||aa.some(a=>a.teamId===tf))&&(rf==='all'||aa.some(a=>a.coachRole===rf))&&(mf==='all'||med===mf)&&delegateMatch&&(lf==='all'||(lf==='yes')===!!c.hasLicense)&&(bf==='all'||c.benchState===bf)&&(pf==='all'||(pf==='yes')===!!c.isPlayer)&&(sf==='all'||c.seasonState===sf);
+  });
+  const formationSummary=c=>{const items=[];if(c.delegateCourse)items.push('Delegado ✓');else if(c.delegateInProgress)items.push('Delegado en curso');const tech=(c.technicalFormations||[]).map(coachFormationLabel);if(tech.length)items.push(...tech);if(c.validLicenses?.length)items.push('RFFM '+c.validLicenses.map(x=>x.tipo).join(', '));return items.join(' · ')||'Sin formación/licencia acreditada'};
+  $('#coachesTable').innerHTML=rows.length?rows.map(c=>{
+    const activeAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished');
+    const ah=activeAssignments.map(a=>`<div class="assignment-inline"><div><strong>${esc(coachTeamName(a.teamId))}</strong><div class="meta">${esc(coachRoleLabel(a.coachRole))} · ${fmt(a.startDate)} → ${fmt(a.endDate)}</div></div><span class="status ${assignmentStateClass(assignmentState(a))}">${assignmentStateLabel(assignmentState(a))}</span></div>`).join('')||'<span class="meta">Sin asignación actual</span>';
+    const med=c.medicalState||{key:'missing',label:'Sin RRMM'};
+    const medClass=med.key==='ok'?'complete':med.key==='soon'?'pending':'returned';
+    const stateLabel=c.seasonState==='activo'?'Activo':c.seasonState==='sin_asignacion'?'Sin asignación actual':'Baja como entrenador';
+    const stateClass=c.seasonState==='activo'?'complete':c.seasonState==='sin_asignacion'?'pending':'returned';
+    return`<tr><td><strong>${esc(c.name)}</strong><div class="meta">${esc(c.email||'Sin correo')}${c.isPlayer?' · Jugador + entrenador':''}</div>${coachMinorConsentBadge(c)}</td><td>${ah}</td><td><span class="status ${medClass}">${esc(med.label)}</span>${c.medical?.fecha_valido_hasta?`<div class="meta">Hasta ${fmt(c.medical.fecha_valido_hasta)}</div>`:''}</td><td><div>${esc(formationSummary(c))}</div>${!c.delegateCourse&&c.delegateInProgress?'<div class="meta">Curso de Delegado pendiente de completar</div>':''}</td><td><span class="status ${coachBenchClass(c)}">${esc(coachBenchLabel(c))}</span></td><td><span class="status ${stateClass}">${esc(stateLabel)}</span>${!c.availabilityConfirmed&&c.seasonState!=='baja'?'<div class="meta">Disponibilidad pendiente de confirmar</div>':''}</td><td>${['admin','club'].includes(currentRole)?`<button class="secondary tiny edit-coach" data-id="${c.id}">Abrir</button>`:''}</td></tr>`
+  }).join(''):'<tr><td colspan="7">No hay entrenadores que coincidan con los filtros.</td></tr>';
   $$('.edit-coach').forEach(b=>b.onclick=()=>openCoachForEdit(b.dataset.id));
+  const op=coaches.filter(c=>c.seasonState!=='baja');
+  const set=(id,v)=>{const el=$(id);if(el)el.textContent=String(v)};
+  set('#coachStatActive',op.filter(c=>c.seasonState==='activo').length);
+  set('#coachStatMedical',op.filter(c=>['expired','missing'].includes(c.medicalState?.key||'missing')).length);
+  set('#coachStatDelegate',op.filter(c=>!c.delegateCourse).length);
+  set('#coachStatLicense',op.filter(c=>!c.hasLicense).length);
+  set('#coachStatConsent',op.filter(c=>c.isMinor&&c.minorConsentStatus!=='aceptada').length);
+}
+function renderCoachNormalizedSummary(c){
+  const el=$('#coachNormalizedSummary');if(!el)return;
+  if(!c){el.innerHTML='<div class="info-card"><strong>Formación y licencias</strong><p>Guarda primero el entrenador. Después podrás completar la información normalizada de formación, licencias RFFM, RRMM y disponibilidad.</p></div>';return}
+  const forms=(c.formations||[]).map(f=>`<div class="relation-line"><strong>${esc(coachFormationLabel(f))}</strong><span>${esc(f.estado||'')} · ${esc(f.verificacion_estado||'pendiente')}</span></div>`).join('')||'<div class="meta">Sin formaciones registradas.</div>';
+  const licenses=(c.licenses||[]).map(l=>`<div class="relation-line"><strong>Licencia ${esc(l.tipo)}</strong><span>${l.verificacion_estado==='verificada'?'Verificada':'Pendiente'}${l.fecha_caducidad?' · hasta '+fmt(l.fecha_caducidad):''}${l.estado_excepcional?' · '+esc(l.estado_excepcional):''}</span></div>`).join('')||'<div class="meta">Sin licencias RFFM registradas para la temporada activa.</div>';
+  el.innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Formación y titulaciones</span>${forms}</section><section class="person-admin-card"><span class="eyebrow dark">Licencias RFFM · temporada activa</span>${licenses}</section><section class="person-admin-card"><span class="eyebrow dark">Conclusión automática</span><div class="relation-line"><strong>Banquillo</strong><span class="status ${coachBenchClass(c)}">${esc(coachBenchLabel(c))}</span></div><div class="relation-line"><strong>RRMM</strong><span>${esc(c.medicalState?.label||'Sin RRMM')}</span></div></section>`;
 }
 function renderCoachAssignments(){renderAssignmentList('#coachAssignmentsList',pendingCoachAssignments,'remove-coach-assignment');$$('.remove-coach-assignment').forEach(b=>b.onclick=()=>{pendingCoachAssignments.splice(+b.dataset.index,1);renderCoachAssignments()})}
 async function fillCoachPersonSelect(preselect=null){
@@ -1357,26 +1418,29 @@ function applyCoachPersonToForm(personId){
   ['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});
 }
 async function openCoachForNew(personId=null){
-  if(currentRole!=='admin'){alert('Solo un administrador puede conceder el rol Entrenador.');return}
+  if(!['admin','club'].includes(currentRole)){alert('Solo Club o Administrador pueden dar de alta entrenadores.');return}
   editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];setCoachAssignmentGuard('');const cp=$('#coachMinorConsentPanel');if(cp){cp.hidden=true;cp.innerHTML=''}const f=$('#coachForm');f.reset();
   ['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});
   f.elements.active.value='yes';f.elements.delegateCourse.value='no';fillAssignmentTeamSelect('#coachAssignmentTeam');$('#coachAssignmentStart').value=isoToday();$('#coachAssignmentEnd').value=dbActiveSeason()?.endDate||'';renderCoachAssignments();
   await fillCoachPersonSelect(personId);$('#coachPersonSelectorWrap').hidden=false;$('#coachModalTitle').textContent='Asignar rol Entrenador';
   if(personId){applyCoachPersonToForm(personId)}
+  renderCoachNormalizedSummary(null);
   $('#coachModal').showModal();
 }
 function setCoachAssignmentGuard(message='',kind='warning'){
   const el=$('#coachAssignmentGuard');if(!el)return;el.textContent=message;el.hidden=!message;el.className=message?(kind==='ok'?'success-box':'warning-box'):'';
 }
-function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.licenseType.value=c.licenseType||'';f.elements.licenseNumber.value=c.licenseNumber||'';f.elements.delegateCourse.value=c.delegateCourse?'yes':'no';f.elements.active.value=c.active?'yes':'no';f.elements.notes.value=c.notes||'';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();$('#coachModal').showModal()}
+function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.licenseType.value=c.licenseType||'';f.elements.licenseNumber.value=c.licenseNumber||'';f.elements.delegateCourse.value=c.delegateCourse?'yes':'no';f.elements.active.value=c.active?'yes':'no';f.elements.notes.value=c.notes||'';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);$('#coachModal').showModal()}
 async function saveRemoteCoach(form){
   if(!['admin','club'].includes(currentRole))return;
   const fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');
   if(!personId){alert('Selecciona primero una Persona existente.');return}
-  if(!editingCoachId&&currentRole!=='admin'){alert('Solo un administrador puede conceder el rol Entrenador.');return}
+  if(!editingCoachId&&!['admin','club'].includes(currentRole)){alert('Solo Club o Administrador pueden dar de alta entrenadores.');return}
+  const person=dbPersons.find(x=>x.id===personId);if(!person?.email_contacto){alert('Todo entrenador activo necesita un correo electrónico propio antes de completar el alta.');return}
   if(btn){btn.disabled=true;btn.textContent='Guardando…'}
   try{
     const {data:coachId,error}=await sb.rpc('asignar_rol_entrenador',{p_persona_id:personId,p_licencia_tipo:String(fd.get('licenseType')||'').trim()||null,p_licencia_numero:String(fd.get('licenseNumber')||'').trim()||null,p_curso_delegado:fd.get('delegateCourse')==='yes',p_activo:fd.get('active')==='yes',p_observaciones:String(fd.get('notes')||'').trim()||null});if(error)throw error;await tryProcessNotifications();
+    if(!person.auth_user_id&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
     const payload=pendingCoachAssignments.map(a=>({team_id:a.teamId,funcion:a.coachRole,fecha_desde:a.startDate,fecha_hasta:a.endDate||null}));
     const {error:aerr}=await sb.rpc('guardar_asignaciones_entrenador',{p_entrenador_id:coachId,p_asignaciones:payload});if(aerr)throw aerr;
     await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();
@@ -1743,9 +1807,9 @@ $('#selfRepresentationForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='a
 $('#closeSelfRepresentationModal').onclick=$('#cancelSelfRepresentation').onclick=()=>$('#selfRepresentationModal').close();
 
 $('#openEconomicModal')&&($('#openEconomicModal').onclick=openEconomicPlayer);$('#closeEconomicPlayerModal')&&($('#closeEconomicPlayerModal').onclick=closeEconomicPlayerAndReturn);$('#economicPlayerModal')&&($('#economicPlayerModal').oncancel=e=>{e.preventDefault();closeEconomicPlayerAndReturn()});$$('#adminPlayerTabs [data-player-tab]').forEach(b=>b.onclick=()=>setAdminPlayerTab(b.dataset.playerTab));$('#openMedicalFromPlayer').onclick=()=>{const id=selectedRemotePlayerId;if(!id)return;$('#adminPlayerModal').close();openRemoteMedical(id)};$('#saveClubberIds').onclick=saveClubberIds;$('#registerEconomicPayment').onclick=registerEconomicPayment;$('#validateClubberInstallments').onclick=()=>setClubberInstallments(true);$('#revokeClubberInstallments').onclick=()=>setClubberInstallments(false);$('#closeEconomicConfigModal').onclick=$('#cancelEconomicConfig').onclick=()=>$('#economicConfigModal').close();$('#economicConfigForm').onsubmit=e=>{e.preventDefault();saveEconomicConfig(e.currentTarget)};
-$('#medicalSearch').oninput=renderMedical;$('#medicalFilter').onchange=renderMedical;$$('[data-medical-quick]').forEach(el=>{const go=()=>{const v=el.dataset.medicalQuick;medicalQuickFilter=(medicalQuickFilter===v&&v!=='all')?'all':v;renderMedical()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addYears(e.target.value,2)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#editMedicalAppointment').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,true)};$('#cancelMedicalAppointmentEdit').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,false)};$('#cancelMedicalAppointment').onclick=cancelRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
+$('#medicalSearch').oninput=renderMedical;$('#medicalFilter').onchange=renderMedical;$$('[data-medical-quick]').forEach(el=>{const go=()=>{const v=el.dataset.medicalQuick;medicalQuickFilter=(medicalQuickFilter===v&&v!=='all')?'all':v;renderMedical()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addMonths(e.target.value,18)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#editMedicalAppointment').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,true)};$('#cancelMedicalAppointmentEdit').onclick=()=>{const v=remoteClubPlayers.find(x=>x.id===selectedMedicalPlayerId);if(v)setMedicalAppointmentEditor(v,false)};$('#cancelMedicalAppointment').onclick=cancelRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
 
-$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachLicenseFilter','coachDelegateFilter'].forEach(id=>$('#'+id).onchange=renderCoaches);$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(currentRole!=='admin')return;if(!pendingCoachAssignments.length){alert('Añade al menos una asignación.');return}const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:!!fd.get('licenseType'),licenseType:fd.get('licenseType')||'',licenseNumber:fd.get('licenseNumber')||'',delegateCourse:fd.get('delegateCourse')==='yes',notes:fd.get('notes')||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure()};
+$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachMedicalFilter','coachLicenseFilter','coachDelegateFilter','coachBenchFilter','coachPlayerFilter','coachStatusFilter'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=renderCoaches});if($('#coachSearch'))$('#coachSearch').oninput=renderCoaches;$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(!['admin','club'].includes(currentRole))return;const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:!!fd.get('licenseType'),licenseType:fd.get('licenseType')||'',licenseNumber:fd.get('licenseNumber')||'',delegateCourse:fd.get('delegateCourse')==='yes',notes:fd.get('notes')||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure()};
 $('#addCoachAssignment').onclick=async()=>{try{const old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value;if(currentUser?.source==='supabase'&&personId){const ok=await ensureMinorCoachAssignmentAllowed(personId);if(!ok){setCoachAssignmentGuard('No se puede añadir esta asignación. El entrenador es menor y todavía no consta la autorización expresa de su tutor.');return}}setCoachAssignmentGuard('');addAssignmentFrom('coachAssignment',pendingCoachAssignments,renderCoachAssignments)}catch(err){setCoachAssignmentGuard(`No se ha podido comprobar la autorización del tutor: ${err.message||err}`)}};
 if($('#minorCoachConsentConfirm'))$('#minorCoachConsentConfirm').onclick=submitMinorCoachConsent;
 if($('#closeMinorCoachConsent'))$('#closeMinorCoachConsent').onclick=()=>{$('#minorCoachConsentModal').close();pendingMinorConsentAction=null};
