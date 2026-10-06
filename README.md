@@ -1,12 +1,12 @@
-## V85 — Correcciones RRMM y asignaciones de entrenadores (06/10/2026)
+## V86 — Hotfix guardado de entrenador existente (06/10/2026)
 
-Cambios principales:
-- Corrige el cálculo estimado del RRMM a +18 meses sin perder un día por conversión UTC.
-- Elimina de la interfaz de Entrenadores los campos legacy y Observaciones.
-- Corrige la validación del correo en edición: usa el correo de Persona ya cargado en el entrenador.
-- Mejora el filtro Jugador/Entrenador: Perfil jugador / También es jugador / No es jugador.
-- Detecta en frontend un entrenador principal existente y ofrece sustitución controlada.
-- Envía al backend la decisión de sustitución para cerrar la etapa anterior con histórico.
-- Mantiene los datos legacy internamente solo para compatibilidad durante la transición.
+V86 es una release frontend-only y deliberadamente pequena.
 
-Migración asociada: `033_v85_principal_unico_y_correcciones.sql`.
+Corrige el error detectado en V85 al guardar un entrenador existente desde perfil Club:
+`Cannot read properties of undefined (reading 'auth_user_id')`.
+
+Causa: `saveRemoteCoach()` asumía que la Persona estaba cargada en `dbPersons`. En perfil Club esa colección no siempre está disponible aunque la ficha del entrenador ya contenga la identidad y el `auth_user_id`.
+
+Corrección: para decidir si es necesario invitar al entrenador se reutiliza primero `person?.auth_user_id` y, como respaldo, el `userId` ya cargado en el entrenador (`old?.userId`). De este modo editar un entrenador existente no intenta leer una Persona inexistente ni dispara una invitación innecesaria.
+
+No cambia SQL, Edge Functions ni modelo de datos. Se mantiene íntegramente V85.

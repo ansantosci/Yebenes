@@ -1440,7 +1440,8 @@ async function saveRemoteCoach(form){
   if(btn){btn.disabled=true;btn.textContent='Guardando…'}
   try{
     const {data:coachId,error}=await sb.rpc('asignar_rol_entrenador',{p_persona_id:personId,p_licencia_tipo:old?.legacyLicenseType||null,p_licencia_numero:old?.legacyLicenseNumber||null,p_curso_delegado:old?.legacyDelegateCourse===true,p_activo:fd.get('active')==='yes',p_observaciones:old?.legacyNotes||null});if(error)throw error;await tryProcessNotifications();
-    if(!person.auth_user_id&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
+    const linkedAuthUserId=person?.auth_user_id||old?.userId||null;
+    if(!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
     const payload=pendingCoachAssignments.map(a=>({team_id:a.teamId,funcion:a.coachRole,fecha_desde:a.startDate,fecha_hasta:a.endDate||null,reemplazar_principal:a.replacePrincipal===true}));
     const {error:aerr}=await sb.rpc('guardar_asignaciones_entrenador',{p_entrenador_id:coachId,p_asignaciones:payload});if(aerr)throw aerr;
     await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();
