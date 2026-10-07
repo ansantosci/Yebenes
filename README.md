@@ -1,3 +1,15 @@
+## V89 — Cambio de función en el mismo día sin duplicar asignación activa (06/10/2026)
+
+- Corrige el error de V88 `duplicate key value violates unique constraint "asignacion_entrenador_activa_uq"` al guardar un cambio de Segundo entrenador a Entrenador principal con la misma fecha de inicio.
+- La causa era de persistencia: V88 cancelaba la fila anterior e intentaba insertar otra fila activa para el mismo entrenador/equipo; la regla única legacy de asignación activa seguía bloqueando esa inserción.
+- V89 mantiene esa regla de integridad y cambia el algoritmo: si equipo + `fecha_desde` son los mismos y cambia únicamente la función, se actualiza la fila existente **in-place** en vez de insertar otra.
+- Si el cambio del mismo día es a Entrenador principal, primero se finaliza/cancela de forma controlada al principal anterior y después se transforma la asignación del nuevo principal, evitando que actúe el trigger de principal único contra un conflicto todavía abierto.
+- Se registra auditoría del cambio de función y se conserva la auditoría de sustitución de principal.
+- Los cambios de función con fecha posterior mantienen la lógica V88: etapa anterior hasta el día previo y nueva etapa desde la fecha indicada.
+- Migración asociada: `036_v89_cambio_funcion_mismo_dia.sql`.
+- Frontend funcional: sin cambios respecto a V88; solo marcador/caché actualizado a V89.
+- Edge Functions, cron, Vault y secrets: sin cambios.
+
 ## V88 — Cambio de función y sustitución coordinada de entrenador (06/10/2026)
 
 - Corrige el caso detectado en V87 al convertir en **Entrenador principal** a una Persona que ya tiene otra función activa en el mismo equipo.
