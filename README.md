@@ -1,3 +1,18 @@
+## V90 — Disponibilidad semanal de entrenadores (07/10/2026)
+
+- Implementa la gestión de disponibilidad semanal por entrenador y temporada sobre el modelo creado en V84.
+- Una sola franja por día.
+- Lunes a viernes: horario operativo 16:00–00:00.
+- Sábado y domingo: horario operativo 08:00–00:00.
+- Estados por día: Sin indicar (solo borrador), No disponible, Todo el horario del club, Disponible desde, Franja horaria.
+- `00:00` se admite como cierre al final de la jornada.
+- Guardar borrador deja la disponibilidad pendiente de confirmar; Confirmar disponibilidad exige los siete días y actualiza `disponibilidad_confirmada_at`.
+- Club/Admin pueden gestionar cualquier entrenador. El propio entrenador puede gestionar su disponibilidad desde Perfil.
+- La ficha de Entrenador muestra la semana completa y avisos no bloqueantes de incompatibilidad con `horarios_equipo` de sus equipos activos.
+- El listado distingue entrenadores activos pendientes/confirmados y evita marcar como pendiente a quien no tiene asignación actual.
+- Migración asociada: `037_v90_disponibilidad_entrenadores.sql`.
+- Edge Functions, cron, Vault y secrets: sin cambios.
+
 ## V89 — Cambio de función en el mismo día sin duplicar asignación activa (06/10/2026)
 
 - Corrige el error de V88 `duplicate key value violates unique constraint "asignacion_entrenador_activa_uq"` al guardar un cambio de Segundo entrenador a Entrenador principal con la misma fecha de inicio.

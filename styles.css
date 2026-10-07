@@ -344,3 +344,13 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .coach-search-row{margin:0 0 10px}.coach-search-row input{width:100%;border:1px solid #d7dce2;border-radius:10px;padding:11px 12px;background:#fff;font-size:1rem}.coach-stats-grid .danger-stat strong{color:var(--danger,#b42318)}
 #coachNormalizedSummary{display:grid;grid-template-columns:1fr;gap:10px}.relation-line{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #edf0f2}.relation-line:last-child{border-bottom:0}
 @media(min-width:820px){#coachNormalizedSummary{grid-template-columns:repeat(3,minmax(0,1fr))}.coach-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+
+/* V90 - disponibilidad semanal de entrenadores */
+.availability-editor{border:1px solid var(--border);border-radius:18px;padding:16px;margin-top:2px;background:var(--card)}
+.availability-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}
+.availability-grid{display:grid;gap:10px}
+.availability-row{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(190px,1.35fr) minmax(120px,.8fr) minmax(120px,.8fr);gap:10px;align-items:end;padding:12px;border:1px solid var(--border);border-radius:14px;background:#fafbfc}
+.availability-day{align-self:center}.availability-row label{margin:0}.availability-time.hidden{display:none}.availability-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:14px}.availability-conflicts{margin-top:14px}.availability-conflicts ul{margin:8px 0 0 18px;padding:0}.availability-conflicts li{margin:4px 0}
+@media(max-width:760px){.availability-head{flex-direction:column}.availability-row{grid-template-columns:1fr 1fr}.availability-day{grid-column:1/-1}.availability-actions>*{flex:1 1 180px}}
+@media(max-width:430px){.availability-row{grid-template-columns:1fr}.availability-day{grid-column:auto}}
