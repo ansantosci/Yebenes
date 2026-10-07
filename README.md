@@ -1,3 +1,14 @@
+## V91.2 — Pulido UX de V91.1 (07/10/2026)
+
+- Formación y licencias: RRMM deja de duplicarse en Conclusión automática; Banquillo explicita “Pendiente de acreditar licencia RFFM” y muestra el motivo derivado.
+- Listado de Entrenadores: indicadores etiquetados explícitamente como RRMM / Banquillo para evitar ambigüedad.
+- Fichas/Jugadores: tabla compactada en escritorio para mantener visible RRMM sin provocar scroll horizontal.
+- Perfil propio: se elimina el bloque vacío Datos de contacto; Mi perfil queda centrado en perfiles activos y remite Seguridad para credenciales.
+- RRMM: Reconocimiento médico abre siempre como primera pestaña y muestra un diagnóstico visible (En vigor / vence ≤90 / vence ≤30 / vencido / sin fecha), con acceso directo a Programar cita RRMM cuando requiere actuación.
+- Se mantiene un único cálculo de vigencia RRMM para toda la aplicación.
+- Disponibilidad: se elimina texto redundante en la vista administrativa; permisos y reglas de V90.1 permanecen intactos.
+- Sin cambios de modelo, SQL, Edge Functions, cron, Vault ni secrets.
+
 ## V91.1 — Paquete UX agrupado (07/10/2026)
 
 - Perfil propio reorganizado en pestañas: Mi perfil / Disponibilidad / Seguridad.

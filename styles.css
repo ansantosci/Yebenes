@@ -381,3 +381,19 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 #coachModal [data-coach-panel="availability"]{overflow-x:hidden}
 #coachModal [data-coach-panel="availability"] .availability-row{min-width:0}
 @media(max-width:760px){#coachModal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}.coach-summary-grid{grid-template-columns:1fr}#coachModal .coach-admin-tabs{margin-left:-4px;margin-right:-4px;padding-left:4px;padding-right:4px}.coach-summary-line{flex-direction:column;gap:2px}.coach-summary-line span{text-align:left}}
+
+
+/* V91.2 · pulido UX */
+.status.medical-urgent,.medical-badge.medical-urgent{background:#ffedd5;color:#9a3412}
+.bench-reason{margin:.55rem 0 0;line-height:1.35}
+.profile-security-note{margin-top:10px}
+.medical-status-card{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px;padding:14px 16px;border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc}
+.medical-status-card>div{display:grid;gap:7px}.medical-status-card p{margin:0;color:var(--muted);font-size:.84rem;line-height:1.4}.medical-status-card.soon{background:#fffaf0;border-color:#f2d48c}.medical-status-card.urgent{background:#fff7ed;border-color:#fdba74}.medical-status-card.expired,.medical-status-card.missing{background:#fff5f5;border-color:#fecdd3}
+@media(min-width:900px){
+  .players-table{min-width:0;table-layout:fixed}
+  .players-table th,.players-table td{padding:11px 7px;vertical-align:top;overflow-wrap:anywhere}
+  .players-table .status,.players-table .workflow-pill{white-space:normal;line-height:1.15;text-align:center;padding:6px 7px}
+  .players-table th:nth-child(1){width:11%}.players-table th:nth-child(2){width:11%}.players-table th:nth-child(3){width:9%}.players-table th:nth-child(4){width:10%}.players-table th:nth-child(5){width:7%}.players-table th:nth-child(6){width:9%}.players-table th:nth-child(7){width:8%}.players-table th:nth-child(8){width:7%}.players-table th:nth-child(9){width:13%}.players-table th:nth-child(10){width:15%}
+  .players-table-wrap{overflow-x:hidden}
+}
+@media(max-width:640px){.medical-status-card{align-items:stretch;flex-direction:column}.medical-status-card button{width:100%}}
