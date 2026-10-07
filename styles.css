@@ -354,3 +354,9 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .availability-day{align-self:center}.availability-row label{margin:0}.availability-time.hidden{display:none}.availability-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:14px}.availability-conflicts{margin-top:14px}.availability-conflicts ul{margin:8px 0 0 18px;padding:0}.availability-conflicts li{margin:4px 0}
 @media(max-width:760px){.availability-head{flex-direction:column}.availability-row{grid-template-columns:1fr 1fr}.availability-day{grid-column:1/-1}.availability-actions>*{flex:1 1 180px}}
 @media(max-width:430px){.availability-row{grid-template-columns:1fr}.availability-day{grid-column:auto}}
+
+/* V90.1 - disponibilidad solo lectura para Club/Admin */
+.availability-grid-readonly .availability-row-readonly{grid-template-columns:minmax(150px,.75fr) minmax(220px,1.4fr);align-items:center}
+.availability-readonly-value{display:flex;flex-direction:column;gap:3px;min-width:0}
+.availability-row-readonly .availability-day{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+@media(max-width:760px){.availability-grid-readonly .availability-row-readonly{grid-template-columns:1fr}.availability-row-readonly .availability-day{grid-column:auto}}

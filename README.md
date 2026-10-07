@@ -1,3 +1,14 @@
+## V90.1 — Disponibilidad solo editable por el propio entrenador (07/10/2026)
+
+- Hotfix de seguridad y UX sobre V90.
+- Club y Administrador ven la disponibilidad exclusivamente en modo consulta; desaparecen selectores y acciones de guardado/confirmación en la ficha administrativa.
+- La vista administrativa identifica explícitamente que la información ha sido declarada por el entrenador.
+- El propio entrenador mantiene el editor completo desde su Perfil.
+- Backend V90.1 bloquea escrituras directas de disponibilidad por roles administrativos y el RPC solo admite al `auth_user_id` de la Persona asociada al entrenador.
+- No cambia el modelo de datos ni las reglas horarias de V90.
+- Migración asociada: `038_v90_1_disponibilidad_solo_entrenador.sql`.
+- Edge Functions, cron, Vault y secrets: sin cambios.
+
 ## V90 — Disponibilidad semanal de entrenadores (07/10/2026)
 
 - Implementa la gestión de disponibilidad semanal por entrenador y temporada sobre el modelo creado en V84.
