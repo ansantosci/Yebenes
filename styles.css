@@ -367,3 +367,17 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .availability-day{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}.availability-day strong::after{content:' ·';color:var(--muted);font-weight:400}.availability-row>*{min-width:0}.availability-row select{width:100%;min-width:0}
 #medicalModal{width:min(720px,calc(100vw - 24px));max-width:720px}#medicalModal .entity-tabs{position:sticky;top:0}
 @media(max-width:760px){.account-access-modal{width:calc(100vw - 12px);max-width:none}.account-access-modal .availability-row{grid-template-columns:1fr}.account-access-modal .availability-day{grid-column:auto}.coach-team-list,.coach-indicators{gap:4px}}
+
+/* V91.1 - ficha administrativa de Entrenador por pestañas */
+#coachModal{width:min(940px,calc(100vw - 24px));max-width:940px}
+#coachModal form{min-width:0}
+#coachModal .coach-admin-tabs{position:sticky;top:0;background:#fff;z-index:5;margin-top:8px}
+.coach-admin-tab-panel{display:none;min-width:0;padding-top:4px}
+.coach-admin-tab-panel.active{display:block}
+.coach-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.coach-summary-line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.coach-summary-line span{color:var(--muted);text-align:right}
+#coachModal [data-coach-panel="teams"] .assignment-editor,#coachModal [data-coach-panel="availability"] .availability-editor{margin-top:0}
+#coachModal [data-coach-panel="availability"]{overflow-x:hidden}
+#coachModal [data-coach-panel="availability"] .availability-row{min-width:0}
+@media(max-width:760px){#coachModal{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:16px}.coach-summary-grid{grid-template-columns:1fr}#coachModal .coach-admin-tabs{margin-left:-4px;margin-right:-4px;padding-left:4px;padding-right:4px}.coach-summary-line{flex-direction:column;gap:2px}.coach-summary-line span{text-align:left}}
