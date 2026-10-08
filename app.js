@@ -1,4 +1,4 @@
-const APP_VERSION='91.2';
+const APP_VERSION='92';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1468,7 +1468,44 @@ function coachAdminTab(name='summary'){
 function bindCoachAdminTabs(){const modal=$('#coachModal');if(!modal)return;modal.querySelectorAll('[data-coach-tab]').forEach(b=>b.onclick=()=>coachAdminTab(b.dataset.coachTab))}
 function renderCoachAdminSummary(c){const el=$('#coachAdminSummary');if(!el)return;if(!c){el.innerHTML='<div class="info-card"><strong>Nuevo entrenador</strong><p>Completa Datos y, si procede, Equipos. La información restante estará disponible tras guardar.</p></div>';return}const active=(c.assignments||[]).filter(a=>assignmentState(a)==='active');const teams=active.map(a=>`<div class="coach-summary-line"><strong>${esc(coachTeamName(a.teamId))}</strong><span>${esc(coachRoleLabel(a.coachRole))}</span></div>`).join('')||'<div class="meta">Sin asignación actual.</div>';const med=c.medicalState||{key:'missing',label:'Sin fecha'};const av=c.seasonState==='sin_asignacion'?'No requerida mientras no tenga asignación':c.availabilityConfirmed?`Confirmada${c.availabilityConfirmedAt?' · '+fmt(String(c.availabilityConfirmedAt).slice(0,10)):''}`:'Pendiente de confirmar';el.innerHTML=`<div class="coach-summary-grid"><section class="person-admin-card"><span class="eyebrow dark">Estado</span><div class="relation-line"><strong>${c.seasonState==='activo'?'Activo':c.seasonState==='sin_asignacion'?'Sin asignación':'Baja'}</strong><span>${esc(av)}</span></div></section><section class="person-admin-card"><span class="eyebrow dark">Equipos actuales</span>${teams}</section><section class="person-admin-card"><span class="eyebrow dark">Indicadores</span><div class="coach-indicators"><span class="status ${medicalVisualClass(med)}">RRMM · ${esc(med.label)}</span><span class="status ${coachBenchClass(c)}">Banquillo · ${esc(coachBenchLabel(c))}</span><span class="coach-mini-indicator">${esc(c.delegateCourse?'Delegado ✓':c.delegateInProgress?'Delegado en curso':'Sin Delegado')}</span></div></section></div>`}
 function renderCoachAdminMedical(c){const el=$('#coachAdminMedical');if(!el)return;if(!c){el.innerHTML='<div class="meta">Guarda primero el entrenador.</div>';return}const m=c.medicalState||{key:'missing',label:'Sin fecha'};el.innerHTML=`<div class="person-admin-card"><span class="eyebrow dark">Reconocimiento médico</span><div class="relation-line"><strong>Estado</strong><span class="status ${medicalVisualClass(m)}">${esc(m.label)}</span></div>${c.medical?.fecha_reconocimiento?`<div class="relation-line"><strong>Último reconocimiento</strong><span>${fmt(c.medical.fecha_reconocimiento)}</span></div>`:''}${c.medical?.fecha_valido_hasta?`<div class="relation-line"><strong>Válido hasta</strong><span>${fmt(c.medical.fecha_valido_hasta)}</span></div>`:''}<p class="meta">El RRMM es transversal a la Persona y coincide con el mostrado en Fichas.</p></div>`}
-function renderCoachAdminHistory(c){const el=$('#coachAdminHistory');if(!el)return;if(!c){el.innerHTML='<div class="meta">Guarda primero el entrenador.</div>';return}const rows=(c.assignments||[]).slice().sort((a,b)=>String(b.startDate||'').localeCompare(String(a.startDate||''))).map(a=>`<div class="history-item"><strong>${esc(coachTeamName(a.teamId))} · ${esc(coachRoleLabel(a.coachRole))}</strong><span>${fmt(a.startDate)} → ${fmt(a.endDate)}</span></div>`).join('');el.innerHTML=`<div class="person-admin-card"><span class="eyebrow dark">Histórico deportivo disponible</span>${rows||'<div class="meta">Sin etapas registradas.</div>'}<p class="meta">Este panel reúne el histórico actualmente disponible sin alterar el modelo de datos.</p></div>`}
+function coachHistoryCategoryLabel(v){return v==='equipo'?'Equipos':v==='formacion'?'Formación':v==='licencia'?'Licencia RFFM':v==='rrmm'?'RRMM':v==='disponibilidad'?'Disponibilidad':'Administración'}
+function coachHistoryCategoryClass(v){return ['equipo','formacion','licencia','rrmm','disponibilidad'].includes(v)?v:'admin'}
+function coachHistoryMoment(row){
+  if(row?.fecha_referencia)return fmt(String(row.fecha_referencia).slice(0,10));
+  if(!row?.evento_at)return '—';
+  return fmt(String(row.evento_at).slice(0,10));
+}
+function coachHistoryActor(row){
+  const who=String(row?.actor_nombre||'').trim(),mail=String(row?.actor_email||'').trim();
+  if(who&&mail)return `${esc(who)} · ${esc(mail)}`;
+  if(who)return esc(who);
+  if(mail)return esc(mail);
+  return '';
+}
+function coachHistoryHtml(rows=[]){
+  if(!rows.length)return '<div class="info-card"><strong>Sin eventos históricos registrados.</strong><p>Los futuros cambios relevantes quedarán trazados automáticamente.</p></div>';
+  return `<div class="coach-history-timeline">${rows.map(row=>{
+    const actor=coachHistoryActor(row),cat=coachHistoryCategoryLabel(row.categoria),stamp=row.evento_at?new Date(row.evento_at).toLocaleString('es-ES',{dateStyle:'short',timeStyle:'short'}):'';
+    return `<article class="coach-history-event"><div class="coach-history-rail"><span class="coach-history-dot ${coachHistoryCategoryClass(row.categoria)}"></span></div><div class="coach-history-content"><div class="coach-history-head"><div><span class="coach-history-category">${esc(cat)}</span><strong>${esc(row.titulo||'Evento')}</strong></div><time>${esc(coachHistoryMoment(row))}</time></div>${row.detalle?`<p>${esc(row.detalle)}</p>`:''}<div class="coach-history-meta">${actor?`<span>Realizado por ${actor}</span>`:'<span>Actor no registrado en el dato histórico</span>'}${stamp?`<span>Registro: ${esc(stamp)}</span>`:''}</div></div></article>`;
+  }).join('')}</div>`;
+}
+async function loadCoachAdminHistory(c){
+  const el=$('#coachAdminHistory');if(!el||!c)return;
+  const {data,error}=await sb.rpc('obtener_historico_entrenador',{p_entrenador_id:c.id});
+  if(error){console.error('Histórico entrenador',error);const fallback=(c.assignments||[]).slice().sort((a,b)=>String(b.startDate||'').localeCompare(String(a.startDate||''))).map(a=>`<div class="history-item"><strong>${esc(coachTeamName(a.teamId))} · ${esc(coachRoleLabel(a.coachRole))}</strong><span>${fmt(a.startDate)} → ${fmt(a.endDate)}</span></div>`).join('');el.innerHTML=`<div class="warning-box"><strong>No se ha podido cargar el histórico unificado.</strong><p>${esc(error.message||String(error))}</p></div><div class="person-admin-card"><span class="eyebrow dark">Etapas disponibles</span>${fallback||'<div class="meta">Sin etapas registradas.</div>'}</div>`;return}
+  el.innerHTML=`<div class="coach-history-intro"><div><span class="eyebrow dark">Línea temporal</span><strong>${data?.length||0} evento(s) documentados</strong></div><p class="meta">Integra equipos y funciones, formación, licencias, RRMM, disponibilidad y cambios administrativos. Solo muestra hechos respaldados por la base de datos.</p></div>${coachHistoryHtml(data||[])}`;
+}
+function renderCoachAdminHistory(c){
+  const el=$('#coachAdminHistory');if(!el)return;
+  if(!c){el.innerHTML='<div class="meta">Guarda primero el entrenador.</div>';return}
+  if(currentUser?.source==='supabase'){
+    el.innerHTML='<div class="info-card"><strong>Cargando histórico…</strong></div>';
+    loadCoachAdminHistory(c);
+    return;
+  }
+  const rows=(c.assignments||[]).slice().sort((a,b)=>String(b.startDate||'').localeCompare(String(a.startDate||''))).map(a=>`<div class="history-item"><strong>${esc(coachTeamName(a.teamId))} · ${esc(coachRoleLabel(a.coachRole))}</strong><span>${fmt(a.startDate)} → ${fmt(a.endDate)}</span></div>`).join('');
+  el.innerHTML=`<div class="person-admin-card"><span class="eyebrow dark">Histórico deportivo disponible</span>${rows||'<div class="meta">Sin etapas registradas.</div>'}</div>`;
+}
 
 function renderCoachAssignments(){renderAssignmentList('#coachAssignmentsList',pendingCoachAssignments,'remove-coach-assignment');$$('.remove-coach-assignment').forEach(b=>b.onclick=()=>{pendingCoachAssignments.splice(+b.dataset.index,1);renderCoachAssignments()})}
 

@@ -1,3 +1,12 @@
+## V92 — Histórico y trazabilidad del entrenador (08/10/2026)
+
+- La pestaña Histórico pasa de mostrar solo asignaciones a una línea temporal unificada.
+- Integra equipos/funciones, auditoría, formación, licencias RFFM, RRMM y disponibilidad confirmada.
+- Los cambios de función muestran antes → después y actor cuando existe auditoría.
+- No inventa hechos pasados ni actores que la base no pueda acreditar.
+- La carga se realiza mediante `obtener_historico_entrenador`.
+- V92 añade trazabilidad futura de cambios relevantes sobre formación, licencias, RRMM y disponibilidad.
+
 ## V91.2 — Pulido UX de V91.1 (07/10/2026)
 
 - Formación y licencias: RRMM deja de duplicarse en Conclusión automática; Banquillo explicita “Pendiente de acreditar licencia RFFM” y muestra el motivo derivado.
