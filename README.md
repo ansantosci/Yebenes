@@ -1,3 +1,12 @@
+## V92.1 — RRMM y citas transversales por Persona (09/10/2026)
+
+- Entrenadores > RRMM incorpora **Gestionar RRMM / cita**.
+- El mismo gestor Reconocimiento médico / Cita RRMM se reutiliza desde Fichas y Entrenadores.
+- Una Persona que solo sea entrenador puede registrar reconocimiento y programar/modificar/cancelar cita sin necesitar ficha de jugador.
+- Si una Persona es jugador + entrenador, ambas rutas comparten el mismo RRMM y la misma cita; no se duplican datos.
+- El frontend usa la Persona como identidad del gestor y conserva jugador_id cuando existe por compatibilidad.
+- Requiere migración SQL 040 antes de publicar el frontend.
+
 ## V92 — Histórico y trazabilidad del entrenador (08/10/2026)
 
 - La pestaña Histórico pasa de mostrar solo asignaciones a una línea temporal unificada.
