@@ -1,4 +1,13 @@
-## V92.1 — RRMM y citas transversales por Persona (09/10/2026)
+# V92.2 — ciclo de vida RRMM y citas pasadas
+
+- Las citas programadas no desaparecen al pasar su fecha: se muestran como pendientes de resultado.
+- En Reconocimiento médico, una cita pasada sin resultado muestra “Pendiente de resultado”.
+- La cita pasada permite Registrar reconocimiento, Reprogramar cita o marcar No asistió.
+- Registrar un RRMM conserva el cierre automático de la cita como realizada.
+- Reprogramar crea una nueva cita y conserva la anterior en histórico.
+- El comportamiento aplica por Persona tanto a jugadores como a entrenadores sin ficha de jugador.
+
+## V92.2 — RRMM y citas transversales por Persona (09/10/2026)
 
 - Entrenadores > RRMM incorpora **Gestionar RRMM / cita**.
 - El mismo gestor Reconocimiento médico / Cita RRMM se reutiliza desde Fichas y Entrenadores.
