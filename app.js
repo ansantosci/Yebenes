@@ -1,4 +1,4 @@
-const APP_VERSION='92.2';
+const APP_VERSION='93';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1285,14 +1285,17 @@ function renderMedicalRecognitionStatus(v){const box=$('#medicalRecognitionStatu
 function setMedicalAppointmentEditor(v,edit=false){
   const f=$('#medicalForm'),ap=v?.appointment||null;editingMedicalAppointment=!!(ap&&edit);
   const editor=$('#medicalAppointmentEditor'),actions=$('#medicalAppointmentActions'),current=$('#medicalAppointmentCurrent'),cancelEdit=$('#cancelMedicalAppointmentEdit'),save=$('#saveMedicalAppointment');
+  const appointmentHeading=$('#medicalAppointmentBox .eyebrow');
   if(ap&&!edit){
     const past=ap.estado==='programada'&&appointmentIsPast(ap);
+    if(appointmentHeading)appointmentHeading.textContent=past?'Cita RRMM · pendiente de resultado':'Próxima cita RRMM';
     current.innerHTML=`<div class="appointment-summary"><strong>📅 ${esc(formatDateTime(ap.fecha_hora))}</strong><div>${esc(ap.lugar||'')}</div>${ap.direccion?`<div>${esc(ap.direccion)}</div>`:''}${ap.indicaciones?`<div class="meta">${esc(ap.indicaciones)}</div>`:''}${past?'<div class="meta appointment-pending-result">Pendiente de registrar el resultado del reconocimiento.</div>':''}</div>`;
     editor.hidden=true;actions.hidden=false;cancelEdit.hidden=true;
     const editButton=$('#editMedicalAppointment'),cancelButton=$('#cancelMedicalAppointment');
     if(editButton){editButton.textContent=past?'Reprogramar cita':'Modificar cita';editButton.dataset.reprogram=past?'1':'0'}
     if(cancelButton){cancelButton.textContent=past?'No asistió':'Cancelar cita';cancelButton.dataset.noShow=past?'1':'0'}
   }else{
+    if(appointmentHeading)appointmentHeading.textContent='Próxima cita RRMM';
     current.innerHTML=ap?'<div class="meta">Editando la cita programada.</div>':'<div class="meta">Sin cita programada.</div>';
     editor.hidden=false;actions.hidden=true;cancelEdit.hidden=!ap;
     f.elements.appointmentDateTime.value=ap?localDateTimeInputValue(ap.fecha_hora):'';
@@ -1963,6 +1966,73 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
 if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
+
+
+// V93: una sesion autenticada no implica que el estado cargado en memoria siga vigente.
+// Revalidamos contra Supabase al volver a la app y antes de aceptar una accion tras inactividad.
+const SESSION_CONTEXT_MAX_IDLE_MS=15*60*1000;
+const SESSION_HIDDEN_REFRESH_MS=5*60*1000;
+let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null;
+function closeOpenDialogsForFreshContext(){
+  let closed=false;
+  document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close();closed=true}catch{}});
+  return closed;
+}
+async function revalidateActiveSession(reason='resume'){
+  if(!sb||!currentUser||currentUser.source!=='supabase')return true;
+  if(sessionRevalidationPromise)return sessionRevalidationPromise;
+  sessionRevalidationPromise=(async()=>{
+    try{
+      const {data,error}=await sb.auth.getUser();
+      if(error||!data?.user)throw error||new Error('La sesion ya no es valida');
+      const previousRole=currentRole;
+      const fresh=await loadIdentityWithPending(data.user);
+      currentUser=fresh;
+      await loadSupabaseStructure();
+      const roles=availableRoles(currentUser);
+      if(!roles.length){
+        await sb.auth.signOut();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
+        alert('Tu cuenta ya no tiene ningun perfil activo en el club.');return false;
+      }
+      currentRole=roles.includes(previousRole)?previousRole:(roles[0]||null);
+      localStorage.setItem(K.sessionRole,currentRole);
+      const closed=closeOpenDialogsForFreshContext();
+      showApp();
+      sessionLastInteractionAt=Date.now();
+      if(closed&&reason==='idle-action')alert('La sesion y los datos se han actualizado por inactividad. Repite la accion sobre la informacion actualizada.');
+      return true;
+    }catch(err){
+      console.warn('V93 revalidacion de sesion',err);
+      try{await sb.auth.signOut()}catch{}
+      currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
+      alert('La sesion ha caducado o ya no es valida. Inicia sesion de nuevo.');
+      return false;
+    }finally{sessionRevalidationPromise=null}
+  })();
+  return sessionRevalidationPromise;
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){sessionHiddenAt=Date.now();return}
+  const hiddenFor=sessionHiddenAt?Date.now()-sessionHiddenAt:0;sessionHiddenAt=null;
+  if(hiddenFor>=SESSION_HIDDEN_REFRESH_MS)revalidateActiveSession('visibility');
+});
+window.addEventListener('focus',()=>{
+  if(Date.now()-sessionLastInteractionAt>=SESSION_CONTEXT_MAX_IDLE_MS)revalidateActiveSession('focus');
+});
+document.addEventListener('pointerdown',e=>{
+  if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}
+  const idle=Date.now()-sessionLastInteractionAt;
+  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){sessionLastInteractionAt=Date.now();return}
+  e.preventDefault();e.stopImmediatePropagation();
+  revalidateActiveSession('idle-action');
+},true);
+document.addEventListener('keydown',e=>{
+  if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}
+  const idle=Date.now()-sessionLastInteractionAt;
+  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){sessionLastInteractionAt=Date.now();return}
+  e.preventDefault();e.stopImmediatePropagation();
+  revalidateActiveSession('idle-action');
+},true);
 
 window.addEventListener('storage',()=>{reload();applyAgeTransitions();if(currentUser)showApp()});
 initData();reload();(async()=>{await loadVisualTheme();if(await handlePasswordRecovery())return;await restoreSupabaseSession()})();

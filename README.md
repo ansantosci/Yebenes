@@ -1,4 +1,17 @@
-# V92.2 — ciclo de vida RRMM y citas pasadas
+# V93 — sesiones frescas e histórico RRMM completo (17/10/2026)
+
+- Revalida la sesión y los roles contra Supabase al recuperar la aplicación tras inactividad.
+- Tras 15 minutos sin interacción, la primera acción se bloquea, se refresca el contexto y se exige repetirla sobre datos actuales.
+- Tras permanecer oculta 5 minutos, la aplicación refresca sesión, Persona, roles, temporada y datos operativos al volver.
+- Si la sesión o los roles dejan de ser válidos, no se permite continuar con el estado antiguo.
+- Los modales abiertos se cierran al refrescar un contexto antiguo para evitar guardar formularios cargados con datos obsoletos.
+- Histórico de entrenador incorpora citas RRMM y sus transiciones (programada, modificada, cancelada, no asistió).
+- Las citas pasadas muestran el encabezado “Cita RRMM · pendiente de resultado”, no “Próxima cita RRMM”.
+- Paquete de frontend verificado: exactamente 7 archivos publicables, sin .bak ni temporales.
+- README corregido: V92.1 y V92.2 aparecen una sola vez cada una.
+- Migración asociada: 042_v93_historico_rrmm_sesiones.sql.
+
+## V92.2 — ciclo de vida RRMM y citas pasadas
 
 - Las citas programadas no desaparecen al pasar su fecha: se muestran como pendientes de resultado.
 - En Reconocimiento médico, una cita pasada sin resultado muestra “Pendiente de resultado”.
@@ -7,7 +20,7 @@
 - Reprogramar crea una nueva cita y conserva la anterior en histórico.
 - El comportamiento aplica por Persona tanto a jugadores como a entrenadores sin ficha de jugador.
 
-## V92.2 — RRMM y citas transversales por Persona (09/10/2026)
+## V92.1 — RRMM y citas transversales por Persona (09/10/2026)
 
 - Entrenadores > RRMM incorpora **Gestionar RRMM / cita**.
 - El mismo gestor Reconocimiento médico / Cita RRMM se reutiliza desde Fichas y Entrenadores.
