@@ -1,3 +1,12 @@
+# V93.3 — foco estable y control de versión publicada (17/10/2026)
+
+- Corrige el fallo reproducible de V93.2 que devolvía a Fichas al recuperar el foco.
+- La revalidación conserva la sección activa (Entrenadores, RRMM, Estructura, etc.) y no reinicia la navegación global.
+- `focus` y `visibilitychange` comparten las operaciones en curso para evitar revalidaciones duplicadas.
+- Al recuperar foco/visibilidad se consulta `version.json` sin caché. Si la versión publicada es distinta, se bloquea la continuidad y se solicita actualizar la aplicación antes de seguir operando.
+- Se mantiene la recarga desde Supabase de las pestañas administrativas del entrenador introducida en V93.2.
+- Frontend-only: no requiere SQL ni cambios de Edge Functions.
+
 # V93.2 — refresco efectivo de sesiones y fichas abiertas (17/10/2026)
 
 - Corrige la protección frente a datos obsoletos detectada con dos sesiones simultáneas.

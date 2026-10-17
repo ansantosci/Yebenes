@@ -1,4 +1,4 @@
-const APP_VERSION='93.2';
+const APP_VERSION='93.3';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1998,7 +1998,24 @@ $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonFor
 const SESSION_CONTEXT_MAX_IDLE_MS=15*60*1000;
 const SESSION_HIDDEN_REFRESH_MS=5*60*1000;
 const SESSION_FOCUS_REFRESH_MS=60*1000;
-let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null,sessionLastServerRefreshAt=0;
+let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null,sessionLastServerRefreshAt=Date.now(),versionCheckPromise=null;
+function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView'].find(v=>$('#'+v)?.classList.contains('active'))||'clubView'}
+async function checkPublishedVersion(){
+  if(versionCheckPromise)return versionCheckPromise;
+  versionCheckPromise=(async()=>{
+    try{
+      const r=await fetch(`version.json?ts=${Date.now()}`,{cache:'no-store'});
+      if(!r.ok)return true;
+      const info=await r.json(),remote=String(info?.version||'').trim();
+      if(!remote||remote===APP_VERSION)return true;
+      const ok=confirm(`Hay una nueva version de la aplicacion disponible (v${remote}). Debes actualizar antes de continuar para evitar trabajar con codigo antiguo.\n\nPulsa Aceptar para actualizar ahora.`);
+      if(ok){const u=new URL(location.href);u.searchParams.set('appVersion',remote);u.searchParams.set('_reload',Date.now().toString());location.replace(u.toString())}
+      return false;
+    }catch(err){console.warn('V93.3 comprobacion de version',err);return true}
+    finally{versionCheckPromise=null}
+  })();
+  return versionCheckPromise;
+}
 function closeOpenDialogsForFreshContext(){
   let closed=false;
   document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close();closed=true}catch{}});
@@ -2012,6 +2029,7 @@ async function revalidateActiveSession(reason='resume'){
       const {data,error}=await sb.auth.getUser();
       if(error||!data?.user)throw error||new Error('La sesion ya no es valida');
       const previousRole=currentRole;
+      const previousView=activeClubViewId();
       const fresh=await loadIdentityWithPending(data.user);
       currentUser=fresh;
       await loadSupabaseStructure();
@@ -2024,6 +2042,7 @@ async function revalidateActiveSession(reason='resume'){
       localStorage.setItem(K.sessionRole,currentRole);
       const closed=closeOpenDialogsForFreshContext();
       showApp();
+      if(!['family','player'].includes(currentRole)&&document.getElementById(previousView))setView(previousView);
       sessionLastInteractionAt=Date.now();
       sessionLastServerRefreshAt=Date.now();
       if(closed&&reason==='idle-action')alert('La sesion y los datos se han actualizado por inactividad. Repite la accion sobre la informacion actualizada.');
@@ -2038,16 +2057,17 @@ async function revalidateActiveSession(reason='resume'){
   })();
   return sessionRevalidationPromise;
 }
-document.addEventListener('visibilitychange',()=>{
+document.addEventListener('visibilitychange',async()=>{
   if(document.hidden){sessionHiddenAt=Date.now();return}
   const hiddenFor=sessionHiddenAt?Date.now()-sessionHiddenAt:0;sessionHiddenAt=null;
-  if(hiddenFor>=SESSION_HIDDEN_REFRESH_MS)revalidateActiveSession('visibility');
+  if(!(await checkPublishedVersion()))return;
+  if(hiddenFor>=SESSION_HIDDEN_REFRESH_MS)await revalidateActiveSession('visibility');
 });
-window.addEventListener('focus',()=>{
-  // V93.2: recuperar el foco es una frontera de frescura, no solo de autenticacion.
-  // Si hace al menos un minuto que no contrastamos el servidor, revalidamos y cerramos
-  // formularios/modal antiguos antes de permitir continuar con su instantanea local.
-  if(Date.now()-sessionLastServerRefreshAt>=SESSION_FOCUS_REFRESH_MS)revalidateActiveSession('focus');
+window.addEventListener('focus',async()=>{
+  // V93.3: foco y visibility pueden llegar juntos. Las promesas compartidas evitan
+  // revalidaciones duplicadas y la vista activa se conserva tras refrescar contexto.
+  if(!(await checkPublishedVersion()))return;
+  if(Date.now()-sessionLastServerRefreshAt>=SESSION_FOCUS_REFRESH_MS)await revalidateActiveSession('focus');
 });
 document.addEventListener('pointerdown',e=>{
   if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}
