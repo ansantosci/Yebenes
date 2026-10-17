@@ -1,3 +1,11 @@
+# V93.1 — corrección del histórico RRMM (17/10/2026)
+
+- Corrige el RPC `obtener_historico_entrenador`: el CTE unificado declara explícitamente la columna `metadata`, evitando `column e.metadata does not exist`.
+- Mantiene íntegra la protección de sesión/estado obsoleto introducida en V93.
+- El SQL 043 ejecuta realmente el RPC de Andrés durante la verificación; ya no basta con comprobar que la función existe.
+- Conserva la incorporación al histórico de cita RRMM programada y `No asistió`.
+- Migración asociada: `043_v93_1_fix_historico_rrmm.sql`.
+
 # V93 — sesiones frescas e histórico RRMM completo (17/10/2026)
 
 - Revalida la sesión y los roles contra Supabase al recuperar la aplicación tras inactividad.
