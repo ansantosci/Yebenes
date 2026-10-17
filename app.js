@@ -1,4 +1,4 @@
-const APP_VERSION='93.1';
+const APP_VERSION='93.2';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -1492,8 +1492,33 @@ function renderCoachAvailabilityPanel(rootOrSelector,c,{self=false}={}){
   refresh();
 }
 
-function coachAdminTab(name='summary'){
+async function refreshCoachAdminTabFromServer(name){
+  if(!sb||currentUser?.source!=='supabase'||!editingCoachId)return;
+  const modal=$('#coachModal');
+  if(!modal?.open)return;
+  try{
+    await loadSupabaseCoaches();
+    const c=coaches.find(x=>x.id===editingCoachId);
+    if(!c)return;
+    // V93.2: las pestañas administrativas nunca reutilizan una instantanea antigua.
+    // Al entrar en una pestaña se vuelve a leer Supabase y se reconstruye su panel.
+    if(name==='summary')renderCoachAdminSummary(c);
+    else if(name==='availability')renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);
+    else if(name==='medical')renderCoachAdminMedical(c);
+    else if(name==='history')renderCoachAdminHistory(c);
+    else if(name==='teams'){
+      pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));
+      renderCoachAssignments();
+    }
+    sessionLastServerRefreshAt=Date.now();
+  }catch(err){
+    console.warn('V93.2 refresco de ficha de entrenador',err);
+    alert(`No se han podido actualizar los datos antes de abrir la pestaña: ${err.message||err}`);
+  }
+}
+async function coachAdminTab(name='summary'){
   const modal=$('#coachModal');if(!modal)return;
+  if(currentUser?.source==='supabase'&&editingCoachId)await refreshCoachAdminTabFromServer(name);
   modal.querySelectorAll('[data-coach-tab]').forEach(b=>{const on=b.dataset.coachTab===name;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
   modal.querySelectorAll('[data-coach-panel]').forEach(p=>p.classList.toggle('active',p.dataset.coachPanel===name));
 }
@@ -1972,7 +1997,8 @@ $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonFor
 // Revalidamos contra Supabase al volver a la app y antes de aceptar una accion tras inactividad.
 const SESSION_CONTEXT_MAX_IDLE_MS=15*60*1000;
 const SESSION_HIDDEN_REFRESH_MS=5*60*1000;
-let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null;
+const SESSION_FOCUS_REFRESH_MS=60*1000;
+let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null,sessionLastServerRefreshAt=0;
 function closeOpenDialogsForFreshContext(){
   let closed=false;
   document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close();closed=true}catch{}});
@@ -1999,6 +2025,7 @@ async function revalidateActiveSession(reason='resume'){
       const closed=closeOpenDialogsForFreshContext();
       showApp();
       sessionLastInteractionAt=Date.now();
+      sessionLastServerRefreshAt=Date.now();
       if(closed&&reason==='idle-action')alert('La sesion y los datos se han actualizado por inactividad. Repite la accion sobre la informacion actualizada.');
       return true;
     }catch(err){
@@ -2017,7 +2044,10 @@ document.addEventListener('visibilitychange',()=>{
   if(hiddenFor>=SESSION_HIDDEN_REFRESH_MS)revalidateActiveSession('visibility');
 });
 window.addEventListener('focus',()=>{
-  if(Date.now()-sessionLastInteractionAt>=SESSION_CONTEXT_MAX_IDLE_MS)revalidateActiveSession('focus');
+  // V93.2: recuperar el foco es una frontera de frescura, no solo de autenticacion.
+  // Si hace al menos un minuto que no contrastamos el servidor, revalidamos y cerramos
+  // formularios/modal antiguos antes de permitir continuar con su instantanea local.
+  if(Date.now()-sessionLastServerRefreshAt>=SESSION_FOCUS_REFRESH_MS)revalidateActiveSession('focus');
 });
 document.addEventListener('pointerdown',e=>{
   if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}

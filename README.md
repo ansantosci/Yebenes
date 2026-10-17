@@ -1,3 +1,11 @@
+# V93.2 — refresco efectivo de sesiones y fichas abiertas (17/10/2026)
+
+- Corrige la protección frente a datos obsoletos detectada con dos sesiones simultáneas.
+- Al recuperar foco se revalida el contexto si hace al menos 60 s desde el último contraste con servidor.
+- Las pestañas administrativas del entrenador recargan sus datos desde Supabase antes de mostrarse; Disponibilidad deja de reutilizar la instantánea con la que se abrió el modal.
+- Se mantiene el cierre de modales tras inactividad prolongada y la autoridad final de RLS/RPC.
+- Frontend-only: no requiere SQL ni cambios de Edge Functions.
+
 # V93.1 — corrección del histórico RRMM (17/10/2026)
 
 - Corrige el RPC `obtener_historico_entrenador`: el CTE unificado declara explícitamente la columna `metadata`, evitando `column e.metadata does not exist`.
