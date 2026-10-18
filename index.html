@@ -38,7 +38,7 @@
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v93.5</div>
+      <div class="version-badge" aria-label="Versión de prueba">v93.6</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -56,7 +56,7 @@
         <button class="primary" type="submit">Entrar</button>
         <button class="secondary auth-resend" id="forgotPasswordButton" type="button">¿Has olvidado tu contraseña?</button>
         <div class="auth-confirmation-context hidden" id="confirmationContext"><strong>Cuenta pendiente de confirmar</strong><span id="confirmationContextText">Revisa el correo que te enviamos al registrarte.</span><button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar correo de confirmación</button></div>
-        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación.</span></div>
+        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación.</span></div><button class="secondary auth-resend" id="openAuthDiagnostic" type="button">Diagnóstico de sesión</button>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -321,12 +321,14 @@
   <dialog id="teamModal"><form id="teamForm"><div class="modal-head"><div><span class="eyebrow dark">Equipo</span><h2 id="teamModalTitle">Nuevo equipo</h2><div class="meta" id="teamModalSeason"></div></div><button type="button" class="icon-button" id="closeTeamModal">✕</button></div><div class="form-grid"><div class="span-2 form-section-title"><strong>Datos deportivos</strong><span>Identidad y clasificación del equipo.</span></div><label class="span-2">Nombre del equipo<input name="name" required placeholder="Prebenjamín A" /></label><label>Categoría<select name="categoryId" id="teamCategorySelect" required></select></label><label>Código<input name="code" placeholder="PRE-A" /></label><label>Modalidad<select name="modality"><option value="">—</option><option value="F7">F7</option><option value="F11">F11</option></select></label><label>Género<select name="gender"><option value="">—</option><option value="masculino">Masculino</option><option value="femenino">Femenino</option><option value="mixto">Mixto</option></select></label><label>Estado<select name="active"><option value="yes">Activo</option><option value="no">Inactivo</option></select></label><div class="span-2 form-section-title"><strong>Configuración económica</strong><span>Condiciones de inscripción aplicables a este equipo durante la temporada.</span></div><label>Importe inscripción (€)<input name="amount" type="number" min="0" step="0.01" placeholder="Sin configurar" /></label><label>Admite fraccionamiento Cluber<select name="installments"><option value="yes">Sí</option><option value="no">No</option></select></label><label>Pago requerido para ficha<select name="required"><option value="yes">Sí</option><option value="no">No</option></select></label><label class="span-2">Observaciones económicas<textarea name="notes" rows="3" placeholder="Condiciones o notas internas"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelTeam">Cancelar</button><button type="submit" class="primary">Guardar equipo</button></div></form></dialog>
 
   <dialog id="seasonModal"><form id="seasonForm"><div class="modal-head"><div><span class="eyebrow dark">Temporadas</span><h2>Nueva temporada</h2></div><button type="button" class="icon-button" id="closeSeasonModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre<input name="name" required placeholder="2027/2028" /></label><label>Fecha inicio<input name="startDate" type="date" required /></label><label>Fecha fin<input name="endDate" type="date" required /></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSeason">Cancelar</button><button type="submit" class="primary">Crear temporada</button></div></form></dialog>
+
+  <dialog id="authDiagnosticModal"><form method="dialog"><div class="modal-head"><div><span class="eyebrow dark">DIAGNÓSTICO</span><h2>Sesión y autenticación</h2></div><button type="button" class="icon-button" id="closeAuthDiagnostic">✕</button></div><div class="warning-box">Registro local de diagnóstico. No guarda contraseñas ni el contenido de tokens. Incluye eventos Auth, tiempos, presencia de sesión y errores para investigar cierres inesperados.</div><label style="display:grid;gap:6px;font-weight:800">Registro<textarea id="authDiagnosticOutput" rows="18" readonly style="width:100%;font-family:monospace;font-size:.72rem"></textarea></label><div class="modal-actions"><button type="button" class="secondary" id="clearAuthDiagnostic">Limpiar</button><button type="button" class="secondary" id="refreshAuthDiagnostic">Actualizar</button><button type="button" class="primary" id="copyAuthDiagnostic">Copiar diagnóstico</button></div></form></dialog>
   <div id="updateBanner" class="update-banner hidden" role="status" aria-live="polite">
     <div><strong>Nueva versión disponible</strong><span>La aplicación se ha actualizado.</span></div>
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=93.5"></script>
+  <script src="app.js?v=93.6"></script>
 </body>
 </html>

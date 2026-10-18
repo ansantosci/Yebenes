@@ -1,3 +1,12 @@
+# V93.6 — Diagnóstico de persistencia de sesión móvil
+
+- Instrumentación local y no sensible de Supabase Auth: INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT y demás eventos emitidos por onAuthStateChange.
+- Registra visibility/focus, pagehide/pageshow, conectividad y resultados de getSession/getUser durante restauración y revalidación.
+- Nunca guarda contraseñas ni contenido de access/refresh tokens; solo presencia, expiración y metadatos técnicos mínimos.
+- Botón «Diagnóstico de sesión» disponible incluso desde Login para copiar el registro después de reproducir el fallo.
+- V93.6 es diagnóstica: no cambia la política acordada de 12 h de inactividad / 7 días máximos ni introduce una nueva hipótesis de corrección.
+- Frontend-only. Sin SQL ni cambios de Edge Functions.
+
 # V93.5 - Política de sesión y recuperación robusta en móvil
 
 - Fija política funcional: 12 horas de inactividad y 7 días de duración máxima por sesión local.
