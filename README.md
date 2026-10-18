@@ -1,3 +1,12 @@
+# V93.6.1 — Diagnóstico autenticado y almacenamiento separado
+
+- Mantiene V93.6 sin cambiar la política de sesión ni aplicar todavía una corrección de autenticación.
+- Añade «Diagnóstico de sesión» también en Perfil -> Seguridad mientras el usuario está autenticado.
+- El diagnóstico captura una instantánea `getSession()` al abrirse.
+- Distingue `localStorage` y `sessionStorage`, mostrando solo nombres de claves y longitudes, nunca el contenido de tokens ni contraseñas.
+- Permite comparar el estado inmediatamente después del login, durante la suspensión de Safari y tras una eventual pérdida de sesión.
+- Frontend-only. Sin SQL ni cambios de Edge Functions.
+
 # V93.6 — Diagnóstico de persistencia de sesión móvil
 
 - Instrumentación local y no sensible de Supabase Auth: INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED, SIGNED_OUT y demás eventos emitidos por onAuthStateChange.

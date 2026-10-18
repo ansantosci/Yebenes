@@ -1,4 +1,4 @@
-const APP_VERSION='93.6';
+const APP_VERSION='93.6.1';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -64,15 +64,21 @@ const WORKFLOW=[
 ];
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const AUTH_DIAG_MAX=160;
-function authStorageSummary(){
+function authStorageAreaSummary(areaName,storage){
   try{
     const keys=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i)||'';
-      if(k.startsWith('sb-')||/auth.*token/i.test(k))keys.push({key:k,length:String(localStorage.getItem(k)||'').length});
+    for(let i=0;i<storage.length;i++){
+      const k=storage.key(i)||'';
+      if(k.startsWith('sb-')||/auth|session|token/i.test(k))keys.push({key:k,length:String(storage.getItem(k)||'').length});
     }
-    return {count:keys.length,keys};
-  }catch(err){return {error:String(err?.message||err)}}
+    return {area:areaName,total_keys:storage.length,count:keys.length,keys};
+  }catch(err){return {area:areaName,error:String(err?.message||err)}}
+}
+function authStorageSummary(){
+  return {
+    local:authStorageAreaSummary('localStorage',localStorage),
+    session:authStorageAreaSummary('sessionStorage',sessionStorage)
+  };
 }
 function authSessionSummary(session){
   if(!session)return {present:false};
@@ -89,9 +95,11 @@ function authDiagText(){
   let list=[];try{list=JSON.parse(localStorage.getItem(K.authDiag)||'[]')}catch{}
   return JSON.stringify({generated_at:new Date().toISOString(),version:APP_VERSION,user_agent:navigator.userAgent,storage:authStorageSummary(),events:list},null,2);
 }
-function openAuthDiagnostic(){
+async function openAuthDiagnostic(){
   const d=$('#authDiagnosticModal'),out=$('#authDiagnosticOutput');if(!d||!out)return;
-  authDiag('DIAGNOSTIC_OPENED',{storage:authStorageSummary()});out.value=authDiagText();d.showModal();
+  let live={present:false},error=null;
+  try{if(sb){const r=await sb.auth.getSession();error=r.error?String(r.error.message||r.error):null;live=authSessionSummary(r.data?.session)}}catch(err){error=String(err?.message||err)}
+  authDiag('DIAGNOSTIC_OPENED',{live_session:live,error,storage:authStorageSummary()});out.value=authDiagText();d.showModal();
 }
 
 // V51: acceso documental robusto. Se registra al principio para que no dependa
@@ -2216,6 +2224,7 @@ document.addEventListener('keydown',e=>{
 },true);
 
 if($('#openAuthDiagnostic'))$('#openAuthDiagnostic').onclick=openAuthDiagnostic;
+if($('#openAuthDiagnosticAuthenticated'))$('#openAuthDiagnosticAuthenticated').onclick=openAuthDiagnostic;
 if($('#closeAuthDiagnostic'))$('#closeAuthDiagnostic').onclick=()=>$('#authDiagnosticModal')?.close();
 if($('#refreshAuthDiagnostic'))$('#refreshAuthDiagnostic').onclick=()=>{$('#authDiagnosticOutput').value=authDiagText()};
 if($('#copyAuthDiagnostic'))$('#copyAuthDiagnostic').onclick=async()=>{const t=authDiagText();try{await navigator.clipboard.writeText(t);alert('Diagnóstico copiado. Pégalo en el chat.')}catch{$('#authDiagnosticOutput').value=t;$('#authDiagnosticOutput').select();alert('No se ha podido copiar automáticamente. El texto queda seleccionado.')}};
