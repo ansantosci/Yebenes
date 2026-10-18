@@ -1,3 +1,11 @@
+# V93.4.1 - Hotfix de actualización obligatoria del frontend
+
+- Corrige el diálogo de versión nueva de V93.4: ya no existe opción Cancelar.
+- Una versión obsoleta queda bloqueada y, tras aceptar el aviso, se fuerza navegación con cache-busting.
+- Antes de navegar se eliminan registros de Service Worker y Cache Storage disponibles para evitar reutilizar recursos antiguos.
+- Mantiene sin cambios la revalidación en caliente y preservación de navegación de V93.4.
+- Release frontend-only: sin SQL ni cambios de Edge Functions.
+
 # V93.4 — revalidación en caliente sin perder navegación (18/10/2026)
 
 - Separa explícitamente el arranque completo de la aplicación de la revalidación en caliente por `focus` / `visibilitychange`.

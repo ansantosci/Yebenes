@@ -1,4 +1,4 @@
-const APP_VERSION='93.4';
+const APP_VERSION='93.4.1';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -2008,8 +2008,23 @@ async function checkPublishedVersion(){
       if(!r.ok)return true;
       const info=await r.json(),remote=String(info?.version||'').trim();
       if(!remote||remote===APP_VERSION)return true;
-      const ok=confirm(`Hay una nueva version de la aplicacion disponible (v${remote}). Debes actualizar antes de continuar para evitar trabajar con codigo antiguo.\n\nPulsa Aceptar para actualizar ahora.`);
-      if(ok){const u=new URL(location.href);u.searchParams.set('appVersion',remote);u.searchParams.set('_reload',Date.now().toString());location.replace(u.toString())}
+      // V93.4.1: una version obsoleta no puede continuar ni cancelar la actualizacion.
+      // alert() deja una unica accion y, al cerrarse, forzamos una navegacion con cache-busting.
+      alert(`Hay una nueva version de la aplicacion disponible (v${remote}). Es necesario actualizar antes de continuar.`);
+      try{
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg=>reg.unregister()));
+        }
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }
+      }catch(err){console.warn('V93.4.1 limpieza previa a actualizacion',err)}
+      const u=new URL(location.href);
+      u.searchParams.set('appVersion',remote);
+      u.searchParams.set('_reload',Date.now().toString());
+      location.assign(u.toString());
       return false;
     }catch(err){console.warn('V93.3 comprobacion de version',err);return true}
     finally{versionCheckPromise=null}
