@@ -1,4 +1,4 @@
-const APP_VERSION='93.4.1';
+const APP_VERSION='93.5';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -50,7 +50,7 @@ const K={
   seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
   inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
   medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
-  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1'
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1'
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
@@ -1187,6 +1187,10 @@ async function restoreSupabaseSession(){
     if(error)throw error;
     let authUser=data.session?.user||null;
     if(!authUser){currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');return;}
+    const policyExpiry=appSessionExpiryReason();
+    if(policyExpiry==='inactivity'){await localSessionLogout('Tu sesion ha caducado tras 12 horas de inactividad. Inicia sesion de nuevo para continuar.');return;}
+    if(policyExpiry==='max_lifetime'){await localSessionLogout('Por seguridad, han pasado 7 dias desde el inicio de esta sesion. Inicia sesion de nuevo para continuar.');return;}
+    persistSessionActivity(Number(localStorage.getItem(K.authLastActivity)||Date.now()));
     authUser=await prepareAuthenticatedUser(authUser);if(!authUser)return;
     await processAdultTransitions();
     currentUser=await loadIdentityWithPending(authUser);
@@ -1841,7 +1845,7 @@ function syncCoachUserFields(){const role=$('#clubUserRole'),fields=$('#coachUse
 $('#showLogin').onclick=()=>showAuth('login');$('#showFamilySignup').onclick=()=>showAuth('signup');
 function syncSignupMode(){const self=document.querySelector('input[name="signupMode"]:checked')?.value==='self';$('#selfSignupFields').classList.toggle('hidden',!self);$('#guardianSignupFields').classList.toggle('hidden',self);const f=$('#familySignupForm'),tutorDni=f?.elements?.tutorDni,tutorType=f?.elements?.tutorDocumentType,selfDni=f?.elements?.selfDni,selfType=f?.elements?.selfDocumentType;if(tutorDni){tutorDni.required=!self;tutorDni.disabled=self}if(tutorType)tutorType.disabled=self;if(selfDni)selfDni.disabled=!self;if(selfType)selfType.disabled=!self;refreshCalculatedCategory(f)}
 $$('input[name="signupMode"]').forEach(r=>r.onchange=syncSignupMode);syncSignupMode();
-$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}clearConfirmationContext();try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;const readyUser=await prepareAuthenticatedUser(data.user);if(!readyUser)return;await processAdultTransitions();currentUser=await loadIdentityWithPending(readyUser);await loadSupabaseStructure();await tryProcessNotifications();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);const msg=String(err?.message||err||'');if(/email.*not.*confirm|not.*confirmed|confirm.*email/i.test(msg)){setConfirmationContext(email,'Tu cuenta todavía no está confirmada. Revisa el correo de alta o solicita uno nuevo.');alert('Tu cuenta todavía no está confirmada. Revisa tu correo o utiliza “Reenviar correo de confirmación”.')}else{alert(msg==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${msg}`)}}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase. Comprueba tu conexión.');return}const fd=new FormData(form),email=String(fd.get('email')||'').trim(),password=String(fd.get('password')||'');const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Entrando…'}clearConfirmationContext();try{const {data,error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;clearAppSessionPolicy();persistSessionActivity();const readyUser=await prepareAuthenticatedUser(data.user);if(!readyUser)return;await processAdultTransitions();currentUser=await loadIdentityWithPending(readyUser);await loadSupabaseStructure();await tryProcessNotifications();const avail=availableRoles(currentUser);if(!avail.length){await sb.auth.signOut();currentUser=null;throw new Error('Tu cuenta no tiene ningún perfil activo en el club.')}currentRole=avail.length===1?avail[0]:null;form.reset();if(currentRole){localStorage.setItem(K.sessionRole,currentRole);showApp()}else{localStorage.removeItem(K.sessionRole);showRoleChooser()}}catch(err){console.error('Login Supabase',err);const msg=String(err?.message||err||'');if(/email.*not.*confirm|not.*confirmed|confirm.*email/i.test(msg)){setConfirmationContext(email,'Tu cuenta todavía no está confirmada. Revisa el correo de alta o solicita uno nuevo.');alert('Tu cuenta todavía no está confirmada. Revisa tu correo o utiliza “Reenviar correo de confirmación”.')}else{alert(msg==='Invalid login credentials'?'Correo o contraseña incorrectos.':`No se ha podido iniciar sesión: ${msg}`)}}finally{if(submit){submit.disabled=false;submit.textContent='Entrar'}}};
 $('#familySignupForm').onsubmit=async e=>{
   e.preventDefault();const form=e.currentTarget;if(!sb){alert('No se ha podido cargar Supabase.');return}
   const fd=new FormData(form),mode=String(fd.get('signupMode')||'guardian'),password=String(fd.get('password')||''),password2=String(fd.get('password2')||''),email=String(fd.get('email')||'').trim().toLowerCase(),emailConfirm=String(fd.get('emailConfirm')||'').trim().toLowerCase(),birth=String(fd.get('birth')||'');
@@ -1935,7 +1939,7 @@ function showAuthRedirectError(){
 }
 showAuthRedirectError();
 
-$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await sb.auth.signOut();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();if($('#clubProfileButton'))$('#clubProfileButton').onclick=openAccountProfile;if($('#closeAccountProfileModal'))$('#closeAccountProfileModal').onclick=()=>$('#accountProfileModal').close();if($('#changeAccountEmail'))$('#changeAccountEmail').onclick=async()=>{const input=$('#accountEmail'),confirmInput=$('#accountEmailConfirm'),feedback=$('#accountEmailFeedback'),b=$('#changeAccountEmail'),email=String(input?.value||'').trim().toLowerCase(),emailConfirm=String(confirmInput?.value||'').trim().toLowerCase();const emailError=validateRepeatedEmail(email,emailConfirm,{required:true});if(emailError){feedback.textContent=emailError;feedback.className='warning-box';feedback.hidden=false;return}b.disabled=true;b.textContent='Cambiando…';try{const data=await invokeAccessManager({action:'change_person_email',persona_id:currentUser.personId,new_email:email});currentUser.email=data.email;$('#accountProfileMeta').textContent=currentUser.email;if(confirmInput)confirmInput.value=data.email;feedback.textContent='Correo actualizado. A partir de ahora este será tu correo de acceso y comunicaciones.';feedback.className='success-box';feedback.hidden=false}catch(err){feedback.textContent=`No se ha podido cambiar el correo: ${err.message||err}`;feedback.className='warning-box';feedback.hidden=false}finally{b.disabled=false;b.textContent='Cambiar correo'}};if($('#closeTemporaryAccessModal'))$('#closeTemporaryAccessModal').onclick=()=>$('#temporaryAccessModal').close();if($('#acceptTemporaryAccess'))$('#acceptTemporaryAccess').onclick=()=>$('#temporaryAccessModal').close();if($('#copyTemporaryPassword'))$('#copyTemporaryPassword').onclick=async()=>{const v=$('#temporaryAccessPassword').value;try{await navigator.clipboard.writeText(v);$('#copyTemporaryPassword').textContent='Copiada';setTimeout(()=>$('#copyTemporaryPassword').textContent='Copiar',1200)}catch{alert('No se ha podido copiar automáticamente. Selecciona la contraseña manualmente.')}};if($('#accountPasswordForm'))$('#accountPasswordForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),b=f.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}b.disabled=true;b.textContent='Actualizando…';try{await changeOwnPassword(p);f.reset();$('#accountProfileModal').close();alert('Contraseña actualizada correctamente.')}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Cambiar contraseña'}};
+$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await sb.auth.signOut({scope:'local'});clearAppSessionPolicy();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();if($('#clubProfileButton'))$('#clubProfileButton').onclick=openAccountProfile;if($('#closeAccountProfileModal'))$('#closeAccountProfileModal').onclick=()=>$('#accountProfileModal').close();if($('#changeAccountEmail'))$('#changeAccountEmail').onclick=async()=>{const input=$('#accountEmail'),confirmInput=$('#accountEmailConfirm'),feedback=$('#accountEmailFeedback'),b=$('#changeAccountEmail'),email=String(input?.value||'').trim().toLowerCase(),emailConfirm=String(confirmInput?.value||'').trim().toLowerCase();const emailError=validateRepeatedEmail(email,emailConfirm,{required:true});if(emailError){feedback.textContent=emailError;feedback.className='warning-box';feedback.hidden=false;return}b.disabled=true;b.textContent='Cambiando…';try{const data=await invokeAccessManager({action:'change_person_email',persona_id:currentUser.personId,new_email:email});currentUser.email=data.email;$('#accountProfileMeta').textContent=currentUser.email;if(confirmInput)confirmInput.value=data.email;feedback.textContent='Correo actualizado. A partir de ahora este será tu correo de acceso y comunicaciones.';feedback.className='success-box';feedback.hidden=false}catch(err){feedback.textContent=`No se ha podido cambiar el correo: ${err.message||err}`;feedback.className='warning-box';feedback.hidden=false}finally{b.disabled=false;b.textContent='Cambiar correo'}};if($('#closeTemporaryAccessModal'))$('#closeTemporaryAccessModal').onclick=()=>$('#temporaryAccessModal').close();if($('#acceptTemporaryAccess'))$('#acceptTemporaryAccess').onclick=()=>$('#temporaryAccessModal').close();if($('#copyTemporaryPassword'))$('#copyTemporaryPassword').onclick=async()=>{const v=$('#temporaryAccessPassword').value;try{await navigator.clipboard.writeText(v);$('#copyTemporaryPassword').textContent='Copiada';setTimeout(()=>$('#copyTemporaryPassword').textContent='Copiar',1200)}catch{alert('No se ha podido copiar automáticamente. Selecciona la contraseña manualmente.')}};if($('#accountPasswordForm'))$('#accountPasswordForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),b=f.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}b.disabled=true;b.textContent='Actualizando…';try{await changeOwnPassword(p);f.reset();$('#accountProfileModal').close();alert('Contraseña actualizada correctamente.')}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Cambiar contraseña'}};
 
 function refreshCalculatedCategory(form){const birth=form?.elements?.birth?.value||'',cat=(currentUser?.source==='supabase'&&dbStructureLoaded)?dbCategoryForBirth(birth):categoryForBirth(birth,currentSeasonId),out=form?.querySelector?.('[data-category-calculated]');if(out)out.value=cat?cat.name:'Fuera de categorías configuradas'}
 $('#familySignupForm')?.elements?.birth?.addEventListener('change',()=>refreshCalculatedCategory($('#familySignupForm')));
@@ -1998,7 +2002,15 @@ $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonFor
 const SESSION_CONTEXT_MAX_IDLE_MS=15*60*1000;
 const SESSION_HIDDEN_REFRESH_MS=5*60*1000;
 const SESSION_FOCUS_REFRESH_MS=60*1000;
-let sessionLastInteractionAt=Date.now(),sessionHiddenAt=null,sessionRevalidationPromise=null,sessionLastServerRefreshAt=Date.now(),versionCheckPromise=null;
+// V93.5: politica funcional de sesion independiente de la caducidad tecnica del JWT.
+const APP_SESSION_INACTIVITY_MS=12*60*60*1000;
+const APP_SESSION_MAX_LIFETIME_MS=7*24*60*60*1000;
+let sessionLastInteractionAt=Number(localStorage.getItem(K.authLastActivity)||Date.now()),sessionHiddenAt=null,sessionRevalidationPromise=null,sessionLastServerRefreshAt=Date.now(),versionCheckPromise=null;
+function persistSessionActivity(now=Date.now()){sessionLastInteractionAt=now;localStorage.setItem(K.authLastActivity,String(now));if(!localStorage.getItem(K.authSessionStarted))localStorage.setItem(K.authSessionStarted,String(now));}
+function clearAppSessionPolicy(){localStorage.removeItem(K.authLastActivity);localStorage.removeItem(K.authSessionStarted);}
+function appSessionExpiryReason(now=Date.now()){const last=Number(localStorage.getItem(K.authLastActivity)||sessionLastInteractionAt||now),started=Number(localStorage.getItem(K.authSessionStarted)||now);if(now-last>=APP_SESSION_INACTIVITY_MS)return 'inactivity';if(now-started>=APP_SESSION_MAX_LIFETIME_MS)return 'max_lifetime';return null;}
+function isDefinitiveAuthError(err){const m=String(err?.message||err||'').toLowerCase();return /invalid refresh token|refresh token.*not found|session.*not found|user.*not found|jwt.*expired|invalid jwt|not authenticated/.test(m);}
+async function localSessionLogout(message){try{await sb?.auth?.signOut({scope:'local'})}catch{}clearAppSessionPolicy();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');if(message)alert(message);return false;}
 function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView'].find(v=>$('#'+v)?.classList.contains('active'))||'clubView'}
 async function checkPublishedVersion(){
   if(versionCheckPromise)return versionCheckPromise;
@@ -2095,36 +2107,44 @@ async function revalidateActiveSession(reason='resume'){
   if(sessionRevalidationPromise)return sessionRevalidationPromise;
   sessionRevalidationPromise=(async()=>{
     try{
+      // V93.5: primero recuperar/refrescar la sesion persistida. En navegador el auto-refresh
+      // se pausa en segundo plano, por lo que getUser() directo podia encontrar un JWT caducado.
+      const expiry=appSessionExpiryReason();
+      if(expiry==='inactivity')return await localSessionLogout('Tu sesion ha caducado tras 12 horas de inactividad. Inicia sesion de nuevo para continuar.');
+      if(expiry==='max_lifetime')return await localSessionLogout('Por seguridad, han pasado 7 dias desde el inicio de esta sesion. Inicia sesion de nuevo para continuar.');
+      let {data:sessionData,error:sessionError}=await sb.auth.getSession();
+      if(sessionError){
+        // Un fallo temporal de red NO equivale a logout. Solo errores Auth definitivos cierran sesion.
+        if(isDefinitiveAuthError(sessionError))return await localSessionLogout('La sesion ya no es valida. Inicia sesion de nuevo.');
+        console.warn('V93.5 getSession temporal',sessionError);return true;
+      }
+      if(!sessionData?.session)return await localSessionLogout('La sesion ya no esta disponible. Inicia sesion de nuevo.');
       const {data,error}=await sb.auth.getUser();
-      if(error||!data?.user)throw error||new Error('La sesion ya no es valida');
+      if(error||!data?.user){
+        if(error&&isDefinitiveAuthError(error))return await localSessionLogout('La sesion ya no es valida. Inicia sesion de nuevo.');
+        console.warn('V93.5 getUser temporal',error);return true;
+      }
       const previousRole=currentRole;
       const fresh=await loadIdentityWithPending(data.user);
       currentUser=fresh;
       await loadSupabaseStructure();
       const roles=availableRoles(currentUser);
       if(!roles.length){
-        await sb.auth.signOut();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
+        await localSessionLogout();
         alert('Tu cuenta ya no tiene ningun perfil activo en el club.');return false;
       }
       const roleChanged=!roles.includes(previousRole);
       currentRole=roleChanged?(roles[0]||null):previousRole;
       localStorage.setItem(K.sessionRole,currentRole);
-      if(roleChanged){
-        // Un cambio real de permisos si justifica reconstruir la navegacion.
-        showApp();
-        alert('Tus permisos han cambiado. La aplicacion ha actualizado la navegacion disponible.');
-      }else{
-        await refreshHotContextPreservingNavigation();
-      }
-      sessionLastInteractionAt=Date.now();
+      if(roleChanged){showApp();alert('Tus permisos han cambiado. La aplicacion ha actualizado la navegacion disponible.');}
+      else await refreshHotContextPreservingNavigation();
+      persistSessionActivity();
       sessionLastServerRefreshAt=Date.now();
       return true;
     }catch(err){
-      console.warn('V93.4 revalidacion de sesion',err);
-      try{await sb.auth.signOut()}catch{}
-      currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
-      alert('La sesion ha caducado o ya no es valida. Inicia sesion de nuevo.');
-      return false;
+      // Datos/contexto pueden fallar temporalmente. No destruir una sesion Auth valida por ello.
+      console.warn('V93.5 revalidacion temporal; se conserva la sesion',err);
+      return true;
     }finally{sessionRevalidationPromise=null}
   })();
   return sessionRevalidationPromise;
@@ -2142,16 +2162,16 @@ window.addEventListener('focus',async()=>{
   if(Date.now()-sessionLastServerRefreshAt>=SESSION_FOCUS_REFRESH_MS)await revalidateActiveSession('focus');
 });
 document.addEventListener('pointerdown',e=>{
-  if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}
+  if(!currentUser||currentUser.source!=='supabase'){persistSessionActivity();return}
   const idle=Date.now()-sessionLastInteractionAt;
-  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){sessionLastInteractionAt=Date.now();return}
+  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){persistSessionActivity();return}
   e.preventDefault();e.stopImmediatePropagation();
   revalidateActiveSession('idle-action');
 },true);
 document.addEventListener('keydown',e=>{
-  if(!currentUser||currentUser.source!=='supabase'){sessionLastInteractionAt=Date.now();return}
+  if(!currentUser||currentUser.source!=='supabase'){persistSessionActivity();return}
   const idle=Date.now()-sessionLastInteractionAt;
-  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){sessionLastInteractionAt=Date.now();return}
+  if(idle<SESSION_CONTEXT_MAX_IDLE_MS){persistSessionActivity();return}
   e.preventDefault();e.stopImmediatePropagation();
   revalidateActiveSession('idle-action');
 },true);

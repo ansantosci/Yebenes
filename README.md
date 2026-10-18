@@ -1,3 +1,14 @@
+# V93.5 - Política de sesión y recuperación robusta en móvil
+
+- Fija política funcional: 12 horas de inactividad y 7 días de duración máxima por sesión local.
+- Mantiene `persistSession:true` y `autoRefreshToken:true`; al recuperar foco primero usa `getSession()` para recuperar/refrescar la sesión persistida antes de validar al usuario.
+- Corrige el bug móvil reproducible de V93.4.1: un JWT técnico caducado tras quedar Safari en segundo plano ya no provoca `signOut()` inmediato.
+- Un error temporal de red o de carga de contexto no equivale a logout: se conserva la sesión y se permite reintentar.
+- Solo una ausencia real de sesión, un refresh token inválido/revocado, 12 h de inactividad, 7 días de vida máxima o pérdida real de permisos llevan a Login.
+- El cierre de sesión manual pasa a ser local al dispositivo (`scope: local`) para no revocar inadvertidamente las sesiones del mismo usuario en otros dispositivos.
+- Mantiene el control global de versión y la preservación de navegación de V93.4.1.
+- Frontend-only: sin SQL ni cambios de Edge Functions.
+
 # V93.4.1 - Hotfix de actualización obligatoria del frontend
 
 - Corrige el diálogo de versión nueva de V93.4: ya no existe opción Cancelar.
