@@ -1,3 +1,14 @@
+# V93.4 — revalidación en caliente sin perder navegación (18/10/2026)
+
+- Separa explícitamente el arranque completo de la aplicación de la revalidación en caliente por `focus` / `visibilitychange`.
+- La revalidación en caliente no llama a `showApp()`, no ejecuta `setView()` y no cierra modales si la sesión y los permisos siguen siendo válidos.
+- Conserva la sección activa, la ficha/modal abierto y la subpestaña activa; refresca sus datos desde Supabase en el mismo contexto.
+- Perfil propio: `Perfil -> Disponibilidad` permanece en Disponibilidad tras bloquear/desbloquear o recuperar foco.
+- Ficha administrativa: `Entrenadores -> persona -> Disponibilidad` conserva entrenador y pestaña tras recuperar foco.
+- Solo se reconstruye la navegación si cambian realmente los roles/permisos; solo se vuelve a Login si la sesión deja de ser válida.
+- Mantiene el control global de versión publicada de V93.3 para todos los módulos y roles.
+- Frontend-only: no requiere SQL ni cambios de Edge Functions.
+
 # V93.3 — foco estable y control de versión publicada (17/10/2026)
 
 - Corrige el fallo reproducible de V93.2 que devolvía a Fichas al recuperar el foco.

@@ -1,4 +1,4 @@
-const APP_VERSION='93.3';
+const APP_VERSION='93.4';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -2016,10 +2016,64 @@ async function checkPublishedVersion(){
   })();
   return versionCheckPromise;
 }
-function closeOpenDialogsForFreshContext(){
-  let closed=false;
-  document.querySelectorAll('dialog[open]').forEach(d=>{try{d.close();closed=true}catch{}});
-  return closed;
+function activeAccountTab(){
+  const root=$('#accountProfileModal');
+  if(!root?.open)return null;
+  return root.querySelector('[data-account-tab].active')?.dataset?.accountTab||'profile';
+}
+function activeCoachAdminTab(){
+  const root=$('#coachModal');
+  if(!root?.open)return null;
+  return root.querySelector('[data-coach-tab].active')?.dataset?.coachTab||'summary';
+}
+async function refreshHotContextPreservingNavigation(){
+  // V93.4: revalidar en caliente NO es arrancar la aplicacion.
+  // Esta funcion refresca datos/contexto sin llamar a showApp(), setView() ni cerrar modales.
+  const view=activeClubViewId();
+  const accountTab=activeAccountTab();
+  const coachTab=activeCoachAdminTab();
+  const coachId=editingCoachId;
+
+  if(['family','player'].includes(currentRole)){
+    await renderRemoteFamily();
+  }else{
+    if(view==='clubView')await renderRemoteClub();
+    else if(view==='medicalView')await renderRemoteMedical();
+    else if(view==='coachesView')renderCoaches();
+    else if(view==='structureView')renderStructure();
+    else if(view==='personsView'&&currentRole==='admin'){await loadSupabasePersons();renderPersons()}
+    else if(view==='usersView'&&currentRole==='admin')renderClubUsers();
+  }
+
+  // Perfil propio: conservar exactamente la subpestana abierta y refrescar su contenido.
+  if(accountTab){
+    $('#accountProfileMeta').textContent=currentUser.email||currentUser.name||'';
+    $('#accountProfileRoles').innerHTML=availableRoles(currentUser).map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('');
+    const c=coaches.find(x=>x.personId===currentUser.personId||x.userId===currentUser.authUserId);
+    const av=$('#selfCoachAvailabilityWrap'),tab=$('#accountAvailabilityTab'),empty=$('#accountNoCoachAvailability');
+    if(av){av.hidden=!c;if(c)renderCoachAvailabilityPanel('#selfCoachAvailabilityPanel',c,{self:true})}
+    if(tab)tab.hidden=!c;if(empty)empty.hidden=!!c;
+    setSimpleTabs('#accountProfileModal',accountTab);
+  }
+
+  // Ficha administrativa: conservar entrenador y pestana; reconstruir solo el panel activo.
+  if(coachTab&&coachId&&$('#coachModal')?.open){
+    editingCoachId=coachId;
+    const c=coaches.find(x=>x.id===coachId);
+    if(c){
+      if(coachTab==='summary')renderCoachAdminSummary(c);
+      else if(coachTab==='availability')renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);
+      else if(coachTab==='medical')renderCoachAdminMedical(c);
+      else if(coachTab==='history')renderCoachAdminHistory(c);
+      else if(coachTab==='teams'){
+        pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));
+        renderCoachAssignments();
+      }else if(coachTab==='data')renderCoachNormalizedSummary(c);
+    }
+    const modal=$('#coachModal');
+    modal.querySelectorAll('[data-coach-tab]').forEach(b=>{const on=b.dataset.coachTab===coachTab;b.classList.toggle('active',on);b.setAttribute('aria-selected',on?'true':'false')});
+    modal.querySelectorAll('[data-coach-panel]').forEach(x=>x.classList.toggle('active',x.dataset.coachPanel===coachTab));
+  }
 }
 async function revalidateActiveSession(reason='resume'){
   if(!sb||!currentUser||currentUser.source!=='supabase')return true;
@@ -2029,7 +2083,6 @@ async function revalidateActiveSession(reason='resume'){
       const {data,error}=await sb.auth.getUser();
       if(error||!data?.user)throw error||new Error('La sesion ya no es valida');
       const previousRole=currentRole;
-      const previousView=activeClubViewId();
       const fresh=await loadIdentityWithPending(data.user);
       currentUser=fresh;
       await loadSupabaseStructure();
@@ -2038,17 +2091,21 @@ async function revalidateActiveSession(reason='resume'){
         await sb.auth.signOut();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
         alert('Tu cuenta ya no tiene ningun perfil activo en el club.');return false;
       }
-      currentRole=roles.includes(previousRole)?previousRole:(roles[0]||null);
+      const roleChanged=!roles.includes(previousRole);
+      currentRole=roleChanged?(roles[0]||null):previousRole;
       localStorage.setItem(K.sessionRole,currentRole);
-      const closed=closeOpenDialogsForFreshContext();
-      showApp();
-      if(!['family','player'].includes(currentRole)&&document.getElementById(previousView))setView(previousView);
+      if(roleChanged){
+        // Un cambio real de permisos si justifica reconstruir la navegacion.
+        showApp();
+        alert('Tus permisos han cambiado. La aplicacion ha actualizado la navegacion disponible.');
+      }else{
+        await refreshHotContextPreservingNavigation();
+      }
       sessionLastInteractionAt=Date.now();
       sessionLastServerRefreshAt=Date.now();
-      if(closed&&reason==='idle-action')alert('La sesion y los datos se han actualizado por inactividad. Repite la accion sobre la informacion actualizada.');
       return true;
     }catch(err){
-      console.warn('V93 revalidacion de sesion',err);
+      console.warn('V93.4 revalidacion de sesion',err);
       try{await sb.auth.signOut()}catch{}
       currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');
       alert('La sesion ha caducado o ya no es valida. Inicia sesion de nuevo.');
