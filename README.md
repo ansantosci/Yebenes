@@ -1,3 +1,12 @@
+# V93.7 — Consolidación de sesiones y continuidad de navegación
+
+- La actividad de sesión se basa en interacción real del usuario (puntero/táctil/teclado), con escritura limitada a localStorage; recuperar foco o revalidar no reinicia por sí solo las 12 h.
+- La caducidad por 12 h de inactividad y el máximo de 7 días se hacen efectivas con un diálogo propio no cancelable: primero se invalida la sesión local y después se obliga a volver al login.
+- La caducidad técnica del JWT de Supabase (3600 s) sigue siendo independiente y se renueva mediante refresh token.
+- Antes de una actualización automática se guarda un snapshot mínimo de navegación (sección, perfil propio/pestaña y ficha de entrenador/pestaña). Tras cargar la nueva versión se restaura si sigue siendo válido y el usuario conserva el mismo rol.
+- Se mantiene temporalmente el diagnóstico Auth de V93.6.x para validar sesiones en Safari/Chrome.
+- Frontend-only: sin SQL ni cambios funcionales de Edge Functions.
+
 # V93.6.2 — Diagnóstico de origen y almacenamiento completo
 
 - Mantiene V93.6.1 sin modificar la lógica de autenticación ni la política de sesión.

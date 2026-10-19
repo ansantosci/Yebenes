@@ -31,14 +31,14 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=93.6.2" />
+  <link rel="stylesheet" href="styles.css?v=93.7" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v93.6.2</div>
+      <div class="version-badge" aria-label="Versión de prueba">v93.7</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -322,6 +322,7 @@
 
   <dialog id="seasonModal"><form id="seasonForm"><div class="modal-head"><div><span class="eyebrow dark">Temporadas</span><h2>Nueva temporada</h2></div><button type="button" class="icon-button" id="closeSeasonModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre<input name="name" required placeholder="2027/2028" /></label><label>Fecha inicio<input name="startDate" type="date" required /></label><label>Fecha fin<input name="endDate" type="date" required /></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSeason">Cancelar</button><button type="submit" class="primary">Crear temporada</button></div></form></dialog>
 
+  <dialog id="sessionExpiredModal" class="account-access-modal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">SEGURIDAD</span><h2>Sesión caducada</h2></div></div><div class="warning-box" id="sessionExpiredText">Tu sesión ha caducado. Debes iniciar sesión de nuevo para continuar.</div><div class="modal-actions"><button type="button" class="primary" id="sessionExpiredLogin" disabled>Ir a inicio de sesión</button></div></div></dialog>
   <dialog id="authDiagnosticModal"><form method="dialog"><div class="modal-head"><div><span class="eyebrow dark">DIAGNÓSTICO</span><h2>Sesión y autenticación</h2></div><button type="button" class="icon-button" id="closeAuthDiagnostic">✕</button></div><div class="warning-box">Registro local de diagnóstico. No guarda contraseñas ni el contenido de tokens. Incluye eventos Auth, tiempos, presencia de sesión y errores para investigar cierres inesperados.</div><label style="display:grid;gap:6px;font-weight:800">Registro<textarea id="authDiagnosticOutput" rows="18" readonly style="width:100%;font-family:monospace;font-size:.72rem"></textarea></label><div class="modal-actions"><button type="button" class="secondary" id="clearAuthDiagnostic">Limpiar</button><button type="button" class="secondary" id="refreshAuthDiagnostic">Actualizar</button><button type="button" class="primary" id="copyAuthDiagnostic">Copiar diagnóstico</button></div></form></dialog>
   <div id="updateBanner" class="update-banner hidden" role="status" aria-live="polite">
     <div><strong>Nueva versión disponible</strong><span>La aplicación se ha actualizado.</span></div>
@@ -329,6 +330,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=93.6.2"></script>
+  <script src="app.js?v=93.7"></script>
 </body>
 </html>
