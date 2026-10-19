@@ -1028,3 +1028,11 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - No exponer `service_role`, JWT secret, contraseña PostgreSQL ni tokens de Mailtrap.
 
 ---
+
+
+## V93.7.1 — diagnóstico dirigido de destrucción de sesión
+
+- Instrumenta todas las rutas de `signOut` con motivo (`SIGNOUT_REQUESTED`, `SIGNOUT_COMPLETED`, `SIGNOUT_THROWN`).
+- Registra aparición/desaparición de la clave de sesión Supabase y eventos `storage`, sin guardar tokens ni credenciales.
+- Corrige el identificador temprano `YEBENES_APP_VERSION` del `index.html`, que había quedado obsoleto en 93.5, para que el detector previo al arranque compare contra 93.7.1.
+- No cambia la política funcional 12 h / 7 días de V93.7.
