@@ -1,3 +1,21 @@
+# V93.7.2 — Telemetría remota de persistencia de sesión
+
+- Mantiene la lógica funcional de V93.7.1 y añade telemetría técnica mínima en Supabase para que el diagnóstico sobreviva aunque Safari reconstruya la página o desaparezca el localStorage de sesión.
+- Registra únicamente eventos de ciclo de sesión (BOOT, SIGNED_IN, TOKEN_REFRESHED, SIGNOUT_REQUESTED/COMPLETED, SIGNED_OUT, PAGEHIDE y presencia/desaparición de la clave Auth), versión, visibilidad, conectividad y un identificador técnico aleatorio del navegador.
+- Nunca envía access tokens, refresh tokens, contraseñas, correos ni contenido de localStorage.
+- Requiere ejecutar una vez `044_v93_7_2_telemetria_sesion.sql` antes de probar el frontend.
+- La tabla de telemetría no expone lectura/escritura directa a anon/authenticated; la escritura se realiza mediante una RPC SECURITY DEFINER con eventos permitidos y metadatos limitados.
+- Retención diagnóstica: 14 días, con purga oportunista desde la propia RPC.
+- Corrige la documentación omitida de V93.7.1: esa versión instrumentó todas las rutas de `signOut` con `SIGNOUT_REQUESTED` y detectó aparición/desaparición observable de la clave Auth.
+
+# V93.7.1 — Trazabilidad de destrucción de sesión
+
+- Instrumenta todas las rutas conocidas de `signOut` mediante `SIGNOUT_REQUESTED`, `SIGNOUT_COMPLETED` y `SIGNOUT_THROWN`, incluyendo el motivo técnico.
+- Detecta la aparición o desaparición observable de la clave de autenticación de Supabase durante la vida de la página.
+- Mantiene la lógica funcional de V93.7; es una versión diagnóstica.
+- Alinea la versión temprana de `index.html` con la versión publicada.
+- Frontend-only: sin SQL ni cambios funcionales de Edge Functions.
+
 # V93.7 — Consolidación de sesiones y continuidad de navegación
 
 - La actividad de sesión se basa en interacción real del usuario (puntero/táctil/teclado), con escritura limitada a localStorage; recuperar foco o revalidar no reinicia por sí solo las 12 h.

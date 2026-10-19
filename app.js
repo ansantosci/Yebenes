@@ -1,4 +1,4 @@
-const APP_VERSION='93.7.1';
+const APP_VERSION='93.7.2';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -50,7 +50,7 @@ const K={
   seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
   inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
   medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
-  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1'
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',telemetryDevice:'yebenes-telemetry-device-v1'
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
@@ -64,6 +64,20 @@ const WORKFLOW=[
 ];
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const AUTH_DIAG_MAX=160;
+const REMOTE_TELEMETRY_EVENTS=new Set(['DIAGNOSTIC_BOOT_STORAGE','AUTH_STATE_SIGNED_IN','AUTH_STATE_TOKEN_REFRESHED','AUTH_STATE_SIGNED_OUT','SIGNOUT_REQUESTED','SIGNOUT_COMPLETED','SIGNOUT_THROWN','PAGEHIDE','VISIBILITY_HIDDEN','AUTH_TOKEN_STORAGE_APPEARED','AUTH_TOKEN_STORAGE_DISAPPEARED','RESTORE_NO_SESSION','LOGIN_SUCCESS']);
+function telemetryDeviceId(){
+  try{
+    let id=localStorage.getItem(K.telemetryDevice);
+    if(!id){id=crypto.randomUUID();localStorage.setItem(K.telemetryDevice,id)}
+    return id;
+  }catch{return null}
+}
+function remoteSessionTelemetry(event,detail={}){
+  if(!sb||!REMOTE_TELEMETRY_EVENTS.has(event))return;
+  const deviceId=telemetryDeviceId();if(!deviceId)return;
+  const safe={reason:detail?.reason||null,hidden_ms:Number.isFinite(detail?.hidden_ms)?detail.hidden_ms:null,persisted:typeof detail?.persisted==='boolean'?detail.persisted:null};
+  Promise.resolve(sb.rpc('registrar_telemetria_sesion',{p_device_id:deviceId,p_event:event,p_app_version:APP_VERSION,p_auth_token_present:authTokenStoragePresent(),p_visibility:document.visibilityState,p_online:navigator.onLine,p_metadata:safe})).then(({error})=>{if(error)console.warn('Telemetría de sesión no disponible',error.message||error)}).catch(()=>{});
+}
 function authStorageAreaSummary(areaName,storage){
   try{
     const all_keys=[],relevant=[];
@@ -99,6 +113,7 @@ function authDiag(event,detail={}){
     list.push({at:new Date().toISOString(),event,version:APP_VERSION,visibility:document.visibilityState,online:navigator.onLine,...detail});
     localStorage.setItem(K.authDiag,JSON.stringify(list.slice(-AUTH_DIAG_MAX)));
   }catch{}
+  remoteSessionTelemetry(event,detail);
 }
 function authTokenStoragePresent(){
   try{return Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'))}catch{return false}
