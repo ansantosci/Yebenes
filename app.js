@@ -1,4 +1,4 @@
-const APP_VERSION='93.6.1';
+const APP_VERSION='93.6.2';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -66,12 +66,14 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const AUTH_DIAG_MAX=160;
 function authStorageAreaSummary(areaName,storage){
   try{
-    const keys=[];
+    const all_keys=[],relevant=[];
     for(let i=0;i<storage.length;i++){
       const k=storage.key(i)||'';
-      if(k.startsWith('sb-')||/auth|session|token/i.test(k))keys.push({key:k,length:String(storage.getItem(k)||'').length});
+      all_keys.push(k);
+      if(k.startsWith('sb-')||/auth|session|token/i.test(k))relevant.push({key:k,length:String(storage.getItem(k)||'').length});
     }
-    return {area:areaName,total_keys:storage.length,count:keys.length,keys};
+    all_keys.sort();
+    return {area:areaName,total_keys:storage.length,all_keys,count:relevant.length,keys:relevant};
   }catch(err){return {area:areaName,error:String(err?.message||err)}}
 }
 function authStorageSummary(){
@@ -79,6 +81,13 @@ function authStorageSummary(){
     local:authStorageAreaSummary('localStorage',localStorage),
     session:authStorageAreaSummary('sessionStorage',sessionStorage)
   };
+}
+function authEnvironmentSummary(){
+  const href=(()=>{try{const u=new URL(location.href);u.search='';u.hash='';return u.href}catch{return String(location.origin||'')+String(location.pathname||'')}})();
+  return {origin:location.origin,href,referrer:document.referrer||'',standalone:Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches||navigator.standalone===true)};
+}
+async function authPersistenceSummary(){
+  try{return {supported:Boolean(navigator.storage?.persisted),persisted:navigator.storage?.persisted?await navigator.storage.persisted():null}}catch(err){return {supported:Boolean(navigator.storage?.persisted),error:String(err?.message||err)}}
 }
 function authSessionSummary(session){
   if(!session)return {present:false};
@@ -93,14 +102,16 @@ function authDiag(event,detail={}){
 }
 function authDiagText(){
   let list=[];try{list=JSON.parse(localStorage.getItem(K.authDiag)||'[]')}catch{}
-  return JSON.stringify({generated_at:new Date().toISOString(),version:APP_VERSION,user_agent:navigator.userAgent,storage:authStorageSummary(),events:list},null,2);
+  return JSON.stringify({generated_at:new Date().toISOString(),version:APP_VERSION,user_agent:navigator.userAgent,environment:authEnvironmentSummary(),storage:authStorageSummary(),events:list},null,2);
 }
 async function openAuthDiagnostic(){
   const d=$('#authDiagnosticModal'),out=$('#authDiagnosticOutput');if(!d||!out)return;
   let live={present:false},error=null;
   try{if(sb){const r=await sb.auth.getSession();error=r.error?String(r.error.message||r.error):null;live=authSessionSummary(r.data?.session)}}catch(err){error=String(err?.message||err)}
-  authDiag('DIAGNOSTIC_OPENED',{live_session:live,error,storage:authStorageSummary()});out.value=authDiagText();d.showModal();
+  const persistence=await authPersistenceSummary();authDiag('DIAGNOSTIC_OPENED',{live_session:live,error,environment:authEnvironmentSummary(),persistence,storage:authStorageSummary()});out.value=authDiagText();d.showModal();
 }
+
+authDiag('DIAGNOSTIC_BOOT_STORAGE',{environment:authEnvironmentSummary(),storage:authStorageSummary()});
 
 // V51: acceso documental robusto. Se registra al principio para que no dependa
 // de la inicialización posterior de controles legacy o de rerenders de Familia.

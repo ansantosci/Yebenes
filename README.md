@@ -1,3 +1,12 @@
+# V93.6.2 — Diagnóstico de origen y almacenamiento completo
+
+- Mantiene V93.6.1 sin modificar la lógica de autenticación ni la política de sesión.
+- Registra los nombres de todas las claves de localStorage/sessionStorage, pero nunca sus valores; para claves Auth solo conserva además su longitud.
+- Añade origin, URL sin query/hash, referrer, modo standalone/PWA y navigator.storage.persisted() cuando está disponible.
+- Añade una fotografía DIAGNOSTIC_BOOT_STORAGE lo antes posible para comparar el almacenamiento disponible al arrancar antes de la restauración de sesión.
+- Objetivo: distinguir pérdida selectiva de Auth, cambio de origen/contexto o limpieza más amplia de almacenamiento en Safari/iOS.
+- Frontend-only. Sin SQL ni cambios de Edge Functions.
+
 # V93.6.1 — Diagnóstico autenticado y almacenamiento separado
 
 - Mantiene V93.6 sin cambiar la política de sesión ni aplicar todavía una corrección de autenticación.
