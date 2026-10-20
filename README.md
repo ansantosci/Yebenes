@@ -1,3 +1,12 @@
+# V93.8 — Restauración de sesión y continuidad de navegación
+
+- El arranque y la reanudación ya no muestran Login mientras Supabase está resolviendo una sesión existente: se usa un estado neutro «Recuperando sesión…».
+- Se conserva un snapshot vivo de navegación al pasar a segundo plano y antes de revalidar; al reconstruir Safari se restaura la sección, perfil/pestaña y ficha de entrenador cuando siguen siendo válidos.
+- `showApp()` puede preservar la vista activa y deja de forzar Fichas durante restauraciones/revalidaciones.
+- Se instrumentan tiempos de `getSession`, identidad, estructura y restauración total para localizar cuellos de botella.
+- Las tareas no críticas de mayoría de edad y notificaciones se difieren hasta después de mostrar la aplicación, reduciendo el tiempo de espera percibido.
+- Mantiene la telemetría remota de V93.7.2. No requiere SQL adicional ni cambios de Edge Functions.
+
 # V93.7.2 — Telemetría remota de persistencia de sesión
 
 - Mantiene la lógica funcional de V93.7.1 y añade telemetría técnica mínima en Supabase para que el diagnóstico sobreviva aunque Safari reconstruya la página o desaparezca el localStorage de sesión.

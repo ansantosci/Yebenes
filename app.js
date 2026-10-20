@@ -1,4 +1,4 @@
-const APP_VERSION='93.7.2';
+const APP_VERSION='93.8';
 const DATA_VERSION='13';
 const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
@@ -50,7 +50,7 @@ const K={
   seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
   inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
   medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
-  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',telemetryDevice:'yebenes-telemetry-device-v1'
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',navLive:'yebenes-navigation-live-v1',telemetryDevice:'yebenes-telemetry-device-v1'
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
@@ -1257,53 +1257,63 @@ async function resendInternalInvitationForSelectedPerson(){
   }catch(err){alert(`No se ha podido reenviar el enlace de activación: ${err.message||err}`)}finally{if(b){b.disabled=false;b.textContent='Reenviar enlace de activación'}}
 }
 
+function showSessionRestoring(message='Recuperando sesión…'){
+  const r=$('#sessionRestoreScreen');if(r){r.classList.remove('hidden');const t=$('#sessionRestoreText');if(t)t.textContent=message}
+  $('#authScreen')?.classList.add('hidden');$('#appShell')?.classList.add('hidden');
+}
+function hideSessionRestoring(){ $('#sessionRestoreScreen')?.classList.add('hidden'); }
+function restorePerfMark(name,start){const ms=Math.round(performance.now()-start);authDiag('RESTORE_TIMING',{reason:name,hidden_ms:ms});return ms}
+
 async function restoreSupabaseSession(){
-  authDiag('RESTORE_BEGIN',{storage:authStorageSummary()});
-  if(!sb){showAuth('login');alert('No se ha podido cargar el cliente de Supabase. Comprueba la conexión a Internet.');return;}
+  const t0=performance.now();showSessionRestoring();authDiag('RESTORE_BEGIN',{storage:authStorageSummary()});
+  if(!sb){hideSessionRestoring();showAuth('login');alert('No se ha podido cargar el cliente de Supabase. Comprueba la conexión a Internet.');return;}
   try{
+    const tSession=performance.now();
     const {data,error}=await sb.auth.getSession();
-    authDiag('RESTORE_GET_SESSION',{error:error?String(error.message||error):null,session:authSessionSummary(data?.session),storage:authStorageSummary()});
+    authDiag('RESTORE_GET_SESSION',{error:error?String(error.message||error):null,session:authSessionSummary(data?.session),storage:authStorageSummary(),elapsed_ms:restorePerfMark('getSession',tSession)});
     if(error)throw error;
     let authUser=data.session?.user||null;
-    if(!authUser){authDiag('RESTORE_NO_SESSION',{storage:authStorageSummary()});currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');return;}
+    if(!authUser){authDiag('RESTORE_NO_SESSION',{storage:authStorageSummary()});currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);hideSessionRestoring();showAuth('login');return;}
     const policyExpiry=appSessionExpiryReason();
-    if(policyExpiry==='inactivity'){await expireLocalSession('inactivity');return;}
-    if(policyExpiry==='max_lifetime'){await expireLocalSession('max_lifetime');return;}
+    if(policyExpiry==='inactivity'){hideSessionRestoring();await expireLocalSession('inactivity');return;}
+    if(policyExpiry==='max_lifetime'){hideSessionRestoring();await expireLocalSession('max_lifetime');return;}
     persistSessionActivity(Number(localStorage.getItem(K.authLastActivity)||Date.now()));
-    authUser=await prepareAuthenticatedUser(authUser);if(!authUser)return;
-    await processAdultTransitions();
-    currentUser=await loadIdentityWithPending(authUser);
-    await loadSupabaseStructure();
-    await tryProcessNotifications();
-    const savedRole=localStorage.getItem(K.sessionRole);
-    const roles=availableRoles(currentUser);
+    authUser=await prepareAuthenticatedUser(authUser);if(!authUser){hideSessionRestoring();return;}
+    const tIdentity=performance.now();
+    currentUser=await loadIdentityWithPending(authUser);restorePerfMark('identity',tIdentity);
+    const savedRole=localStorage.getItem(K.sessionRole),roles=availableRoles(currentUser);
     currentRole=roles.includes(savedRole)?savedRole:(roles[0]||null);
-    if(!roles.length){await tracedSignOut('restore_no_active_roles');currentUser=null;currentRole=null;showAuth('login');alert('Tu cuenta no tiene ningún perfil activo en el club.');return;}
-    if(roles.length>1&&!savedRole){showRoleChooser();}else{showApp();await restoreNavigationSnapshot();}
+    if(!roles.length){await tracedSignOut('restore_no_active_roles');currentUser=null;currentRole=null;hideSessionRestoring();showAuth('login');alert('Tu cuenta no tiene ningún perfil activo en el club.');return;}
+    const tStructure=performance.now();await loadSupabaseStructure();restorePerfMark('structure',tStructure);
+    hideSessionRestoring();
+    if(roles.length>1&&!savedRole){showRoleChooser();}else{showApp({preserveView:true});await restoreNavigationSnapshot(true);}
+    restorePerfMark('total',t0);
+    // Tareas no críticas fuera del camino de entrada: no deben bloquear la UI restaurada.
+    Promise.resolve().then(()=>processAdultTransitions()).catch(()=>{});
+    Promise.resolve().then(()=>tryProcessNotifications()).catch(()=>{});
   }catch(err){
-    authDiag('RESTORE_ERROR',{error:String(err?.message||err),storage:authStorageSummary()});
-    console.error('Supabase session error',err);
-    currentUser=null;currentRole=null;showAuth('login');
-    alert(`No se ha podido cargar tu perfil: ${err.message||err}`);
+    authDiag('RESTORE_ERROR',{error:String(err?.message||err),storage:authStorageSummary()});console.error('Supabase session error',err);
+    currentUser=null;currentRole=null;hideSessionRestoring();showAuth('login');alert(`No se ha podido cargar tu perfil: ${err.message||err}`);
   }
 }
 
 function setConfirmationContext(email='',message=''){const box=$('#confirmationContext'),input=$('#loginForm')?.elements?.email,text=$('#confirmationContextText');if(!box)return;const value=String(email||input?.value||'').trim().toLowerCase();if(value&&input&&!input.value)input.value=value;if(text)text.textContent=message||`Revisa el correo que enviamos a ${value||'tu dirección'} al registrarte.`;box.classList.remove('hidden')}
 function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
-function showAuth(mode='login'){ $('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
+function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
 function setView(id){['clubView','medicalView','coachesView','structureView','usersView','personsView'].forEach(v=>$('#'+v)?.classList.toggle('active',v===id));$$('.club-nav .nav-item').forEach(x=>x.classList.toggle('active',x.dataset.clubView===id))}
 function showRoleChooser(force=false){
   if(!currentUser)return;const roles=availableRoles(currentUser);if(!roles.length){alert('Tu cuenta todavía no tiene ningún perfil activo.');return}if(roles.length<=1&&!force){currentRole=roles[0]||'family';localStorage.setItem(K.sessionRole,currentRole);showApp();return}
   $('#roleChooserList').innerHTML=roles.map(r=>`<button type="button" class="role-choice" data-role="${esc(r)}"><strong>${esc(roleLabel(r))}</strong><span>${r==='family'?'Gestionar menores a tu cargo':r==='player'?'Gestionar tu propia ficha':r==='coach'?'Acceder a los jugadores de tus equipos':r==='club'?'Gestión deportiva del club':'Administración completa del sistema'}</span></button>`).join('');
   $$('.role-choice').forEach(b=>b.onclick=async()=>{currentRole=b.dataset.role;localStorage.setItem(K.sessionRole,currentRole);$('#roleChooserModal').close();recordAudit('Cambio de perfil','',roleLabel(currentRole));showApp();await restoreNavigationSnapshot()});$('#roleChooserModal').showModal()
 }
-function showApp(){
+function showApp(options={}){
+  hideSessionRestoring();const preserveView=Boolean(options.preserveView);
   if(!currentRole||!roleAvailable(currentUser,currentRole)){currentRole=availableRoles(currentUser)[0]||null}if(!currentRole)return;
   $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);$('#currentSeasonLabel').textContent=currentSeason()?.name||'';$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
   const familyLike=['family','player'].includes(currentRole);
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
-  $('#familyView').classList.remove('active');setView('clubView');const isCoach=currentRole==='coach';
+  $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';
   const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),openCoachModal=$('#openCoachModal');
   if(medicalNavButton)medicalNavButton.style.display=isCoach?'none':'flex';
   if(coachesNavButton)coachesNavButton.style.display=isCoach?'none':'flex';
@@ -2112,22 +2122,26 @@ async function expireLocalSession(reason='inactivity'){
   return sessionExpiryPromise;
 }
 async function localSessionLogout(message){authDiag('LOCAL_SESSION_LOGOUT',{message:message||null,storage:authStorageSummary()});try{if(sb)await tracedSignOut('local_session_logout',{scope:'local'})}catch{}clearAppSessionPolicy();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');if(message)alert(message);return false;}
-function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView'].find(v=>$('#'+v)?.classList.contains('active'))||'clubView'}
+function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView'].find(v=>$('#'+v)?.classList.contains('active'))||null}
 function navigationSnapshot(remoteVersion=''){
   if(!currentUser||!currentRole)return null;
   return {createdAt:Date.now(),targetVersion:remoteVersion||'',role:currentRole,view:activeClubViewId(),accountOpen:Boolean($('#accountProfileModal')?.open),accountTab:activeAccountTab(),coachOpen:Boolean($('#coachModal')?.open),coachId:editingCoachId||null,coachTab:activeCoachAdminTab()};
 }
-function saveNavigationSnapshot(remoteVersion=''){try{const snap=navigationSnapshot(remoteVersion);if(snap)localStorage.setItem(K.navResume,JSON.stringify(snap));}catch{}}
-async function restoreNavigationSnapshot(){
-  let snap=null;try{snap=JSON.parse(localStorage.getItem(K.navResume)||'null')}catch{}
+function saveNavigationSnapshot(remoteVersion=''){
+  try{const snap=navigationSnapshot(remoteVersion);if(!snap)return;localStorage.setItem(remoteVersion?K.navResume:K.navLive,JSON.stringify(snap));}catch{}
+}
+async function restoreNavigationSnapshot(allowLive=false){
+  let snap=null,source='';
+  try{snap=JSON.parse(localStorage.getItem(K.navResume)||'null');source='version';if(!snap&&allowLive){snap=JSON.parse(localStorage.getItem(K.navLive)||'null');source='live'}}catch{}
   if(!snap)return false;
-  localStorage.removeItem(K.navResume);
-  if(Date.now()-Number(snap.createdAt||0)>5*60*1000||snap.targetVersion&&snap.targetVersion!==APP_VERSION||snap.role!==currentRole)return false;
+  if(source==='version')localStorage.removeItem(K.navResume);
+  const maxAge=source==='version'?5*60*1000:24*60*60*1000;
+  if(Date.now()-Number(snap.createdAt||0)>maxAge||snap.targetVersion&&snap.targetVersion!==APP_VERSION||snap.role!==currentRole)return false;
   try{
     if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')renderCoaches();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&currentRole==='admin'){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&currentRole==='admin')renderClubUsers();}
     if(snap.accountOpen){openAccountProfile();if(snap.accountTab)setSimpleTabs('#accountProfileModal',snap.accountTab);}
     if(snap.coachOpen&&snap.coachId&&coaches.some(c=>c.id===snap.coachId)){openCoachForEdit(snap.coachId);if(snap.coachTab)await coachAdminTab(snap.coachTab);}
-    authDiag('NAVIGATION_RESTORED',{view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
+    authDiag('NAVIGATION_RESTORED',{source,view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
   }catch(err){authDiag('NAVIGATION_RESTORE_ERROR',{error:String(err?.message||err)});return false;}
 }
 async function checkPublishedVersion(){
@@ -2226,7 +2240,7 @@ async function revalidateActiveSession(reason='resume'){
   if(!sb||!currentUser||currentUser.source!=='supabase')return true;
   if(sessionRevalidationPromise)return sessionRevalidationPromise;
   sessionRevalidationPromise=(async()=>{
-    authDiag('REVALIDATE_BEGIN',{reason,storage:authStorageSummary()});
+    saveNavigationSnapshot();authDiag('REVALIDATE_BEGIN',{reason,storage:authStorageSummary()});
     try{
       // V93.5: primero recuperar/refrescar la sesion persistida. En navegador el auto-refresh
       // se pausa en segundo plano, por lo que getUser() directo podia encontrar un JWT caducado.
@@ -2273,7 +2287,7 @@ async function revalidateActiveSession(reason='resume'){
   return sessionRevalidationPromise;
 }
 document.addEventListener('visibilitychange',async()=>{
-  if(document.hidden){sessionHiddenAt=Date.now();authDiag('VISIBILITY_HIDDEN');return}
+  if(document.hidden){sessionHiddenAt=Date.now();saveNavigationSnapshot();authDiag('VISIBILITY_HIDDEN');return}
   const hiddenFor=sessionHiddenAt?Date.now()-sessionHiddenAt:0;sessionHiddenAt=null;authDiag('VISIBILITY_VISIBLE',{hidden_ms:hiddenFor,storage:authStorageSummary()});
   if(!(await checkPublishedVersion()))return;
   if(hiddenFor>=SESSION_HIDDEN_REFRESH_MS)await revalidateActiveSession('visibility');
@@ -2306,7 +2320,7 @@ window.addEventListener('online',()=>authDiag('NETWORK_ONLINE'));
 window.addEventListener('offline',()=>authDiag('NETWORK_OFFLINE'));
 window.addEventListener('pagehide',()=>authDiag('PAGEHIDE',{storage:authStorageSummary()}));
 window.addEventListener('pageshow',e=>authDiag('PAGESHOW',{persisted:Boolean(e.persisted),storage:authStorageSummary()}));
-window.addEventListener('storage',e=>{authDiag('STORAGE_EVENT',{key:e.key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,token_present:authTokenStoragePresent(),storage:authStorageSummary()});reload();applyAgeTransitions();if(currentUser)showApp()});
+window.addEventListener('storage',e=>{authDiag('STORAGE_EVENT',{key:e.key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,token_present:authTokenStoragePresent(),storage:authStorageSummary()});reload();applyAgeTransitions();if(currentUser)showApp({preserveView:true})});
 
 let authTokenWasPresent=authTokenStoragePresent();
 setInterval(()=>{
@@ -2314,7 +2328,7 @@ setInterval(()=>{
   if(nowPresent!==authTokenWasPresent){authDiag(nowPresent?'AUTH_TOKEN_STORAGE_APPEARED':'AUTH_TOKEN_STORAGE_DISAPPEARED',{previous:authTokenWasPresent,current:nowPresent,storage:authStorageSummary()});authTokenWasPresent=nowPresent;}
 },5000);
 
-initData();reload();(async()=>{await loadVisualTheme();if(await handlePasswordRecovery())return;await restoreSupabaseSession()})();
+initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme();if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.

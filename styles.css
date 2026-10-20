@@ -405,3 +405,11 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .coach-history-dot{position:relative;z-index:1;width:12px;height:12px;margin-top:17px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 4px var(--card)}.coach-history-dot.equipo{background:#2563eb}.coach-history-dot.formacion{background:#7c3aed}.coach-history-dot.licencia{background:#0f766e}.coach-history-dot.rrmm{background:#dc2626}.coach-history-dot.disponibilidad{background:#b45309}
 .coach-history-content{min-width:0;margin-bottom:12px;padding:13px 15px;border:1px solid #e5e7eb;border-radius:14px;background:var(--card)}.coach-history-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.coach-history-head>div{display:grid;gap:4px;min-width:0}.coach-history-head time{flex:0 0 auto;font-weight:700;font-size:.86rem;color:var(--muted)}.coach-history-category{font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:800}.coach-history-content p{margin:8px 0 0}.coach-history-meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:9px;font-size:.78rem;color:var(--muted)}
 @media(max-width:700px){.coach-history-intro{display:grid}.coach-history-head{display:grid;gap:6px}.coach-history-head time{justify-self:start}.coach-history-meta{display:grid;gap:4px}.coach-history-event{grid-template-columns:20px minmax(0,1fr)}}
+
+/* V93.8: estado neutro mientras se resuelve Auth; evita el falso flash de Login. */
+.session-restore-screen{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#f5f6f8);padding:24px}
+.session-restore-screen.hidden{display:none}
+.session-restore-card{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;color:var(--ink,#20232a)}
+.session-restore-card span{font-size:.9rem;opacity:.72}
+.session-restore-spinner{width:34px;height:34px;border:3px solid rgba(0,0,0,.15);border-top-color:currentColor;border-radius:50%;animation:yebenes-spin .8s linear infinite}
+@keyframes yebenes-spin{to{transform:rotate(360deg)}}
