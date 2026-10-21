@@ -1,0 +1,143 @@
+name: Deploy Supabase TEST-BASE
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-test-base:
+    name: Deploy TEST-BASE to Supabase TEST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Validate TEST-BASE seed
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s supabase/seed/test-base.sql
+
+          echo "TEST-BASE seed found:"
+          wc -l supabase/seed/test-base.sql
+
+          # Salvaguardas basicas: este seed no debe contener
+          # tablas personales/operativas.
+          if grep -Eiq \
+            'insert[[:space:]]+into[[:space:]]+public\.(personas|jugadores|entrenadores|inscripciones|documentos|pagos_inscripcion|notificaciones_salida)' \
+            supabase/seed/test-base.sql; then
+            echo "ERROR: TEST-BASE contiene INSERT sobre tablas personales u operativas."
+            exit 1
+          fi
+
+          echo "Seed validation completed."
+
+      - name: Verify TEST is ready and empty
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -n "$TEST_DB_URL"
+
+          PERSONAS_COUNT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select count(*) from public.personas;")
+
+          echo "Current TEST personas count: $PERSONAS_COUNT"
+
+          if [ "$PERSONAS_COUNT" != "0" ]; then
+            echo "ERROR: public.personas is not empty. TEST-BASE deployment aborted."
+            exit 1
+          fi
+
+          TABLES_COUNT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE';")
+
+          echo "Current TEST public tables: $TABLES_COUNT"
+
+          if [ "$TABLES_COUNT" != "38" ]; then
+            echo "ERROR: TEST does not contain the expected 38 public tables."
+            exit 1
+          fi
+
+          echo "TEST pre-deployment validation completed."
+
+      - name: Deploy TEST-BASE
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          psql "$TEST_DB_URL" \
+            -X \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/seed/test-base.sql
+
+      - name: Validate TEST-BASE deployment
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RESULT=$(psql "$TEST_DB_URL" -X -A -F ',' -t -v ON_ERROR_STOP=1 <<'SQL'
+          select 'roles', count(*) from public.roles
+          union all
+          select 'temporadas', count(*) from public.temporadas
+          union all
+          select 'categorias', count(*) from public.categorias
+          union all
+          select 'equipos', count(*) from public.equipos
+          union all
+          select 'reglas_categoria_temporada', count(*) from public.reglas_categoria_temporada
+          union all
+          select 'configuracion_visual_club', count(*) from public.configuracion_visual_club
+          union all
+          select 'personas', count(*) from public.personas
+          order by 1;
+          SQL
+          )
+
+          echo "$RESULT"
+
+          assert_count () {
+            local table="$1"
+            local expected="$2"
+            local actual
+
+            actual=$(echo "$RESULT" | awk -F',' -v t="$table" '$1 == t {print $2}')
+
+            if [ "$actual" != "$expected" ]; then
+              echo "ERROR: $table expected $expected rows but found ${actual:-missing}."
+              exit 1
+            fi
+          }
+
+          assert_count roles 5
+          assert_count temporadas 1
+          assert_count categorias 8
+          assert_count equipos 23
+          assert_count reglas_categoria_temporada 8
+          assert_count configuracion_visual_club 1
+          assert_count personas 0
+
+          echo "TEST-BASE deployment validated successfully."
+
+      - name: Deployment completed
+        run: |
+          echo "Supabase TEST-BASE deployment completed."
+          echo "Only non-personal master data has been loaded."
+          echo "No Personas or Auth users have been created."
+          echo "TEST-M has not been loaded."
+          echo "Cron remains disabled."
