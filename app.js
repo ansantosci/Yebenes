@@ -1,10 +1,26 @@
 const APP_VERSION='93.8';
 const DATA_VERSION='13';
-const SUPABASE_URL='https://ypyzochuqtetddffohpv.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY='sb_publishable_AZkaUtTojw0Xrxu3dwgkhg_2QFNU1q3';
-const sb=window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
-  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
-});
+
+const YEBENES_CONFIG=window.YEBENES_CONFIG;
+
+if(!YEBENES_CONFIG){
+  throw new Error('No se ha cargado la configuracion del entorno Yebenes.');
+}
+
+const SUPABASE_URL=YEBENES_CONFIG.supabaseUrl;
+const SUPABASE_PUBLISHABLE_KEY=YEBENES_CONFIG.supabasePublishableKey;
+
+const sb=window.supabase?.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:true
+    }
+  }
+);
 const DB_ROLE_TO_APP={administrador:'admin',club:'club',entrenador:'coach',tutor:'family',jugador:'player'};
 const DEFAULT_VISUAL_THEME={
   nombre_club:'C.D. Los Yebenes San Bruno',
@@ -302,7 +318,7 @@ let editingFromCorrection=false;
 let remoteMedicalAppointments=[];
 let remoteMedicalRows=[];
 const PENDING_SIGNUP_KEY='yebenes-pending-signup-v1';
-const AUTH_REDIRECT_URL='https://ansantosci.github.io/Yebenes/';
+const AUTH_REDIRECT_URL=YEBENES_CONFIG.authRedirectUrl;
 let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,selectedMedicalPersonId=null,selectedMedicalCoachId=null,selectedMedicalContext='player',editingCoachId=null,selectedCoachPersonId=null,editingTeamId=null,selectedPersonAdminId=null,pendingCoachAssignments=[],pendingUserAssignments=[],pendingMinorConsentAction=null;
 
 function categoryByName(name){return categories.find(c=>c.name===name)}
