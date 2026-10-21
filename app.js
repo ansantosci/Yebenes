@@ -1,7 +1,17 @@
-const APP_VERSION='93.8';
+const APP_VERSION='94.0';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
+const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();
+
+function renderEnvironmentBadge(){
+  const badge=document.getElementById('environmentBadge');
+  if(!badge)return;
+  const label=String(YEBENES_CONFIG?.name||YEBENES_ENVIRONMENT||'ENTORNO').toUpperCase();
+  badge.textContent=`${label} · v${APP_VERSION}`;
+  badge.dataset.environment=YEBENES_ENVIRONMENT;
+  badge.setAttribute('aria-label',`Entorno ${label}, version ${APP_VERSION}`);
+}
 
 if(!YEBENES_CONFIG){
   throw new Error('No se ha cargado la configuracion del entorno Yebenes.');
@@ -1343,7 +1353,7 @@ function showApp(options={}){
   if(clubNav)clubNav.style.gridTemplateColumns=isCoach?'repeat(2,1fr)':currentRole==='admin'?'repeat(6,1fr)':'repeat(5,1fr)';
   if(clubHeroTitle)clubHeroTitle.textContent=isCoach?'Jugadores de mis equipos':'Control de fichas federativas';
   if(clubHeroText)clubHeroText.textContent=isCoach?'Consulta los jugadores asignados a tus equipos con una asignación vigente.':'Revisa inscripciones, representación, equipos, reconocimientos y preparación federativa.';
-  renderClub();if(!isCoach){renderMedical();renderCoaches();renderStructure()}if(currentRole==='admin'){renderClubUsers();renderPersons();}
+  renderClub();if(!isCoach){renderMedical();renderCoaches();renderStructure()}if(currentRole==='admin'){renderClubUsers();if(activeClubViewId()==='personsView')renderPersons();}
 }
 
 function renderFamily(){
@@ -1785,18 +1795,28 @@ async function openPersonAdmin(personId,tab='identity'){
   const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id)}};
   setPersonAdminTab(tab);if(!$('#personAdminModal').open)$('#personAdminModal').showModal();
 }
+let remotePersonsRenderPromise=null;
 async function renderRemotePersons(){
   const body=$('#personsTable');if(!body||currentRole!=='admin')return;
-  try{await loadSupabasePersons();await loadSupabaseCoaches();$('#duplicateCount').textContent='—';$('#duplicateList').innerHTML='<div class="empty-note">Persona es la identidad maestra. Perfiles y relaciones se administran desde su ficha sin duplicar identidades.</div>';
-    const rows=[];
-    for(const p of dbPersons){
-      const roles=remotePersonRoleCodes(p.id),coach=coaches.find(c=>c.personId===p.id),player=await sb.from('jugadores').select('id,activo',{count:'exact',head:true}).eq('persona_id',p.id),rep=await sb.from('representaciones_jugador').select('id',{count:'exact',head:true}).eq('representante_persona_id',p.id).or(`fecha_hasta.is.null,fecha_hasta.gte.${isoToday()}`);
-      const relationBits=[];if((player.count||0)>0)relationBits.push('Jugador');if((rep.count||0)>0)relationBits.push('Tutor/Familia');if(coach)relationBits.push('Entrenador');
-      const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador','tutor'].includes(r));
-      rows.push(`<tr><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r==='tutor'?'Tutor/Familia':r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td><td><button class="secondary tiny open-person-admin" data-person="${p.id}">Abrir</button></td></tr>`);
-    }
-    body.innerHTML=rows.join('')||'<tr><td colspan="7">No hay personas registradas.</td></tr>';$$('.open-person-admin').forEach(b=>b.onclick=()=>openPersonAdmin(b.dataset.person));
-  }catch(err){body.innerHTML=`<tr><td colspan="7">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}
+  if(remotePersonsRenderPromise)return remotePersonsRenderPromise;
+  remotePersonsRenderPromise=(async()=>{
+    try{await loadSupabasePersons();await loadSupabaseCoaches();$('#duplicateCount').textContent='—';$('#duplicateList').innerHTML='<div class="empty-note">Persona es la identidad maestra. Perfiles y relaciones se administran desde su ficha sin duplicar identidades.</div>';
+      const rows=[];
+      for(const p of dbPersons){
+        const roles=remotePersonRoleCodes(p.id),coach=coaches.find(c=>c.personId===p.id),[player,rep]=await Promise.all([
+          sb.from('jugadores').select('id,activo',{count:'exact',head:true}).eq('persona_id',p.id),
+          sb.from('representaciones_jugador').select('id',{count:'exact',head:true}).eq('representante_persona_id',p.id).or(`fecha_hasta.is.null,fecha_hasta.gte.${isoToday()}`)
+        ]);
+        if(player.error)throw player.error;if(rep.error)throw rep.error;
+        const relationBits=[];if((player.count||0)>0)relationBits.push('Jugador');if((rep.count||0)>0)relationBits.push('Tutor/Familia');if(coach)relationBits.push('Entrenador');
+        const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador','tutor'].includes(r));
+        rows.push(`<tr><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r==='tutor'?'Tutor/Familia':r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td><td><button class="secondary tiny open-person-admin" data-person="${p.id}">Abrir</button></td></tr>`);
+      }
+      body.innerHTML=rows.join('')||'<tr><td colspan="7">No hay personas registradas.</td></tr>';$$('.open-person-admin').forEach(b=>b.onclick=()=>openPersonAdmin(b.dataset.person));
+    }catch(err){body.innerHTML=`<tr><td colspan="7">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}
+    finally{remotePersonsRenderPromise=null}
+  })();
+  return remotePersonsRenderPromise;
 }
 async function createRemotePerson(form){
   if(currentRole!=='admin')return;const fd=new FormData(form);const email=String(fd.get('email')||'').trim(),emailConfirm=String(fd.get('emailConfirm')||'').trim();const emailError=validateRepeatedEmail(email,emailConfirm,{required:false});if(emailError){alert(emailError);return}
@@ -2218,7 +2238,7 @@ async function refreshHotContextPreservingNavigation(){
     else if(view==='medicalView')await renderRemoteMedical();
     else if(view==='coachesView')renderCoaches();
     else if(view==='structureView')renderStructure();
-    else if(view==='personsView'&&currentRole==='admin'){await loadSupabasePersons();renderPersons()}
+    else if(view==='personsView'&&currentRole==='admin')await renderRemotePersons()
     else if(view==='usersView'&&currentRole==='admin')renderClubUsers();
   }
 
@@ -2336,7 +2356,16 @@ window.addEventListener('online',()=>authDiag('NETWORK_ONLINE'));
 window.addEventListener('offline',()=>authDiag('NETWORK_OFFLINE'));
 window.addEventListener('pagehide',()=>authDiag('PAGEHIDE',{storage:authStorageSummary()}));
 window.addEventListener('pageshow',e=>authDiag('PAGESHOW',{persisted:Boolean(e.persisted),storage:authStorageSummary()}));
-window.addEventListener('storage',e=>{authDiag('STORAGE_EVENT',{key:e.key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,token_present:authTokenStoragePresent(),storage:authStorageSummary()});reload();applyAgeTransitions();if(currentUser)showApp({preserveView:true})});
+window.addEventListener('storage',e=>{
+  const key=String(e.key||'');
+  const authStorageChange=key.startsWith('sb-')&&key.endsWith('-auth-token');
+  authDiag('STORAGE_EVENT',{key:key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,auth_storage_change:authStorageChange,token_present:authTokenStoragePresent(),storage:authStorageSummary()});
+  // V94.0: localStorage es compartido por /, /test/ y /develop/. No reconstruir la UI
+  // por cambios auxiliares de otra pestana (navegacion, diagnostico, actividad, etc.).
+  // Supabase gestiona su propia persistencia; solo una mutacion real del token Auth
+  // provoca una revalidacion serializada de la sesion actual.
+  if(authStorageChange&&currentUser?.source==='supabase')revalidateActiveSession('storage');
+});
 
 let authTokenWasPresent=authTokenStoragePresent();
 setInterval(()=>{
@@ -2344,7 +2373,7 @@ setInterval(()=>{
   if(nowPresent!==authTokenWasPresent){authDiag(nowPresent?'AUTH_TOKEN_STORAGE_APPEARED':'AUTH_TOKEN_STORAGE_DISAPPEARED',{previous:authTokenWasPresent,current:nowPresent,storage:authStorageSummary()});authTokenWasPresent=nowPresent;}
 },5000);
 
-initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme();if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
+renderEnvironmentBadge();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme();if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.

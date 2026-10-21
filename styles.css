@@ -413,3 +413,11 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .session-restore-card span{font-size:.9rem;opacity:.72}
 .session-restore-spinner{width:34px;height:34px;border:3px solid rgba(0,0,0,.15);border-top-color:currentColor;border-radius:50%;animation:yebenes-spin .8s linear infinite}
 @keyframes yebenes-spin{to{transform:rotate(360deg)}}
+
+/* V94.0 - indicador discreto y permanente del entorno activo */
+.environment-badge{position:fixed;z-index:10000;top:8px;left:50%;transform:translateX(-50%);padding:4px 9px;border-radius:999px;border:1px solid rgba(15,23,42,.16);background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(15,23,42,.08);backdrop-filter:blur(6px);color:#475467;font-size:.64rem;font-weight:900;letter-spacing:.08em;line-height:1;pointer-events:none;white-space:nowrap}
+.environment-badge[data-environment=develop]{border-style:dashed}
+.environment-badge[data-environment=test]{font-weight:950}
+.environment-badge[data-environment=demo]{opacity:.82}
+.environment-badge[data-environment=prod]{background:rgba(255,255,255,.96)}
+@media(max-width:640px){.environment-badge{top:5px;font-size:.58rem;padding:3px 7px}}

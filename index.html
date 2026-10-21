@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '93.8';
+    window.YEBENES_APP_VERSION = '94.0';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,11 +31,12 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=93.8" />
+  <link rel="stylesheet" href="styles.css?v=94.0" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
 <body>
+  <div id="environmentBadge" class="environment-badge" aria-live="polite"></div>
   <div id="sessionRestoreScreen" class="session-restore-screen">
     <div class="session-restore-card" role="status" aria-live="polite">
       <div class="session-restore-spinner" aria-hidden="true"></div>
@@ -45,7 +46,7 @@
   </div>
   <div id="authScreen" class="auth-screen hidden">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v93.8</div>
+      <div class="version-badge" aria-label="Versión de prueba">v94.0</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -349,7 +350,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=93.8"></script>
-  <script src="app.js?v=93.8"></script>
+  <script src="config.js?v=94.0"></script>
+  <script src="app.js?v=94.0"></script>
 </body>
 </html>
