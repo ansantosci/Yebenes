@@ -1,3 +1,16 @@
+# V94.0 — Estabilización multi-entorno y visibilidad de entorno
+
+- Parte exactamente de V93.8 y mantiene su comportamiento funcional, incorporando únicamente estabilización técnica previa a las pruebas de volumen de V94.
+- Añade una etiqueta discreta y permanente de entorno junto a la versión, obtenida de la misma configuración que selecciona Supabase: `DEVELOP`, `TEST`, `DEMO` y preparada para `PROD`.
+- Corrige BUG-TEST-01 observado en TEST: al perder y recuperar el foco desde la vista Personas podían multiplicarse las peticiones hasta provocar `net::ERR_INSUFFICIENT_RESOURCES` y terminar mostrando `TypeError: Failed to fetch`.
+- Reduce reconstrucciones innecesarias ante eventos de `storage`, evita precargar Personas cuando esa vista no está activa, elimina cargas duplicadas en la revalidación y serializa renders remotos concurrentes de Personas.
+- Mantiene la lógica robusta de restauración/revalidación de sesión de V93.8 y el flujo multi-entorno `develop -> DEVELOP`, `test -> TEST`, `main -> DEMO`.
+- TEST-BASE fase 1 ya está validado en Supabase TEST con 5 roles, 1 temporada, 8 categorías, 23 equipos, 8 reglas categoría/temporada, 1 configuración visual y 0 personas antes del bootstrap.
+- Se completó el bootstrap administrativo de TEST: Persona sintética vinculada a Supabase Auth con perfiles `administrador` y `club`; login, selector multirrol y panel administrativo validados.
+- Cambio Supabase Data API del 30/10/2026: toda nueva tabla/reconstrucción deberá declarar y versionar explícitamente los GRANT necesarios según mínimo privilegio; la validación de esquema deberá auditar también grants. No se concederá `anon` mecánicamente.
+- El objetivo principal de V94 sigue siendo TEST-M: disponer de un juego de datos sintéticos mucho mayor en los entornos de desarrollo/prueba para validar rendimiento, listados, relaciones, RRMM, disponibilidad, históricos, RLS y detectar patrones N+1. Los datos de volumen no se copiarán automáticamente a DEMO/PROD.
+- Política de entrega: cada versión se distribuye como frontend completo; `version.json`, versión visible y `README.md` deben quedar sincronizados antes de considerar una versión lista para desplegar.
+
 # V93.8 — Restauración de sesión y continuidad de navegación
 
 - El arranque y la reanudación ya no muestran Login mientras Supabase está resolviendo una sesión existente: se usa un estado neutro «Recuperando sesión…».
