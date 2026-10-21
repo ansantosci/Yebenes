@@ -1,0 +1,63 @@
+name: Deploy Supabase TEST schema
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-schema:
+    name: Deploy database schema to TEST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Export DEMO schema
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        run: |
+          mkdir -p supabase/deploy
+          supabase db dump \
+            --db-url "$DEMO_DB_URL" \
+            --schema public,private \
+            --file supabase/deploy/demo-schema-complete.sql
+
+      - name: Validate dump before TEST
+        run: |
+          test -s supabase/deploy/demo-schema-complete.sql
+          echo "Schema dump created"
+          wc -l supabase/deploy/demo-schema-complete.sql
+
+      - name: Deploy schema to TEST
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          psql "$TEST_DB_URL" \
+            -v ON_ERROR_STOP=1 \
+            -f supabase/deploy/demo-schema-complete.sql
+
+      - name: Verify TEST structure
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          psql "$TEST_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          select schemaname, count(*) as tables
+          from pg_tables
+          where schemaname in ('public', 'private')
+          group by schemaname
+          order by schemaname;
+
+          select routine_schema, count(*) as routines
+          from information_schema.routines
+          where routine_schema in ('public', 'private')
+          group by routine_schema
+          order by routine_schema;
+          SQL
