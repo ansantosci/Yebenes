@@ -1,0 +1,48 @@
+name: Export Supabase DEMO schema
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-schema:
+    name: Export DEMO database schema
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Create output directory
+        run: mkdir -p supabase/export
+
+      - name: Export DEMO schema
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        run: |
+          supabase db dump \
+            --db-url "$DEMO_DB_URL" \
+            --schema public \
+            --file supabase/export/demo-schema.sql
+
+      - name: Show export information
+        run: |
+          echo "Schema export completed"
+          ls -lh supabase/export/demo-schema.sql
+          echo "Lines:"
+          wc -l supabase/export/demo-schema.sql
+
+      - name: Upload schema as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-demo-schema
+          path: supabase/export/demo-schema.sql
+          if-no-files-found: error
+          retention-days: 7
