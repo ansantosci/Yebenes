@@ -14,11 +14,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-multi-environment
   cancel-in-progress: false
 
 jobs:
   build:
+    name: Build and validate Pages
     runs-on: ubuntu-latest
 
     steps:
@@ -49,7 +50,10 @@ jobs:
           mkdir -p site/test
           mkdir -p site/develop
 
-          # MAIN -> raiz del sitio
+          # ============================================================
+          # MAIN -> /
+          # ============================================================
+
           cp source-main/index.html site/
           cp source-main/app.js site/
           cp source-main/styles.css site/
@@ -57,7 +61,14 @@ jobs:
           cp source-main/sw.js site/
           cp source-main/version.json site/
 
+          if [ -f source-main/config.js ]; then
+            cp source-main/config.js site/
+          fi
+
+          # ============================================================
           # TEST -> /test/
+          # ============================================================
+
           cp source-test/index.html site/test/
           cp source-test/app.js site/test/
           cp source-test/styles.css site/test/
@@ -65,7 +76,14 @@ jobs:
           cp source-test/sw.js site/test/
           cp source-test/version.json site/test/
 
+          if [ -f source-test/config.js ]; then
+            cp source-test/config.js site/test/
+          fi
+
+          # ============================================================
           # DEVELOP -> /develop/
+          # ============================================================
+
           cp source-develop/index.html site/develop/
           cp source-develop/app.js site/develop/
           cp source-develop/styles.css site/develop/
@@ -73,60 +91,92 @@ jobs:
           cp source-develop/sw.js site/develop/
           cp source-develop/version.json site/develop/
 
-          # config.js solo existe cuando una rama ya usa la nueva
-          # arquitectura de configuracion.
-          if [ -f source-main/config.js ]; then
-            cp source-main/config.js site/
-          fi
-
-          if [ -f source-test/config.js ]; then
-            cp source-test/config.js site/test/
-          fi
-
           if [ -f source-develop/config.js ]; then
             cp source-develop/config.js site/develop/
           fi
 
-      - name: Validate published environments
+      - name: Validate MAIN
         shell: bash
         run: |
           set -euo pipefail
 
-          # Las tres aplicaciones deben existir.
           test -s site/index.html
           test -s site/app.js
+          test -s site/styles.css
+          test -s site/version.json
+
+          echo "MAIN validation completed."
+
+      - name: Validate TEST
+        shell: bash
+        run: |
+          set -euo pipefail
+
           test -s site/test/index.html
           test -s site/test/app.js
+          test -s site/test/config.js
+
+          grep -q "YEBENES_CONFIG" site/test/app.js
+          grep -q "config.js" site/test/index.html
+          grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/test/config.js
+
+          if grep -q "ypyzochuqtetddffohpv.supabase.co" site/test/app.js; then
+            echo "ERROR: TEST app.js contains DEMO Supabase hardcoded."
+            exit 1
+          fi
+
+          echo "TEST validation completed."
+
+      - name: Validate DEVELOP
+        shell: bash
+        run: |
+          set -euo pipefail
+
           test -s site/develop/index.html
           test -s site/develop/app.js
-
-          # DEVELOP ya debe utilizar la nueva configuracion.
           test -s site/develop/config.js
 
           grep -q "YEBENES_CONFIG" site/develop/app.js
           grep -q "config.js" site/develop/index.html
           grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/develop/config.js
 
-          # Proteccion critica:
-          # DEVELOP no puede seguir teniendo DEMO hardcodeada en app.js.
           if grep -q "ypyzochuqtetddffohpv.supabase.co" site/develop/app.js; then
-            echo "ERROR: develop/app.js contiene Supabase DEMO hardcodeado."
+            echo "ERROR: DEVELOP app.js contains DEMO Supabase hardcoded."
             exit 1
           fi
 
-          # TEST y MAIN pueden seguir siendo V93.8 legacy mientras
-          # realizamos la migracion gradual de la arquitectura.
-          echo "Environment validation completed successfully."
+          echo "DEVELOP validation completed."
 
+      - name: Show build information
+        shell: bash
+        run: |
+          echo "Workflow source branch: $GITHUB_REF_NAME"
+          echo
+          echo "Published structure:"
+          echo "  /         <- main"
+          echo "  /test/    <- test"
+          echo "  /develop/ <- develop"
+          echo
+          echo "Deployment policy:"
+          echo "  main    -> build + deploy"
+          echo "  test    -> build only"
+          echo "  develop -> build only"
+
+      # El artefacto Pages solo es necesario cuando MAIN va a desplegar.
       - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
+    name: Deploy Pages
+    if: github.ref == 'refs/heads/main'
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
