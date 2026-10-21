@@ -45,7 +45,8 @@ jobs:
           PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
         run: |
           supabase functions deploy mantenimiento-programado \
-            --project-ref "$PROJECT_REF"
+            --project-ref "$PROJECT_REF" \
+            --no-verify-jwt
 
       - name: Deploy procesar-notificaciones
         env:
@@ -53,10 +54,14 @@ jobs:
           PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
         run: |
           supabase functions deploy procesar-notificaciones \
-            --project-ref "$PROJECT_REF"
+            --project-ref "$PROJECT_REF" \
+            --no-verify-jwt
 
       - name: Deployment completed
         run: |
           echo "TEST Edge Functions deployment completed."
+          echo "gestionar-acceso: JWT verification enabled."
+          echo "mantenimiento-programado: JWT verification disabled."
+          echo "procesar-notificaciones: JWT verification disabled."
           echo "No Cron jobs have been created or enabled."
           echo "No custom Edge Function secrets have been configured."
