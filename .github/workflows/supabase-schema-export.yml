@@ -29,20 +29,20 @@ jobs:
         run: |
           supabase db dump \
             --db-url "$DEMO_DB_URL" \
-            --schema public \
-            --file supabase/export/demo-schema.sql
+            --schema public,private \
+            --file supabase/export/demo-schema-complete.sql
 
       - name: Show export information
         run: |
           echo "Schema export completed"
-          ls -lh supabase/export/demo-schema.sql
+          ls -lh supabase/export/demo-schema-complete.sql
           echo "Lines:"
-          wc -l supabase/export/demo-schema.sql
+          wc -l supabase/export/demo-schema-complete.sql
 
       - name: Upload schema as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supabase-demo-schema
-          path: supabase/export/demo-schema.sql
+          name: supabase-demo-schema-complete
+          path: supabase/export/demo-schema-complete.sql
           if-no-files-found: error
           retention-days: 7
