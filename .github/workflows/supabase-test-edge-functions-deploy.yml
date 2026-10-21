@@ -1,0 +1,62 @@
+name: Deploy Supabase TEST Edge Functions
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-functions:
+    name: Deploy Edge Functions to TEST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate Edge Function sources
+        run: |
+          test -s supabase/functions/gestionar-acceso/index.ts
+          test -s supabase/functions/mantenimiento-programado/index.ts
+          test -s supabase/functions/procesar-notificaciones/index.ts
+
+          echo "Edge Function sources found:"
+          wc -l supabase/functions/gestionar-acceso/index.ts
+          wc -l supabase/functions/mantenimiento-programado/index.ts
+          wc -l supabase/functions/procesar-notificaciones/index.ts
+
+      - name: Deploy gestionar-acceso
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+        run: |
+          supabase functions deploy gestionar-acceso \
+            --project-ref "$PROJECT_REF"
+
+      - name: Deploy mantenimiento-programado
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+        run: |
+          supabase functions deploy mantenimiento-programado \
+            --project-ref "$PROJECT_REF"
+
+      - name: Deploy procesar-notificaciones
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+        run: |
+          supabase functions deploy procesar-notificaciones \
+            --project-ref "$PROJECT_REF"
+
+      - name: Deployment completed
+        run: |
+          echo "TEST Edge Functions deployment completed."
+          echo "No Cron jobs have been created or enabled."
+          echo "No custom Edge Function secrets have been configured."
