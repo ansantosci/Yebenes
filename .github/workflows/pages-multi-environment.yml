@@ -1,0 +1,140 @@
+name: Deploy multi-environment GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - test
+      - develop
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: source-main
+
+      - name: Checkout test
+        uses: actions/checkout@v4
+        with:
+          ref: test
+          path: source-test
+
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: source-develop
+
+      - name: Create Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p site
+          mkdir -p site/test
+          mkdir -p site/develop
+
+          # MAIN -> raiz del sitio
+          cp source-main/index.html site/
+          cp source-main/app.js site/
+          cp source-main/styles.css site/
+          cp source-main/manifest.webmanifest site/
+          cp source-main/sw.js site/
+          cp source-main/version.json site/
+
+          # TEST -> /test/
+          cp source-test/index.html site/test/
+          cp source-test/app.js site/test/
+          cp source-test/styles.css site/test/
+          cp source-test/manifest.webmanifest site/test/
+          cp source-test/sw.js site/test/
+          cp source-test/version.json site/test/
+
+          # DEVELOP -> /develop/
+          cp source-develop/index.html site/develop/
+          cp source-develop/app.js site/develop/
+          cp source-develop/styles.css site/develop/
+          cp source-develop/manifest.webmanifest site/develop/
+          cp source-develop/sw.js site/develop/
+          cp source-develop/version.json site/develop/
+
+          # config.js solo existe cuando una rama ya usa la nueva
+          # arquitectura de configuracion.
+          if [ -f source-main/config.js ]; then
+            cp source-main/config.js site/
+          fi
+
+          if [ -f source-test/config.js ]; then
+            cp source-test/config.js site/test/
+          fi
+
+          if [ -f source-develop/config.js ]; then
+            cp source-develop/config.js site/develop/
+          fi
+
+      - name: Validate published environments
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Las tres aplicaciones deben existir.
+          test -s site/index.html
+          test -s site/app.js
+          test -s site/test/index.html
+          test -s site/test/app.js
+          test -s site/develop/index.html
+          test -s site/develop/app.js
+
+          # DEVELOP ya debe utilizar la nueva configuracion.
+          test -s site/develop/config.js
+
+          grep -q "YEBENES_CONFIG" site/develop/app.js
+          grep -q "config.js" site/develop/index.html
+          grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/develop/config.js
+
+          # Proteccion critica:
+          # DEVELOP no puede seguir teniendo DEMO hardcodeada en app.js.
+          if grep -q "ypyzochuqtetddffohpv.supabase.co" site/develop/app.js; then
+            echo "ERROR: develop/app.js contiene Supabase DEMO hardcodeado."
+            exit 1
+          fi
+
+          # TEST y MAIN pueden seguir siendo V93.8 legacy mientras
+          # realizamos la migracion gradual de la arquitectura.
+          echo "Environment validation completed successfully."
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
