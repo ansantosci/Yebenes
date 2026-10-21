@@ -336,7 +336,20 @@
     <button type="button" id="applyUpdateButton">Actualizar ahora</button>
   </div>
 
+  <script>
+    // Seleccion segura del entorno segun la ruta publicada.
+    // /develop/ -> DEVELOP (Supabase TEST)
+    // /test/    -> TEST    (Supabase TEST)
+    // /          -> DEMO    (Supabase DEMO)
+    const yebenesPath = window.location.pathname.toLowerCase();
+    window.YEBENES_ENVIRONMENT = yebenesPath.includes('/yebenes/develop/')
+      ? 'develop'
+      : yebenesPath.includes('/yebenes/test/')
+        ? 'test'
+        : 'demo';
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=93.8"></script>
   <script src="app.js?v=93.8"></script>
 </body>
 </html>
