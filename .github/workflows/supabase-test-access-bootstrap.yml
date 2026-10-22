@@ -1,4 +1,5 @@
 name: Bootstrap Supabase TEST access users
+
 on:
   workflow_dispatch:
     inputs:
@@ -6,52 +7,97 @@ on:
         description: Repository branch containing TEST-ACCESS scripts
         required: true
         type: choice
-        options: [develop, test]
+        options:
+          - develop
+          - test
         default: develop
+
 permissions:
   contents: read
+
 jobs:
   bootstrap:
+    name: Bootstrap TEST-ACCESS
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout selected source branch
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source_ref }}
+
       - name: Validate scripts and required secrets
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
           SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
+        shell: bash
         run: |
           set -euo pipefail
+
           test -n "$TEST_DB_URL"
           test -n "$SUPABASE_TEST_PROJECT_REF"
           test -n "$SUPABASE_TEST_SERVICE_ROLE_KEY"
           test -n "$TEST_APP_USER_PASSWORD"
+
+          test -s supabase/seed/test-data/00-infrastructure.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s scripts/bootstrap-test-access.mjs
+
+          echo "TEST-ACCESS validation completed."
+          echo "Source branch: ${{ inputs.source_ref }}"
+
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure TEST dataset infrastructure
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 \
+            -f supabase/seed/test-data/00-infrastructure.sql
+
       - name: Create/update permanent TEST-ACCESS Personas and roles
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
-        run: psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 \
+            -f supabase/seed/test-access/00-test-access-personas.sql
+
       - name: Create/update Auth users and link Personas
         env:
           SUPABASE_TEST_URL: https://${{ secrets.SUPABASE_TEST_PROJECT_REF }}.supabase.co
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
         run: node scripts/bootstrap-test-access.mjs
+
       - name: Verify TEST-ACCESS links
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
         run: |
           set -euo pipefail
-          RESULT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) || ',' || count(p.auth_user_id) from private.test_access_identities a join public.personas p on p.id=a.persona_id;")
+
+          RESULT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select count(*) || ',' || count(p.auth_user_id) from private.test_access_identities a join public.personas p on p.id=a.persona_id;")
+
           echo "access_identities,linked=$RESULT"
+
           ACCESS_COUNT="${RESULT%%,*}"
           LINKED_COUNT="${RESULT##*,}"
-          test "$ACCESS_COUNT" = "7"
-          test "$LINKED_COUNT" = "7"
+
+          if [ "$ACCESS_COUNT" != "7" ] || [ "$LINKED_COUNT" != "7" ]; then
+            echo "ERROR: expected 7 TEST-ACCESS identities and 7 Auth links."
+            exit 1
+          fi
+
+          echo "TEST-ACCESS validated successfully."
