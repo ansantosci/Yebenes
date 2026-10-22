@@ -53,6 +53,32 @@ from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join
 on conflict(id) do update set activo=true;
 insert into private.test_dataset_entities select 'TEST-S','jugadores',private.test_uuid('jugador:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
 
+-- Representation must exist before inscription: the schema trigger validates minors at inscription time.
+-- Use actual date of birth, not category, so the seed follows the same rule as production.
+insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta)
+select private.test_uuid('repr:'||e.codigo||':'||g),
+       private.test_uuid('jugador:'||e.codigo||':'||g),
+       private.test_uuid('tutor:'||e.codigo),
+       date '2026-07-01',
+       'TEST-S tutor'
+from public.equipos e
+join public.temporadas t on t.id=e.temporada_id
+cross join generate_series(1,2) g
+join public.personas p on p.id=private.test_uuid('player:'||e.codigo||':'||g)
+where t.estado='activa'
+  and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
+on conflict(id) do update set fecha_hasta=null;
+
+insert into private.test_dataset_entities
+select 'TEST-S','representaciones_jugador',private.test_uuid('repr:'||e.codigo||':'||g),now()
+from public.equipos e
+join public.temporadas t on t.id=e.temporada_id
+cross join generate_series(1,2) g
+join public.personas p on p.id=private.test_uuid('player:'||e.codigo||':'||g)
+where t.estado='activa'
+  and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
+on conflict do nothing;
+
 insert into public.inscripciones(id,jugador_id,temporada_id,categoria_id,fecha_solicitud,estado,observaciones)
 select private.test_uuid('insc:'||e.codigo||':'||g),private.test_uuid('jugador:'||e.codigo||':'||g),e.temporada_id,e.categoria_id,date '2026-09-01',
        (array['pendiente_revision_inicial','datos_validados','documentacion_validada','lista_para_federar','ficha_tramitada'])[((row_number() over(order by e.codigo,g)-1)%5)+1], 'TEST-S v1'
@@ -65,14 +91,6 @@ select private.test_uuid('player-team:'||e.codigo||':'||g),private.test_uuid('in
 from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa'
 on conflict(id) do update set equipo_id=excluded.equipo_id,fecha_hasta=null;
 insert into private.test_dataset_entities select 'TEST-S','asignaciones_jugador_equipo',private.test_uuid('player-team:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
-
--- Representation for minors only. Senior players are self-represented.
-insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta)
-select private.test_uuid('repr:'||e.codigo||':'||g),private.test_uuid('jugador:'||e.codigo||':'||g),private.test_uuid('tutor:'||e.codigo),date '2026-07-01','TEST-S tutor'
-from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join generate_series(1,2) g
-where t.estado='activa' and c.codigo<>'SEN'
-on conflict(id) do update set fecha_hasta=null;
-insert into private.test_dataset_entities select 'TEST-S','representaciones_jugador',private.test_uuid('repr:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join generate_series(1,2) g where t.estado='activa' and c.codigo<>'SEN' on conflict do nothing;
 
 -- Roles: tutors; adult Senior players get jugador role. Synthetic users remain auth_user_id NULL.
 insert into public.persona_roles(id,persona_id,rol_id,fecha_desde,activo)
