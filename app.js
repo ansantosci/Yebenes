@@ -1,4 +1,4 @@
-const APP_VERSION='94.1.2';
+const APP_VERSION='94.1.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1869,11 +1869,55 @@ function openEconomicConfig(teamId){
   $('#economicConfigTitle').textContent=t.name;f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';$('#economicConfigModal').showModal();
 }
 async function saveEconomicConfig(form){
-  if(!selectedEconomicTeamId||!['admin','club'].includes(currentRole))return;const fd=new FormData(form),amount=Number(fd.get('amount'));
+  if(!selectedEconomicTeamId||!['admin','club'].includes(currentRole))return;
+  const fd=new FormData(form),amount=Number(fd.get('amount'));
   if(!Number.isFinite(amount)||amount<0){alert('Indica un importe válido.');return}
-  const args={p_equipo_id:selectedEconomicTeamId,p_importe_inscripcion:amount,p_admite_fraccionamiento:fd.get('installments')==='yes',p_requiere_pago_ficha:fd.get('required')==='yes',p_observaciones:String(fd.get('notes')||'').trim()||null};
+  const teamId=selectedEconomicTeamId;
+  const args={p_equipo_id:teamId,p_importe_inscripcion:amount,p_admite_fraccionamiento:fd.get('installments')==='yes',p_requiere_pago_ficha:fd.get('required')==='yes',p_observaciones:String(fd.get('notes')||'').trim()||null};
   const btn=form.querySelector('button[type="submit"]');if(btn){btn.disabled=true;btn.textContent='Guardando…'}
-  try{const {error}=await sb.rpc('configurar_economia_equipo',args);if(error)throw error;$('#economicConfigModal').close();await loadEconomicConfigs();await renderRemoteClub();renderStructure();}catch(err){alert(`No se ha podido guardar la configuración: ${err.message||err}`)}finally{if(btn){btn.disabled=false;btn.textContent='Guardar configuración'}}
+  const perfStart=performance.now();
+  let rpcMs=0,refreshMs=0;
+  try{
+    const rpcStart=performance.now();
+    const {error}=await sb.rpc('configurar_economia_equipo',args);
+    rpcMs=Math.round(performance.now()-rpcStart);
+    if(error)throw error;
+
+    const refreshStart=performance.now();
+    await loadEconomicConfigs();
+    const freshConfig=dbEconomicConfigs.find(x=>x.equipo_id===teamId)||null;
+    if(Array.isArray(remoteClubPlayers)){
+      remoteClubPlayers.forEach(p=>{
+        if(p?.assignment?.equipo_id===teamId)p.economicConfig=freshConfig;
+      });
+    }
+    if(Array.isArray(remoteFamilyPlayers)){
+      remoteFamilyPlayers.forEach(p=>{
+        if(p?.assignment?.equipo_id===teamId)p.economicConfig=freshConfig;
+      });
+    }
+    renderEconomicTeamConfig();
+    refreshMs=Math.round(performance.now()-refreshStart);
+
+    $('#economicConfigModal').close();
+    console.info('[Yebenes][PERF] Economía equipo',{
+      team_id:teamId,
+      rpc_ms:rpcMs,
+      refresh_ms:refreshMs,
+      total_ms:Math.round(performance.now()-perfStart)
+    });
+  }catch(err){
+    console.error('[Yebenes][PERF] Economía equipo ERROR',{
+      team_id:teamId,
+      rpc_ms:rpcMs,
+      refresh_ms:refreshMs,
+      total_ms:Math.round(performance.now()-perfStart),
+      error:String(err?.message||err)
+    });
+    alert(`No se ha podido guardar la configuración: ${err.message||err}`)
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Guardar configuración'}
+  }
 }
 function renderEconomicPlayerCurrent(v){const box=$('#economicPlayerCurrent');if(box)box.innerHTML=economicSummaryHtml(v)}
 function openEconomicPlayer(){setAdminPlayerTab('economic')}

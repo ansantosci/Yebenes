@@ -1,3 +1,12 @@
+# V94.1.3
+
+- Optimiza el guardado de la configuración económica de un equipo.
+- Una modificación de cuota ya no recarga todo el modelo remoto de Fichas ni reconstruye Estructura.
+- Tras la RPC sólo se recarga `configuracion_economica_equipo`, se sincroniza la referencia económica en memoria y se repinta la tabla económica.
+- Añade diagnóstico `[Yebenes][PERF] Economía equipo` con tiempos `rpc_ms`, `refresh_ms` y `total_ms`.
+- No modifica la RPC `configurar_economia_equipo` ni reglas de negocio.
+- TEST-M continúa como objetivo principal de V94 tras cerrar la estabilización de rendimiento.
+
 # V94.1.2
 
 - Evita repintados visuales innecesarios al recuperar foco en Estructura, Entrenadores y Usuarios.
