@@ -13,12 +13,16 @@ from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.es
 on conflict(id) do update set dia_semana=excluded.dia_semana,hora_inicio=excluded.hora_inicio,hora_fin=excluded.hora_fin,activo=true;
 insert into private.test_dataset_entities select 'TEST-S','horarios_equipo',private.test_uuid('schedule:'||e.codigo),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' on conflict do nothing;
 
--- Economic configuration for every active team.
+-- Economic configuration is shared TEST-BASE/master state. Reuse the existing row per season/team
+-- instead of creating a TEST-S-owned duplicate. RESET must never delete these rows.
 insert into public.configuracion_economica_equipo(id,temporada_id,equipo_id,importe_inscripcion,admite_fraccionamiento,requiere_pago_ficha,observaciones)
 select private.test_uuid('econ-config:'||e.codigo),e.temporada_id,e.id,120 + (row_number() over(order by e.codigo)%4)*30,true,true,'TEST-S v1'
 from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa'
-on conflict(id) do update set importe_inscripcion=excluded.importe_inscripcion,observaciones='TEST-S v1';
-insert into private.test_dataset_entities select 'TEST-S','configuracion_economica_equipo',private.test_uuid('econ-config:'||e.codigo),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' on conflict do nothing;
+on conflict(temporada_id,equipo_id) do update
+set importe_inscripcion=excluded.importe_inscripcion,
+    admite_fraccionamiento=excluded.admite_fraccionamiento,
+    requiere_pago_ficha=excluded.requiere_pago_ficha,
+    observaciones='TEST-S v1';
 
 -- 23 tutor Personas, one family per team.
 with teams as (select e.*, row_number() over(order by e.codigo) n from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa')
@@ -152,7 +156,14 @@ insert into private.test_dataset_entities select 'TEST-S','entrenador_licencias_
 -- Economy states for all inscriptions.
 with x as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')
 insert into public.situacion_economica_inscripcion(id,inscripcion_id,configuracion_id,equipo_id,importe_total,importe_pagado,estado_economico,fraccionamiento_clubber_validado,apto_para_ficha)
-select private.test_uuid('econ:'||codigo||':'||g),private.test_uuid('insc:'||codigo||':'||g),private.test_uuid('econ-config:'||codigo),(select id from public.equipos where codigo=x.codigo),150,
+select private.test_uuid('econ:'||codigo||':'||g),
+       private.test_uuid('insc:'||codigo||':'||g),
+       (select ce.id
+          from public.configuracion_economica_equipo ce
+          join public.equipos eq on eq.id=ce.equipo_id
+         where eq.codigo=x.codigo
+           and ce.temporada_id=eq.temporada_id),
+       (select id from public.equipos where codigo=x.codigo),150,
  case n%4 when 0 then 150 when 1 then 0 when 2 then 75 else 50 end,
  case n%4 when 0 then 'pagado' when 1 then 'pendiente' else 'parcial' end,
  (n%4=3),(n%4=0 or n%4=3) from x
