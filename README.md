@@ -1,4 +1,4 @@
-# V94.1 — Homogeneización UX de listados e interacción
+# V94.1.1 — Homogeneización UX de listados e interacción
 
 - Parte de V94.0 validada en DEVELOP, donde BUG-TEST-01 deja de reproducirse al navegar, cambiar de pestaña/aplicación y recuperar el foco desde Personas.
 - Aplica la norma UX común de listados: cuando un registro tiene ficha de detalle, toda la fila es accionable, muestra cursor de interacción, feedback al pasar el ratón y permite apertura por teclado con Enter/Espacio.
