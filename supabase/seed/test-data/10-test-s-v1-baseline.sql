@@ -172,21 +172,33 @@ on conflict(id) do update set fecha_caducidad=excluded.fecha_caducidad,estado_ex
 insert into private.test_dataset_entities select 'TEST-S','entrenador_licencias_rffm',private.test_uuid('lic:'||n),now() from unnest(array[1,3,7,8]) n on conflict do nothing;
 
 -- Economy states for all inscriptions.
-with x as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')
-insert into public.situacion_economica_inscripcion(id,inscripcion_id,configuracion_id,equipo_id,importe_total,importe_pagado,estado_economico,fraccionamiento_clubber_validado,apto_para_ficha)
-select private.test_uuid('econ:'||codigo||':'||g),
-       private.test_uuid('insc:'||codigo||':'||g),
-       (select ce.id
-          from public.configuracion_economica_equipo ce
-          join public.equipos eq on eq.id=ce.equipo_id
-         where eq.codigo=x.codigo
-           and ce.temporada_id=eq.temporada_id),
-       (select id from public.equipos where codigo=x.codigo),150,
- case n%4 when 0 then 150 when 1 then 0 when 2 then 75 else 50 end,
- case n%4 when 0 then 'pagado' when 1 then 'pendiente' else 'parcial' end,
- (n%4=3),(n%4=0 or n%4=3) from x
-on conflict(id) do update set importe_pagado=excluded.importe_pagado,estado_economico=excluded.estado_economico,fraccionamiento_clubber_validado=excluded.fraccionamiento_clubber_validado,apto_para_ficha=excluded.apto_para_ficha;
-insert into private.test_dataset_entities select 'TEST-S','situacion_economica_inscripcion',private.test_uuid('econ:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa' on conflict do nothing;
+-- The assignment trigger already creates one situacion_economica_inscripcion per inscription.
+-- Reuse that row and make the four TEST economic cases mutually exclusive.
+with x as (
+  select e.codigo,g,row_number() over(order by e.codigo,g)n
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2)g
+  where t.estado='activa'
+),
+cases as (
+  select private.test_uuid('insc:'||codigo||':'||g) as inscripcion_id,
+         case n%4 when 0 then 150 when 1 then 0 when 2 then 75 else 50 end::numeric(10,2) as importe_pagado,
+         case n%4 when 0 then 'pagado' when 1 then 'pendiente' else 'parcial' end as estado_economico,
+         (n%4=3) as fraccionamiento_clubber_validado,
+         (n%4=0 or n%4=3) as apto_para_ficha
+  from x
+)
+update public.situacion_economica_inscripcion s
+set importe_pagado=c.importe_pagado,
+    estado_economico=c.estado_economico,
+    fraccionamiento_clubber_validado=c.fraccionamiento_clubber_validado,
+    fecha_validacion_fraccionamiento=case when c.fraccionamiento_clubber_validado then now() else null end,
+    origen_validacion_fraccionamiento=case when c.fraccionamiento_clubber_validado then 'manual_club' else null end,
+    apto_para_ficha=c.apto_para_ficha,
+    calculado_at=now()
+from cases c
+where s.inscripcion_id=c.inscripcion_id;
 
 -- RRMM matrix on first 10 players, relative to load date to preserve semantic states.
 with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa' order by e.codigo,g limit 10)
