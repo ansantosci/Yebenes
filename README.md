@@ -1,3 +1,15 @@
+# V94.1 — Homogeneización UX de listados e interacción
+
+- Parte de V94.0 validada en DEVELOP, donde BUG-TEST-01 deja de reproducirse al navegar, cambiar de pestaña/aplicación y recuperar el foco desde Personas.
+- Aplica la norma UX común de listados: cuando un registro tiene ficha de detalle, toda la fila es accionable, muestra cursor de interacción, feedback al pasar el ratón y permite apertura por teclado con Enter/Espacio.
+- Personas elimina el botón redundante «Abrir» y abre la ficha pulsando cualquier zona de la fila.
+- Estructura > Equipos elimina también el botón redundante «Abrir/Editar» cuando la fila ya representa la misma acción.
+- Fichas/Jugadores, RRMM, Entrenadores y Estructura mantienen/alinean el mismo patrón de filas interactivas.
+- Refuerza globalmente el cursor de interacción para botones, enlaces, pestañas, controles seleccionables y elementos con rol de botón; los controles deshabilitados muestran cursor no permitido.
+- No modifica reglas de negocio, esquema Supabase, Edge Functions ni TEST-BASE.
+- TEST-M continúa siendo el siguiente bloque principal de V94 tras validar esta normalización UX en DEVELOP y promoverla a TEST.
+- Política de entrega: frontend completo con README, versión visible y `version.json` sincronizados.
+
 # V94.0 — Estabilización multi-entorno y visibilidad de entorno
 
 - Parte exactamente de V93.8 y mantiene su comportamiento funcional, incorporando únicamente estabilización técnica previa a las pruebas de volumen de V94.

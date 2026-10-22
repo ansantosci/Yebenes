@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=94.0" />
+  <link rel="stylesheet" href="styles.css?v=94.1" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -46,7 +46,7 @@
   </div>
   <div id="authScreen" class="auth-screen hidden">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v94.0</div>
+      <div class="version-badge" aria-label="Versión de prueba">v94.1</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -210,7 +210,7 @@
         </section>
         <section class="section">
           <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Equipos</span><h2>Equipos de la temporada actual</h2><div class="meta section-note">La configuración deportiva y económica se gestiona desde una única ficha de equipo. Pulsa sobre un equipo para consultar o modificar sus datos.</div></div><button class="primary small" id="openTeamModal">+ Nuevo equipo</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Categoría</th><th>Modalidad</th><th>Jugadores</th><th>Entrenadores</th><th>Inscripción</th><th>Fracc.</th><th>Pago ficha</th><th>Estado</th><th></th></tr></thead><tbody id="structureTeamsTable"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Categoría</th><th>Modalidad</th><th>Jugadores</th><th>Entrenadores</th><th>Inscripción</th><th>Fracc.</th><th>Pago ficha</th><th>Estado</th></tr></thead><tbody id="structureTeamsTable"></tbody></table></div>
         </section>
         <section class="section compact"><div class="info-card"><strong>Modelo histórico</strong><p>Los jugadores y entrenadores no pertenecen permanentemente a un equipo. Las asignaciones se guardan con temporada y periodo de vigencia. La configuración económica pertenece igualmente al equipo de una temporada concreta.</p></div></section>
       </section>
@@ -221,7 +221,7 @@
           <div class="section-head"><div><span class="eyebrow dark">Calidad del dato</span><h2>Posibles duplicados <span class="count-pill" id="duplicateCount">0</span></h2></div></div>
           <div id="duplicateList" class="duplicate-list"></div>
         </section>
-        <section class="section"><div class="section-head stacked-mobile"><div><span class="eyebrow dark">Directorio maestro</span><h2>Personas registradas</h2><div class="meta">Alta, modificación, baja lógica, cuenta de acceso y perfiles se administran desde una única ficha de Persona.</div></div><button class="primary small" id="openPersonModal">+ Nueva persona</button></div><div class="table-wrap"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfiles de acceso</th><th>Relaciones</th><th>Cuenta</th><th>Estado</th><th></th></tr></thead><tbody id="personsTable"></tbody></table></div></section>
+        <section class="section"><div class="section-head stacked-mobile"><div><span class="eyebrow dark">Directorio maestro</span><h2>Personas registradas</h2><div class="meta">Alta, modificación, baja lógica, cuenta de acceso y perfiles se administran desde una única ficha de Persona.</div></div><button class="primary small" id="openPersonModal">+ Nueva persona</button></div><div class="table-wrap"><table><thead><tr><th>Persona</th><th>Correo</th><th>Perfiles de acceso</th><th>Relaciones</th><th>Cuenta</th><th>Estado</th></tr></thead><tbody id="personsTable"></tbody></table></div></section>
         <section class="section compact"><div class="info-card"><strong>Regla P0 de identidad</strong><p>La aplicación bloquea nuevas altas cuando detecta el mismo DNI/NIE o el mismo nombre y fecha de nacimiento. El administrador puede fusionar duplicados conservando roles, inscripciones, equipos, reconocimientos y trazabilidad.</p></div></section>
       </section>
 
@@ -350,7 +350,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=94.0"></script>
-  <script src="app.js?v=94.0"></script>
+  <script src="config.js?v=94.1"></script>
+  <script src="app.js?v=94.1"></script>
 </body>
 </html>

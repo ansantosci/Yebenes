@@ -421,3 +421,10 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 .environment-badge[data-environment=demo]{opacity:.82}
 .environment-badge[data-environment=prod]{background:rgba(255,255,255,.96)}
 @media(max-width:640px){.environment-badge{top:5px;font-size:.58rem;padding:3px 7px}}
+
+/* V94.1 — interacción coherente en toda la aplicación */
+button:not(:disabled),a[href],summary,[role="button"],[tabindex="0"],label[for],select:not(:disabled),input[type="checkbox"]:not(:disabled),input[type="radio"]:not(:disabled){cursor:pointer}
+button:disabled,select:disabled,input:disabled{cursor:not-allowed}
+.person-row,.admin-row,.medical-row,.coach-row,.structure-team-row{cursor:pointer;transition:background-color .15s ease}
+.person-row:hover,.person-row:focus,.admin-row:hover,.admin-row:focus,.medical-row:hover,.medical-row:focus,.coach-row:hover,.coach-row:focus,.structure-team-row:hover,.structure-team-row:focus{background:#fff8fa;outline:none}
+.person-row:focus-visible,.admin-row:focus-visible,.medical-row:focus-visible,.coach-row:focus-visible,.structure-team-row:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
