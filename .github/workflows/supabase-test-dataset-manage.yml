@@ -2,6 +2,12 @@ name: Manage Supabase TEST dataset
 on:
   workflow_dispatch:
     inputs:
+      source_ref:
+        description: Repository branch containing TEST dataset scripts
+        required: true
+        type: choice
+        options: [develop, test]
+        default: develop
       action:
         description: Data action
         required: true
@@ -20,28 +26,35 @@ jobs:
   manage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout selected source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: KEEP current TEST data
+        if: ${{ inputs.action == 'KEEP' }}
+        run: echo "KEEP selected. Source=${{ inputs.source_ref }}. No database changes performed."
       - name: Install PostgreSQL client
         if: ${{ inputs.action == 'RESET' }}
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: KEEP current TEST data
-        if: ${{ inputs.action == 'KEEP' }}
-        run: echo "KEEP selected. No database changes performed."
-      - name: Validate scripts
-        if: ${{ inputs.action == 'RESET' }}
-        run: |
-          set -euo pipefail
-          test -s supabase/seed/test-data/00-infrastructure.sql
-          test -s supabase/seed/test-data/01-reset-test-s.sql
-          test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
-          test -s supabase/seed/test-data/scenarios/notifications-v1.sql
-      - name: Reset and load TEST-S v1
+      - name: Validate RESET inputs and scripts
         if: ${{ inputs.action == 'RESET' }}
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
         run: |
           set -euo pipefail
           test -n "$TEST_DB_URL"
+          test -s supabase/seed/test-data/00-infrastructure.sql
+          test -s supabase/seed/test-data/01-reset-test-s.sql
+          test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
+          if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
+            test -s supabase/seed/test-data/scenarios/notifications-v1.sql
+          fi
+      - name: Reset and load TEST-S v1
+        if: ${{ inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          set -euo pipefail
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/00-infrastructure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
