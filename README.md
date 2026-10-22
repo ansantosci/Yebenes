@@ -1,3 +1,10 @@
+# V94.1.2
+
+- Evita repintados visuales innecesarios al recuperar foco en Estructura, Entrenadores y Usuarios.
+- Mantiene la revalidación de sesión, permisos y contexto Supabase.
+- Fichas, RRMM, Personas y áreas Familia/Jugador conservan los refrescos remotos necesarios.
+- TEST-M continúa como siguiente objetivo principal de V94.
+
 # V94.1.1 — Homogeneización UX de listados e interacción
 
 - Parte de V94.0 validada en DEVELOP, donde BUG-TEST-01 deja de reproducirse al navegar, cambiar de pestaña/aplicación y recuperar el foco desde Personas.

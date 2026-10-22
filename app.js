@@ -1,4 +1,4 @@
-const APP_VERSION='94.1.1';
+const APP_VERSION='94.1.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2235,10 +2235,10 @@ async function refreshHotContextPreservingNavigation(){
   }else{
     if(view==='clubView')await renderRemoteClub();
     else if(view==='medicalView')await renderRemoteMedical();
-    else if(view==='coachesView')renderCoaches();
-    else if(view==='structureView')renderStructure();
+    else if(view==='coachesView'){/* Sin repintado: loadSupabaseStructure ya actualizo los datos fuente. */}
+    else if(view==='structureView'){/* Sin repintado: loadSupabaseStructure ya actualizo los datos fuente. */}
     else if(view==='personsView'&&currentRole==='admin')await renderRemotePersons()
-    else if(view==='usersView'&&currentRole==='admin')renderClubUsers();
+    else if(view==='usersView'&&currentRole==='admin'){/* Vista derivada local: conservar DOM si no cambia el contexto. */}
   }
 
   // Perfil propio: conservar exactamente la subpestana abierta y refrescar su contenido.
