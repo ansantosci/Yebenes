@@ -3,14 +3,24 @@ begin;
 -- break the known circular reference before deleting documents/requisites
 update public.requisitos_federativos_inscripcion r set current_documento_id=null
 where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='requisitos_federativos_inscripcion' and e.entity_id=r.id);
--- children first
+-- entrenador_privacidad is keyed by entrenador_id, not id.
+delete from public.entrenador_privacidad x
+where exists (
+  select 1
+  from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='entrenador_privacidad'
+    and e.entity_id=x.entrenador_id
+);
+
+-- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     'notificaciones_salida','historico_citas_rrmm','citas_reconocimiento_medico','reconocimientos_medicos',
     'documentos_federativos','requisitos_federativos_inscripcion','pagos_inscripcion','situacion_economica_inscripcion',
     'historico_estados_inscripcion','asignaciones_jugador_equipo','representaciones_jugador',
 'entrenador_licencias_rffm','entrenador_formaciones','entrenador_disponibilidad',
-    'entrenador_temporadas','asignaciones_entrenador_equipo','entrenador_privacidad','autorizaciones_menor',
+    'entrenador_temporadas','asignaciones_entrenador_equipo','autorizaciones_menor',
     'inscripciones','entrenadores','jugadores','persona_roles','documentos_identidad','horarios_equipo','configuracion_economica_equipo','personas'
   ] loop
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
