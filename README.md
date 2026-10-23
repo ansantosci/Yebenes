@@ -1141,3 +1141,10 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 ### V94.3
 - Paginacion local instantanea en Personas: los cambios de pagina reutilizan filas preparadas en memoria y no repiten consultas Supabase.
 - Proteccion comun contra doble clic durante transiciones de paginacion.
+
+
+### V94.3.1 - scroll coherente y primera carga de Personas optimizada
+- Paginador superior conserva el scroll; el inferior vuelve al inicio del listado.
+- Entrar explicitamente en un listado posiciona su inicio; refresh silencioso no mueve el scroll.
+- Personas sigue siendo exclusiva de Administrador y elimina el patron N+1 de relaciones mediante consultas batch.
+- Sin cambios de esquema, RRMM, Auth, workflows ni TEST-S.
