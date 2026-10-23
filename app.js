@@ -1,4 +1,4 @@
-const APP_VERSION='94.2.1';
+const APP_VERSION='94.2.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -21,17 +21,27 @@ function paginationPageNumbers(page,pages){
   const out=[1],from=Math.max(2,page-2),to=Math.min(pages-1,page+2);
   if(from>2)out.push('…');for(let i=from;i<=to;i++)out.push(i);if(to<pages-1)out.push('…');out.push(pages);return out;
 }
-function renderListPagination(key,total,totalAll,rerender){
-  const root=$(`#${key}Pagination`);if(!root)return;
-  const pages=Math.max(1,Math.ceil(total/listPageSize)),page=Math.min(Math.max(1,listPages[key]||1),pages);listPages[key]=page;
+function listPaginationMarkup(page,pages,total,totalAll,{top=false}={}){
   const first=total?(page-1)*listPageSize+1:0,last=Math.min(page*listPageSize,total);
-  const context=Number.isFinite(totalAll)&&totalAll!==total?` <span class="pagination-total">(${totalAll} totales)</span>`:'';
+  const context=Number.isFinite(totalAll)&&totalAll!==total?` <span class="pagination-total">de ${totalAll} totales</span>`:'';
   const nums=paginationPageNumbers(page,pages).map(n=>n==='…'?'<span class="pagination-ellipsis">…</span>':`<button type="button" class="pagination-page${n===page?' active':''}" data-page="${n}" ${n===page?'aria-current="page"':''}>${n}</button>`).join('');
-  root.innerHTML=`<div class="pagination-summary">Mostrando <strong>${first}–${last}</strong> de <strong>${total}</strong>${context}</div><div class="pagination-actions"><label>Por página <select class="pagination-size">${LIST_PAGE_SIZES.map(n=>`<option value="${n}"${n===listPageSize?' selected':''}>${n}</option>`).join('')}</select></label><button type="button" class="pagination-nav prev" ${page<=1?'disabled':''}>‹ Anterior</button><div class="pagination-pages">${nums}</div><button type="button" class="pagination-nav next" ${page>=pages?'disabled':''}>Siguiente ›</button></div>`;
-  root.querySelector('.pagination-size')?.addEventListener('change',e=>{const n=Number(e.target.value);if(!LIST_PAGE_SIZES.includes(n))return;listPageSize=n;localStorage.setItem(LIST_PAGE_SIZE_KEY,String(n));Object.keys(listPages).forEach(resetListPage);rerender()});
-  root.querySelector('.prev')?.addEventListener('click',()=>{if(listPages[key]>1){listPages[key]--;rerender()}});
-  root.querySelector('.next')?.addEventListener('click',()=>{if(listPages[key]<pages){listPages[key]++;rerender()}});
-  root.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{listPages[key]=Number(b.dataset.page)||1;rerender()}));
+  const summary=top?`<div class="pagination-summary"><strong>${total}</strong> resultado${total===1?'':'s'}${context}</div>`:`<div class="pagination-summary">Mostrando <strong>${first}–${last}</strong> de <strong>${total}</strong>${Number.isFinite(totalAll)&&totalAll!==total?` <span class="pagination-total">(${totalAll} totales)</span>`:''}</div>`;
+  const size=top?`<label>Por página <select class="pagination-size">${LIST_PAGE_SIZES.map(n=>`<option value="${n}"${n===listPageSize?' selected':''}>${n}</option>`).join('')}</select></label>`:'';
+  return `${summary}<div class="pagination-actions">${size}<button type="button" class="pagination-nav prev" ${page<=1?'disabled':''}>‹ Anterior</button><div class="pagination-pages">${nums}</div><button type="button" class="pagination-nav next" ${page>=pages?'disabled':''}>Siguiente ›</button></div>`;
+}
+function renderListPagination(key,total,totalAll,rerender){
+  const bottom=$(`#${key}Pagination`),top=$(`#${key}PaginationTop`);if(!bottom&&!top)return;
+  const pages=Math.max(1,Math.ceil(total/listPageSize)),page=Math.min(Math.max(1,listPages[key]||1),pages);listPages[key]=page;
+  if(top)top.innerHTML=listPaginationMarkup(page,pages,total,totalAll,{top:true});
+  if(bottom)bottom.innerHTML=listPaginationMarkup(page,pages,total,totalAll);
+  const roots=[top,bottom].filter(Boolean);
+  const rerenderAtTop=()=>{rerender();requestAnimationFrame(()=>requestAnimationFrame(()=>top?.scrollIntoView({behavior:'smooth',block:'start'})))};
+  roots.forEach(root=>{
+    root.querySelector('.pagination-size')?.addEventListener('change',e=>{const n=Number(e.target.value);if(!LIST_PAGE_SIZES.includes(n))return;listPageSize=n;localStorage.setItem(LIST_PAGE_SIZE_KEY,String(n));Object.keys(listPages).forEach(resetListPage);rerender()});
+    root.querySelector('.prev')?.addEventListener('click',()=>{if(listPages[key]>1){listPages[key]--;rerenderAtTop()}});
+    root.querySelector('.next')?.addEventListener('click',()=>{if(listPages[key]<pages){listPages[key]++;rerenderAtTop()}});
+    root.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{const next=Number(b.dataset.page)||1;if(next===listPages[key])return;listPages[key]=next;rerenderAtTop()}));
+  });
 }
 
 const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();

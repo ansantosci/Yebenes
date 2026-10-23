@@ -433,3 +433,8 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed}
 .list-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:14px;padding:10px 2px;color:#596273;font-size:.88rem}
 .pagination-summary{white-space:nowrap}.pagination-total{color:#7a8392}.pagination-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.pagination-actions label{display:flex;align-items:center;gap:7px;color:#596273}.pagination-size{min-width:68px;padding:7px 28px 7px 9px;border:1px solid #d8dde6;border-radius:9px;background:#fff;color:#222}.pagination-nav,.pagination-page{border:1px solid #d8dde6;background:#fff;color:#333;border-radius:9px;min-height:34px;padding:6px 10px;font-weight:700;cursor:pointer}.pagination-page{min-width:34px;padding-inline:8px}.pagination-page.active{border-color:#cf1235;color:#cf1235;background:#fff4f6}.pagination-nav:disabled{opacity:.42;cursor:default}.pagination-pages{display:flex;align-items:center;gap:5px}.pagination-ellipsis{padding:0 2px;color:#7a8392}
 @media(max-width:720px){.list-pagination{align-items:flex-start}.pagination-summary{width:100%}.pagination-actions{width:100%;justify-content:flex-start}.pagination-pages{order:3;width:100%;overflow-x:auto;padding-bottom:2px}}
+
+/* V94.2.2: controles de paginacion tambien antes de los listados. */
+.list-pagination-top{margin-top:10px;margin-bottom:10px;padding:8px 2px;border-bottom:1px solid #eef0f4;scroll-margin-top:18px}
+.list-pagination-top .pagination-summary{font-weight:500}
+@media(max-width:720px){.list-pagination-top{margin-bottom:8px}.list-pagination-top .pagination-actions{gap:6px}.list-pagination-top .pagination-actions label{width:100%;justify-content:flex-start}}

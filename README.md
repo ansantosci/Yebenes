@@ -1128,3 +1128,11 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Tamaño global persistente: 25 / 50 / 100 (50 por defecto).
 - Filtros y búsquedas se aplican antes de paginar y reinician a página 1.
 - Mantiene el refresco silencioso de Fichas introducido en V94.2.
+
+
+### V94.2.2 - paginacion accesible desde ambos extremos del listado
+- Controles superiores compactos en Fichas, RRMM, Entrenadores y Personas.
+- Selector global 25/50/100 disponible antes de recorrer la tabla.
+- Navegacion de paginas sincronizada arriba y abajo.
+- Al cambiar de pagina, el foco visual vuelve al inicio del listado mediante scroll suave.
+- La barra inferior conserva el rango mostrado y la navegacion para continuar al terminar de revisar la pagina.
