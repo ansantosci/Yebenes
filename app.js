@@ -1,4 +1,4 @@
-const APP_VERSION='94.2.2';
+const APP_VERSION='94.2.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -29,18 +29,24 @@ function listPaginationMarkup(page,pages,total,totalAll,{top=false}={}){
   const size=top?`<label>Por página <select class="pagination-size">${LIST_PAGE_SIZES.map(n=>`<option value="${n}"${n===listPageSize?' selected':''}>${n}</option>`).join('')}</select></label>`:'';
   return `${summary}<div class="pagination-actions">${size}<button type="button" class="pagination-nav prev" ${page<=1?'disabled':''}>‹ Anterior</button><div class="pagination-pages">${nums}</div><button type="button" class="pagination-nav next" ${page>=pages?'disabled':''}>Siguiente ›</button></div>`;
 }
+const listPaginationTransitioning={club:false,medical:false,coaches:false,persons:false};
 function renderListPagination(key,total,totalAll,rerender){
   const bottom=$(`#${key}Pagination`),top=$(`#${key}PaginationTop`);if(!bottom&&!top)return;
   const pages=Math.max(1,Math.ceil(total/listPageSize)),page=Math.min(Math.max(1,listPages[key]||1),pages);listPages[key]=page;
   if(top)top.innerHTML=listPaginationMarkup(page,pages,total,totalAll,{top:true});
   if(bottom)bottom.innerHTML=listPaginationMarkup(page,pages,total,totalAll);
   const roots=[top,bottom].filter(Boolean);
-  const rerenderAtTop=()=>{rerender();requestAnimationFrame(()=>requestAnimationFrame(()=>top?.scrollIntoView({behavior:'smooth',block:'start'})))};
+  const setBusy=busy=>{listPaginationTransitioning[key]=busy;roots.forEach(root=>root.querySelectorAll('button,select').forEach(el=>{if(busy)el.disabled=true}))};
+  const changePage=next=>{
+    if(listPaginationTransitioning[key]||next===listPages[key]||next<1||next>pages)return;
+    setBusy(true);listPages[key]=next;
+    Promise.resolve(rerender()).finally(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{top?.scrollIntoView({behavior:'smooth',block:'start'});listPaginationTransitioning[key]=false})));
+  };
   roots.forEach(root=>{
-    root.querySelector('.pagination-size')?.addEventListener('change',e=>{const n=Number(e.target.value);if(!LIST_PAGE_SIZES.includes(n))return;listPageSize=n;localStorage.setItem(LIST_PAGE_SIZE_KEY,String(n));Object.keys(listPages).forEach(resetListPage);rerender()});
-    root.querySelector('.prev')?.addEventListener('click',()=>{if(listPages[key]>1){listPages[key]--;rerenderAtTop()}});
-    root.querySelector('.next')?.addEventListener('click',()=>{if(listPages[key]<pages){listPages[key]++;rerenderAtTop()}});
-    root.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{const next=Number(b.dataset.page)||1;if(next===listPages[key])return;listPages[key]=next;rerenderAtTop()}));
+    root.querySelector('.pagination-size')?.addEventListener('change',e=>{if(listPaginationTransitioning[key])return;const n=Number(e.target.value);if(!LIST_PAGE_SIZES.includes(n))return;listPageSize=n;localStorage.setItem(LIST_PAGE_SIZE_KEY,String(n));Object.keys(listPages).forEach(resetListPage);setBusy(true);Promise.resolve(rerender()).finally(()=>requestAnimationFrame(()=>{listPaginationTransitioning[key]=false}))});
+    root.querySelector('.prev')?.addEventListener('click',()=>changePage(listPages[key]-1));
+    root.querySelector('.next')?.addEventListener('click',()=>changePage(listPages[key]+1));
+    root.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>changePage(Number(b.dataset.page)||1)));
   });
 }
 
@@ -1845,8 +1851,18 @@ async function openPersonAdmin(personId,tab='identity'){
   setPersonAdminTab(tab);if(!$('#personAdminModal').open)$('#personAdminModal').showModal();
 }
 let remotePersonsRenderPromise=null;
-async function renderRemotePersons(){
+let remotePersonsPreparedRows=[];
+function paintRemotePersonsPage(){
   const body=$('#personsTable');if(!body||currentRole!=='admin')return;
+  const pageRows=pagedRows('persons',remotePersonsPreparedRows);
+  body.innerHTML=pageRows.items.join('')||'<tr><td colspan="6">No hay personas registradas.</td></tr>';
+  $$('.person-row').forEach(r=>{r.onclick=()=>openPersonAdmin(r.dataset.person);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPersonAdmin(r.dataset.person)}}});
+  renderListPagination('persons',remotePersonsPreparedRows.length,remotePersonsPreparedRows.length,paintRemotePersonsPage);
+}
+async function renderRemotePersons(options={}){
+  const body=$('#personsTable');if(!body||currentRole!=='admin')return;
+  const reload=options.reload!==false;
+  if(!reload&&remotePersonsPreparedRows.length){paintRemotePersonsPage();return}
   if(remotePersonsRenderPromise)return remotePersonsRenderPromise;
   remotePersonsRenderPromise=(async()=>{
     try{await loadSupabasePersons();await loadSupabaseCoaches();$('#duplicateCount').textContent='—';$('#duplicateList').innerHTML='<div class="empty-note">Persona es la identidad maestra. Perfiles y relaciones se administran desde su ficha sin duplicar identidades.</div>';
@@ -1861,9 +1877,7 @@ async function renderRemotePersons(){
         const accessRoles=roles.filter(r=>['administrador','club','entrenador','jugador','tutor'].includes(r));
         rows.push(`<tr class="person-row" data-person="${esc(p.id)}" tabindex="0"><td><strong>${esc(remotePersonName(p))}</strong><div class="meta">${p.fecha_nacimiento?fmt(p.fecha_nacimiento):'Nacimiento no informado'}</div></td><td>${esc(p.email_contacto||'—')}</td><td><div class="role-badges">${accessRoles.map(r=>`<span class="role-badge">${esc(r==='tutor'?'Tutor/Familia':r)}</span>`).join('')||'—'}</div></td><td>${esc(relationBits.join(' · ')||'—')}</td><td>${p.auth_user_id?'<span class="status complete">Vinculada</span>':'<span class="status pending">Sin cuenta</span>'}</td><td><span class="status ${p.activo===false?'returned':'complete'}">${p.activo===false?'Inactiva':'Activa'}</span></td></tr>`);
       }
-      const pageRows=pagedRows('persons',rows);
-      body.innerHTML=pageRows.items.join('')||'<tr><td colspan="6">No hay personas registradas.</td></tr>';$$('.person-row').forEach(r=>{r.onclick=()=>openPersonAdmin(r.dataset.person);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPersonAdmin(r.dataset.person)}}});
-      renderListPagination('persons',rows.length,rows.length,renderRemotePersons);
+      remotePersonsPreparedRows=rows;paintRemotePersonsPage();
     }catch(err){body.innerHTML=`<tr><td colspan="6">No se pudieron cargar las personas: ${esc(err.message||err)}</td></tr>`}
     finally{remotePersonsRenderPromise=null}
   })();
