@@ -64,4 +64,23 @@ revoke all on function private.test_s_player_id(text,int) from public;
 revoke all on function private.test_s_tutor_person_id(text) from public;
 revoke all on function private.test_s_coach_person_id(int) from public;
 revoke all on function private.test_s_coach_id(int) from public;
+
+-- Compatibility overloads: PostgreSQL generate_series()/row_number() may yield bigint.
+-- Keep the canonical int implementations above and delegate bigint inputs explicitly.
+create or replace function private.test_s_player_person_id(p_team_code text,p_slot bigint) returns uuid language sql immutable as $$
+  select private.test_s_player_person_id(p_team_code,p_slot::int);
+$$;
+create or replace function private.test_s_player_id(p_team_code text,p_slot bigint) returns uuid language sql immutable as $$
+  select private.test_s_player_id(p_team_code,p_slot::int);
+$$;
+create or replace function private.test_s_coach_person_id(p_n bigint) returns uuid language sql immutable as $$
+  select private.test_s_coach_person_id(p_n::int);
+$$;
+create or replace function private.test_s_coach_id(p_n bigint) returns uuid language sql immutable as $$
+  select private.test_s_coach_id(p_n::int);
+$$;
+revoke all on function private.test_s_player_person_id(text,bigint) from public;
+revoke all on function private.test_s_player_id(text,bigint) from public;
+revoke all on function private.test_s_coach_person_id(bigint) from public;
+revoke all on function private.test_s_coach_id(bigint) from public;
 commit;
