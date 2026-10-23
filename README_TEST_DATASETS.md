@@ -4,7 +4,7 @@ TEST-BASE contains stable non-personal masters. TEST-S is a deterministic synthe
 
 Deployment and data lifecycle are independent. Use the manual workflow **Manage Supabase TEST dataset**:
 - `KEEP`: no data changes.
-- `RESET + BASELINE`: removes only registered TEST-S entities and rebuilds TEST-S v1.
+- `RESET + BASELINE`: removes only registered TEST-S entities and rebuilds TEST-S v1.1.
 - `RESET + NOTIFICATIONS`: rebuilds BASELINE and adds exactly one known pending SMTP notification.
 
 The existing Administrador TEST identity is not registered as a TEST-S entity and therefore survives resets.
@@ -24,3 +24,22 @@ Before first run, create these GitHub repository secrets:
 Existing secrets reused: `SUPABASE_TEST_DB_URL`, `SUPABASE_TEST_PROJECT_REF`.
 
 Run `Bootstrap Supabase TEST access users` once after the files are merged to `develop`. Re-running is idempotent: it finds users by email, updates the shared password and relinks the deterministic Persona.
+
+## TEST-ACCESS operational matrix (TEST-S v1)
+
+After `RESET -> BASELINE`, the permanent TEST-ACCESS logins are connected to deterministic TEST-S operational cases. Personas/Auth/roles remain permanent; seasonal operational relations are rebuilt by TEST-S.
+
+| Login | Profiles | Operational TEST-S case |
+|---|---|---|
+| `club.test@yebenes.test` | Club | Club-only administration account |
+| `coach.test@yebenes.test` | Coach | Operational coach with season, team assignments and availability |
+| `coach-player.test@yebenes.test` | Coach + Player | Senior A player and operational coach |
+| `tutor.test@yebenes.test` | Tutor/Family | Active representative of `Jugador Menor TEST Acceso` |
+| `player-adult.test@yebenes.test` | Player | Adult Senior B player with active inscription/team |
+| `player-minor.test@yebenes.test` | Player | Minor Cadete A player with active inscription/team |
+| `multiprofile.test@yebenes.test` | Club + Coach + Player | Senior A player and operational coach, plus Club profile |
+
+All TEST-ACCESS Auth users use the password stored in GitHub secret `TEST_APP_USER_PASSWORD`. Never write that password into the repository.
+
+### Test protocol
+Every multi-session test should name: Session/Device A login + selected profile + screen/entity; Session/Device B login + selected profile + exact action; expected silent refresh in A.
