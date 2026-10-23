@@ -1,4 +1,4 @@
-const APP_VERSION='94.1.4';
+const APP_VERSION='94.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1115,8 +1115,9 @@ async function loadRemoteClubData(){
   return remoteClubPlayers;
 }
 
-async function renderRemoteClub(){
-  $('#adminTable').innerHTML='<tr><td colspan="10">Cargando fichas desde Supabase…</td></tr>';
+async function renderRemoteClub(options={}){
+  const silent=Boolean(options?.silent);
+  if(!silent)$('#adminTable').innerHTML='<tr><td colspan="10">Cargando fichas desde Supabase…</td></tr>';
   try{
     await loadRemoteClubData();
     const catSel=$('#clubCategoryFilter');if(catSel){const prev=catSel.value||'all';catSel.innerHTML='<option value="all">Todas las categorías</option>'+dbCategories.filter(c=>c.active).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');if([...catSel.options].some(o=>o.value===prev))catSel.value=prev}
@@ -1125,7 +1126,7 @@ async function renderRemoteClub(){
     $('#adminTable').innerHTML=rows.length?rows.map(v=>`<tr class="admin-row ${!v.active?'inactive-row':''}" data-id="${esc(v.id)}" tabindex="0"><td><strong>${esc(v.name)}</strong>${!v.active?'<div class="meta inactive-note">Jugador inactivo</div>':''}${v.inscription?.estado==='devuelta_familia'?`<div class="meta return-note">${remotePlayerIsAdult(v)&&!v.representation?'Correcciones solicitadas al jugador':'Devuelto a familia'}</div>`:''}</td><td>${esc(v.tutorName)}</td><td>${esc(v.categoryName)}</td><td><strong>${esc(v.teamName)}</strong></td><td><span class="status ${v.active?'complete':'returned'}">${v.active?'Activo':'Inactivo'}</span></td><td>${(()=>{const m=medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null);const cls=medicalVisualClass(m);return `<span class="status ${cls}">${esc(m.label)}</span>${v.medical?.fecha_valido_hasta?`<div class="meta">Hasta ${fmt(v.medical.fecha_valido_hasta)}</div>`:''}`})()}</td><td><span class="dot ${remoteDataValidated(v)?'ok':'warn'}">${remoteDataValidated(v)?'✓ Completo':'⚠ Pendiente'}</span></td><td>${(()=>{const p=federationDocsProgress(v);return `${p.pct}% · ${p.valid}/${p.total}`})()}</td>${currentRole==='coach'?'':`<td>${(()=>{const e=economicState(v);return `<span class="status ${e.ok?'complete':'pending'}">${esc(e.label)}</span>`})()}</td>`}<td><span class="workflow-pill ${esc(v.inscription?.estado||'')}">${esc(remotePlayerStateLabel(v))}</span></td></tr>`).join(''):'<tr><td colspan="10">No hay jugadores que coincidan con los filtros.</td></tr>';
     $$('.admin-row').forEach(r=>{r.onclick=()=>openRemoteAdminPlayer(r.dataset.id);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRemoteAdminPlayer(r.dataset.id)}}});
     const operational=remoteClubPlayers.filter(v=>v.active);$('#statPlayers').textContent=operational.length;$('#statComplete').textContent=operational.filter(v=>remoteFederationReadiness(v).isReady).length;$('#statDocs').textContent=operational.filter(v=>!federationDocsComplete(v)).length;$('#statReview').textContent=operational.filter(v=>['pendiente_revision_inicial','devuelta_familia'].includes(v.inscription?.estado)||(v.requirements||[]).some(r=>['aportado','declarado_realizado'].includes(r.estado))).length;$('#statMedical90').textContent=operational.filter(v=>medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null).key==='soon').length;$('#statAdult30').textContent=operational.filter(v=>{const d=v.birth?dayDiff(isoToday(),addYears(v.birth,18)):null;return d!==null&&d>=0&&d<=30}).length;if(currentRole!=='coach')$('#statPaymentPending').textContent=operational.filter(v=>!economicState(v).ok).length;updateQuickFilterUI();
-  }catch(err){console.error('Carga fichas Supabase',err);$('#adminTable').innerHTML=`<tr><td colspan="10">No se pudieron cargar las fichas: ${esc(err.message||err)}</td></tr>`}
+  }catch(err){console.error('Carga fichas Supabase',err);if(!silent)$('#adminTable').innerHTML=`<tr><td colspan="10">No se pudieron cargar las fichas: ${esc(err.message||err)}</td></tr>`}
 }
 
 async function recordRemoteHistory(inscriptionId,oldState,newState,comment){
@@ -2277,7 +2278,7 @@ async function refreshHotContextPreservingNavigation(){
   if(['family','player'].includes(currentRole)){
     await renderRemoteFamily();
   }else{
-    if(view==='clubView')await renderRemoteClub();
+    if(view==='clubView')await renderRemoteClub({silent:true});
     else if(view==='medicalView')await renderRemoteMedical();
     else if(view==='coachesView'){/* Sin repintado: loadSupabaseStructure ya actualizo los datos fuente. */}
     else if(view==='structureView'){/* Sin repintado: loadSupabaseStructure ya actualizo los datos fuente. */}

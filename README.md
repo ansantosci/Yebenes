@@ -1113,3 +1113,11 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - El primer gesto tras el umbral de inactividad se dedica exclusivamente a revalidar la sesión. El `click` asociado se consume para impedir que una reconstrucción de navegación pueda activar accidentalmente otro control, incluido Cerrar sesión.
 - Se añaden los eventos diagnósticos `IDLE_WAKE_REVALIDATION` e `IDLE_WAKE_CLICK_SUPPRESSED`.
 - No modifica workflows, datasets, Edge Functions ni esquema Supabase.
+
+
+## V94.2 — refresco silencioso de Fichas al recuperar foco
+
+- La revalidación de sesión mantiene visible la tabla de Fichas mientras actualiza datos desde Supabase.
+- `renderRemoteClub({silent:true})` evita sustituir temporalmente la tabla por el mensaje de carga durante `refreshHotContextPreservingNavigation()`.
+- Si una recarga silenciosa falla temporalmente, se conserva el contenido ya visible y el error queda en consola; las cargas explícitas mantienen el mensaje de carga/error habitual.
+- No modifica la lógica Auth/revalidación de roles validada en V94.1.4.
