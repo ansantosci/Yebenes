@@ -51,7 +51,12 @@ insert into public.jugadores(id,persona_id,activo,fecha_alta)
 select private.test_s_player_id(e.codigo,g),private.test_s_player_person_id(e.codigo,g),true,date '2026-07-01'
 from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa'
 on conflict(id) do update set persona_id=excluded.persona_id,activo=true,fecha_baja=null;
-insert into private.test_dataset_entities select 'TEST-S','jugadores',private.test_s_player_id(e.codigo,g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
+insert into private.test_dataset_entities
+select 'TEST-S','jugadores',private.test_s_player_id(e.codigo,g),now()
+from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g
+where t.estado='activa'
+  and private.test_s_player_id(e.codigo,g) not in (select private.test_uuid('access-player:'||key) from private.test_access_identities where key in ('coach_player','adult_player','minor_player','multiprofile'))
+on conflict do nothing;
 
 -- Representation must exist before inscription: the schema trigger validates minors at inscription time.
 -- Use actual date of birth, not category, so the seed follows the same rule as production.
@@ -114,7 +119,29 @@ with cp as (select n,private.test_s_coach_person_id(n) persona_id from generate_
 insert into public.entrenadores(id,persona_id,activo,curso_delegado)
 select private.test_s_coach_id(n),persona_id,true,(n in (1,2,5,11)) from cp
 on conflict(id) do update set persona_id=excluded.persona_id,activo=true,curso_delegado=excluded.curso_delegado;
-insert into private.test_dataset_entities select 'TEST-S','entrenadores',private.test_s_coach_id(n),now() from generate_series(1,12)n on conflict do nothing;
+insert into private.test_dataset_entities
+select 'TEST-S','entrenadores',private.test_s_coach_id(n),now()
+from generate_series(1,12)n
+where private.test_s_coach_id(n) not in (select private.test_uuid('access-coach:'||key) from private.test_access_identities where key in ('coach','coach_player','multiprofile'))
+on conflict do nothing;
+
+-- TEST-S v1.1 normalization for permanent TEST-ACCESS coach facets.
+-- Personas/entrenadores survive RESET, but season-scoped operational rows belong to TEST-S.
+-- Remove any pre-existing rows for the three access coaches before rebuilding deterministic baseline rows.
+with access_coaches as (
+  select private.test_s_coach_id(n) entrenador_id from unnest(array[1,11,12]) n
+)
+delete from public.entrenador_disponibilidad d using access_coaches a
+where d.entrenador_id=a.entrenador_id and d.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac';
+with access_coaches as (select private.test_s_coach_id(n) entrenador_id from unnest(array[1,11,12]) n)
+delete from public.entrenador_licencias_rffm l using access_coaches a
+where l.entrenador_id=a.entrenador_id and l.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac';
+with access_coaches as (select private.test_s_coach_id(n) entrenador_id from unnest(array[1,11,12]) n)
+delete from public.asignaciones_entrenador_equipo x using access_coaches a
+where x.entrenador_id=a.entrenador_id;
+with access_coaches as (select private.test_s_coach_id(n) entrenador_id from unnest(array[1,11,12]) n)
+delete from public.entrenador_temporadas s using access_coaches a
+where s.entrenador_id=a.entrenador_id and s.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac';
 
 with cp as (select n,private.test_s_coach_person_id(n) persona_id from generate_series(1,12)n where n not in (1,11,12))
 insert into public.persona_roles(id,persona_id,rol_id,fecha_desde,activo)

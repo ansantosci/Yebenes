@@ -43,3 +43,9 @@ All TEST-ACCESS Auth users use the password stored in GitHub secret `TEST_APP_US
 
 ### Test protocol
 Every multi-session test should name: Session/Device A login + selected profile + screen/entity; Session/Device B login + selected profile + exact action; expected silent refresh in A.
+
+### TEST-S v1.1 reset hardening
+- TEST-ACCESS Personas, Auth links, roles and permanent `jugadores`/`entrenadores` facets are not owned by TEST-S and must survive RESET.
+- TEST-S may attach season-scoped operational rows to those permanent facets (inscriptions, coach season, assignments, availability, etc.).
+- Before rebuilding coach operational rows, BASELINE normalizes the selected TEST-ACCESS coaches for the active season to avoid natural-key collisions from previous/manual TEST state.
+- `private.test_dataset_entities` deliberately excludes permanent TEST-ACCESS `jugadores` and `entrenadores`; only TEST-S-owned rows are registered for cleanup.
