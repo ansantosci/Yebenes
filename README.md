@@ -1115,9 +1115,16 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - No modifica workflows, datasets, Edge Functions ni esquema Supabase.
 
 
-## V94.2 — refresco silencioso de Fichas al recuperar foco
+## V94.2.1 — refresco silencioso de Fichas al recuperar foco
 
 - La revalidación de sesión mantiene visible la tabla de Fichas mientras actualiza datos desde Supabase.
 - `renderRemoteClub({silent:true})` evita sustituir temporalmente la tabla por el mensaje de carga durante `refreshHotContextPreservingNavigation()`.
 - Si una recarga silenciosa falla temporalmente, se conserva el contenido ya visible y el error queda en consola; las cargas explícitas mantienen el mensaje de carga/error habitual.
 - No modifica la lógica Auth/revalidación de roles validada en V94.1.4.
+
+
+## V94.2.1 - paginación común de listados
+- Paginación cliente en Fichas, RRMM, Entrenadores y Personas.
+- Tamaño global persistente: 25 / 50 / 100 (50 por defecto).
+- Filtros y búsquedas se aplican antes de paginar y reinician a página 1.
+- Mantiene el refresco silencioso de Fichas introducido en V94.2.
