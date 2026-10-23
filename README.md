@@ -1104,3 +1104,12 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Registra aparición/desaparición de la clave de sesión Supabase y eventos `storage`, sin guardar tokens ni credenciales.
 - Corrige el identificador temprano `YEBENES_APP_VERSION` del `index.html`, que había quedado obsoleto en 93.5, para que el detector previo al arranque compare contra 93.7.1.
 - No cambia la política funcional 12 h / 7 días de V93.7.
+
+
+## V94.1.4 — estabilización de revalidación de roles y despertar por interacción
+
+- La revalidación de sesión registra `REVALIDATE_ROLES` con el rol previo y los perfiles recuperados.
+- Si el perfil activo parece desaparecer, se realiza una segunda lectura de identidad antes de aplicar el cambio; `REVALIDATE_ROLES_CONFIRMED` deja trazabilidad de ambas lecturas.
+- El primer gesto tras el umbral de inactividad se dedica exclusivamente a revalidar la sesión. El `click` asociado se consume para impedir que una reconstrucción de navegación pueda activar accidentalmente otro control, incluido Cerrar sesión.
+- Se añaden los eventos diagnósticos `IDLE_WAKE_REVALIDATION` e `IDLE_WAKE_CLICK_SUPPRESSED`.
+- No modifica workflows, datasets, Edge Functions ni esquema Supabase.

@@ -1,4 +1,4 @@
-const APP_VERSION='94.1.3';
+const APP_VERSION='94.1.4';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2340,10 +2340,20 @@ async function revalidateActiveSession(reason='resume'){
         console.warn('V93.5 getUser temporal',error);return true;
       }
       const previousRole=currentRole;
-      const fresh=await loadIdentityWithPending(data.user);
+      let fresh=await loadIdentityWithPending(data.user);
+      let roles=availableRoles(fresh);
+      authDiag('REVALIDATE_ROLES',{reason,previous_role:previousRole,roles:[...roles],role_changed:!roles.includes(previousRole)});
+      // V94.1.4: una sola lectura no puede degradar el perfil activo. Durante resets o
+      // cambios de datos puede existir una lectura transitoria; confirmar antes de cambiar permisos.
+      if(previousRole&&!roles.includes(previousRole)){
+        await new Promise(resolve=>setTimeout(resolve,150));
+        const confirmed=await loadIdentityWithPending(data.user);
+        const confirmedRoles=availableRoles(confirmed);
+        authDiag('REVALIDATE_ROLES_CONFIRMED',{reason,previous_role:previousRole,first_roles:[...roles],confirmed_roles:[...confirmedRoles],role_changed:!confirmedRoles.includes(previousRole)});
+        fresh=confirmed;roles=confirmedRoles;
+      }
       currentUser=fresh;
       await loadSupabaseStructure();
-      const roles=availableRoles(currentUser);
       if(!roles.length){
         await localSessionLogout();
         alert('Tu cuenta ya no tiene ningun perfil activo en el club.');return false;
@@ -2378,13 +2388,31 @@ window.addEventListener('focus',async()=>{
   if(!(await checkPublishedVersion()))return;
   if(Date.now()-sessionLastServerRefreshAt>=SESSION_FOCUS_REFRESH_MS)await revalidateActiveSession('focus');
 });
+let suppressIdleWakeClickPending=false,idleWakeClickTimer=null;
+function armIdleWakeClickSuppression(trigger){
+  suppressIdleWakeClickPending=true;
+  if(idleWakeClickTimer)clearTimeout(idleWakeClickTimer);
+  idleWakeClickTimer=setTimeout(()=>{suppressIdleWakeClickPending=false;idleWakeClickTimer=null},5000);
+  authDiag('IDLE_WAKE_REVALIDATION',{trigger,idle_ms:Date.now()-sessionLastInteractionAt});
+}
+function suppressIdleWakeClick(e){
+  if(!suppressIdleWakeClickPending)return;
+  suppressIdleWakeClickPending=false;
+  if(idleWakeClickTimer){clearTimeout(idleWakeClickTimer);idleWakeClickTimer=null}
+  e.preventDefault();e.stopImmediatePropagation();
+  authDiag('IDLE_WAKE_CLICK_SUPPRESSED',{target_id:e.target?.id||null,target_tag:e.target?.tagName||null});
+}
 function registerRealUserActivity(e){
   if(!currentUser||currentUser.source!=='supabase'){persistSessionActivity();return}
   const idle=Date.now()-sessionLastInteractionAt;
   if(idle<SESSION_CONTEXT_MAX_IDLE_MS){persistSessionActivity();return}
+  // V94.1.4: el gesto que despierta una sesion inactiva solo revalida. No puede
+  // reutilizarse como click sobre un control que haya cambiado durante showApp().
+  if(e.type==='pointerdown'||(e.type==='keydown'&&(e.key==='Enter'||e.key===' ')))armIdleWakeClickSuppression(e.type);
   e.preventDefault();e.stopImmediatePropagation();
   revalidateActiveSession('idle-action').then(ok=>{if(ok)persistSessionActivity(Date.now(),true)});
 }
+document.addEventListener('click',suppressIdleWakeClick,true);
 document.addEventListener('pointerdown',registerRealUserActivity,true);
 document.addEventListener('keydown',registerRealUserActivity,true);
 
