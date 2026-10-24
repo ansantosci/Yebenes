@@ -1143,8 +1143,14 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Proteccion comun contra doble clic durante transiciones de paginacion.
 
 
-### V94.3.1 - scroll coherente y primera carga de Personas optimizada
+### V94.3.2 - scroll coherente y primera carga de Personas optimizada
 - Paginador superior conserva el scroll; el inferior vuelve al inicio del listado.
 - Entrar explicitamente en un listado posiciona su inicio; refresh silencioso no mueve el scroll.
 - Personas sigue siendo exclusiva de Administrador y elimina el patron N+1 de relaciones mediante consultas batch.
 - Sin cambios de esquema, RRMM, Auth, workflows ni TEST-S.
+
+### V94.3.2 - Familia silenciosa y teléfono propio
+- Familia/Jugador conserva las fichas visibles durante revalidaciones por foco/visibilidad; la primera carga sigue mostrando estado de carga.
+- Las cargas concurrentes de Familia se deduplican para evitar dobles consultas por eventos focus/visibilitychange cercanos.
+- Perfil > Mi perfil permite editar el teléfono de la Persona autenticada; tras guardar se rehidrata identidad y se refresca Familia silenciosamente.
+

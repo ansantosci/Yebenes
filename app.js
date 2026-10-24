@@ -1,4 +1,4 @@
-const APP_VERSION='94.3.1';
+const APP_VERSION='94.3.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -380,6 +380,7 @@ let dbCoachFormations=[],dbCoachLicenses=[],dbCoachSeasonRows=[],dbCoachAvailabi
 let remoteClubPlayers=[],selectedRemotePlayerId=null;
 let selectedEconomicTeamId=null,selectedEconomicPlayerId=null,economicReturnPlayerId=null;
 let remoteFamilyPlayers=[];
+let remoteFamilyLoadPromise=null;
 let editingFromCorrection=false;
 let remoteMedicalAppointments=[];
 let remoteMedicalRows=[];
@@ -928,12 +929,17 @@ async function processAdultTransitions(){
   try{await sb.rpc('procesar_mayorias_edad')}catch(err){console.warn('Transición de mayoría de edad pendiente',err)}
 }
 
-async function renderRemoteFamily(){
-  $('#playersList').innerHTML='<div class="empty-card">Cargando jugadores…</div>';
-  try{
+async function refreshRemoteFamilyData(){
+  if(remoteFamilyLoadPromise)return remoteFamilyLoadPromise;
+  remoteFamilyLoadPromise=(async()=>{
     await loadRemoteFamilyData();
     await renderMinorCoachConsents();
-    $('#playersList').innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(familyPlayerTabbedCard).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
+    return remoteFamilyPlayers;
+  })();
+  try{return await remoteFamilyLoadPromise}finally{remoteFamilyLoadPromise=null}
+}
+function paintRemoteFamily(){
+  $('#playersList').innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(familyPlayerTabbedCard).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
     $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));$$('.edit-self-player').forEach(b=>b.onclick=()=>openSelfPlayerEdit(b.dataset.id));
     bindFamilyCardTabs();
     bindMinorCoachConsentButtons($('#playersList'));
@@ -942,7 +948,17 @@ async function renderRemoteFamily(){
     $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
     const progress=remoteFamilyPlayers.length?remoteFamilyPlayers.reduce((a,p)=>a+remoteStateProgress(p.inscription?.estado),0)/remoteFamilyPlayers.length:0;
     setFamilyProgress(progress);
-  }catch(err){console.error('Carga familia Supabase',err);$('#playersList').innerHTML=`<div class="empty-card">No se pudieron cargar los jugadores: ${esc(err.message||err)}</div>`;setFamilyProgress(0)}
+}
+async function renderRemoteFamily(options={}){
+  const refresh=options.refresh!==false;
+  const silent=options.silent===true||remoteFamilyPlayers.length>0;
+  if(refresh&&!silent)$('#playersList').innerHTML='<div class="empty-card">Cargando jugadores…</div>';
+  try{if(refresh)await refreshRemoteFamilyData();paintRemoteFamily()}
+  catch(err){
+    console.error('Carga familia Supabase',err);
+    if(remoteFamilyPlayers.length){paintRemoteFamily();return}
+    $('#playersList').innerHTML=`<div class="empty-card">No se pudieron cargar los jugadores: ${esc(err.message||err)}</div>`;setFamilyProgress(0);
+  }
 }
 
 
@@ -1315,6 +1331,7 @@ function openAccountProfile(){
   if(!currentUser)return;const d=$('#accountProfileModal');if(!d)return;
   $('#accountProfileMeta').textContent=currentUser.email||currentUser.name||'';
   $('#accountProfileRoles').innerHTML=availableRoles(currentUser).map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('');
+  if($('#accountPhone'))$('#accountPhone').value=currentUser.phone||'';const pf=$('#accountPhoneFeedback');if(pf){pf.hidden=true;pf.textContent=''}
   $('#accountPasswordForm').reset();if($('#accountEmail'))$('#accountEmail').value=currentUser.email||'';if($('#accountEmailConfirm'))$('#accountEmailConfirm').value=currentUser.email||'';const ef=$('#accountEmailFeedback');if(ef){ef.hidden=true;ef.textContent=''}const av=$('#selfCoachAvailabilityWrap'),c=coaches.find(x=>x.personId===currentUser.personId||x.userId===currentUser.authUserId),tab=$('#accountAvailabilityTab'),empty=$('#accountNoCoachAvailability');if(av){av.hidden=!c;if(c)renderCoachAvailabilityPanel('#selfCoachAvailabilityPanel',c,{self:true})}if(tab)tab.hidden=!c;if(empty)empty.hidden=!!c;setSimpleTabs('#accountProfileModal','profile');d.showModal();
 }
 async function createTemporaryAccessForSelectedPerson(){
@@ -2195,7 +2212,7 @@ function showAuthRedirectError(){
 }
 showAuthRedirectError();
 
-$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await tracedSignOut('manual_logout',{scope:'local'});clearAppSessionPolicy();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();if($('#clubProfileButton'))$('#clubProfileButton').onclick=openAccountProfile;if($('#closeAccountProfileModal'))$('#closeAccountProfileModal').onclick=()=>$('#accountProfileModal').close();if($('#changeAccountEmail'))$('#changeAccountEmail').onclick=async()=>{const input=$('#accountEmail'),confirmInput=$('#accountEmailConfirm'),feedback=$('#accountEmailFeedback'),b=$('#changeAccountEmail'),email=String(input?.value||'').trim().toLowerCase(),emailConfirm=String(confirmInput?.value||'').trim().toLowerCase();const emailError=validateRepeatedEmail(email,emailConfirm,{required:true});if(emailError){feedback.textContent=emailError;feedback.className='warning-box';feedback.hidden=false;return}b.disabled=true;b.textContent='Cambiando…';try{const data=await invokeAccessManager({action:'change_person_email',persona_id:currentUser.personId,new_email:email});currentUser.email=data.email;$('#accountProfileMeta').textContent=currentUser.email;if(confirmInput)confirmInput.value=data.email;feedback.textContent='Correo actualizado. A partir de ahora este será tu correo de acceso y comunicaciones.';feedback.className='success-box';feedback.hidden=false}catch(err){feedback.textContent=`No se ha podido cambiar el correo: ${err.message||err}`;feedback.className='warning-box';feedback.hidden=false}finally{b.disabled=false;b.textContent='Cambiar correo'}};if($('#closeTemporaryAccessModal'))$('#closeTemporaryAccessModal').onclick=()=>$('#temporaryAccessModal').close();if($('#acceptTemporaryAccess'))$('#acceptTemporaryAccess').onclick=()=>$('#temporaryAccessModal').close();if($('#copyTemporaryPassword'))$('#copyTemporaryPassword').onclick=async()=>{const v=$('#temporaryAccessPassword').value;try{await navigator.clipboard.writeText(v);$('#copyTemporaryPassword').textContent='Copiada';setTimeout(()=>$('#copyTemporaryPassword').textContent='Copiar',1200)}catch{alert('No se ha podido copiar automáticamente. Selecciona la contraseña manualmente.')}};if($('#accountPasswordForm'))$('#accountPasswordForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),b=f.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}b.disabled=true;b.textContent='Actualizando…';try{await changeOwnPassword(p);f.reset();$('#accountProfileModal').close();alert('Contraseña actualizada correctamente.')}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Cambiar contraseña'}};
+$('#logoutButton').onclick=async()=>{localStorage.removeItem(K.sessionRole);currentUser=null;currentRole=null;if(sb)await tracedSignOut('manual_logout',{scope:'local'});clearAppSessionPolicy();showAuth('login')};$('#roleSwitchButton').onclick=()=>showRoleChooser(true);$('#closeRoleChooser').onclick=()=>$('#roleChooserModal').close();if($('#clubProfileButton'))$('#clubProfileButton').onclick=openAccountProfile;if($('#closeAccountProfileModal'))$('#closeAccountProfileModal').onclick=()=>$('#accountProfileModal').close();if($('#saveAccountPhone'))$('#saveAccountPhone').onclick=async()=>{const input=$('#accountPhone'),feedback=$('#accountPhoneFeedback'),b=$('#saveAccountPhone'),phone=String(input?.value||'').trim();b.disabled=true;b.textContent='Guardando…';try{const {error}=await sb.from('personas').update({telefono:phone||null}).eq('id',currentUser.personId);if(error)throw error;const {data:authData,error:authError}=await sb.auth.getUser();if(authError)throw authError;currentUser=await loadSupabaseIdentity(authData.user);if(input)input.value=currentUser.phone||'';feedback.textContent='Teléfono actualizado.';feedback.className='success-box';feedback.hidden=false;if(['family','player'].includes(currentRole))await renderRemoteFamily({silent:true,refresh:true})}catch(err){feedback.textContent=`No se ha podido actualizar el teléfono: ${err.message||err}`;feedback.className='warning-box';feedback.hidden=false}finally{b.disabled=false;b.textContent='Guardar teléfono'}};if($('#changeAccountEmail'))$('#changeAccountEmail').onclick=async()=>{const input=$('#accountEmail'),confirmInput=$('#accountEmailConfirm'),feedback=$('#accountEmailFeedback'),b=$('#changeAccountEmail'),email=String(input?.value||'').trim().toLowerCase(),emailConfirm=String(confirmInput?.value||'').trim().toLowerCase();const emailError=validateRepeatedEmail(email,emailConfirm,{required:true});if(emailError){feedback.textContent=emailError;feedback.className='warning-box';feedback.hidden=false;return}b.disabled=true;b.textContent='Cambiando…';try{const data=await invokeAccessManager({action:'change_person_email',persona_id:currentUser.personId,new_email:email});currentUser.email=data.email;$('#accountProfileMeta').textContent=currentUser.email;if(confirmInput)confirmInput.value=data.email;feedback.textContent='Correo actualizado. A partir de ahora este será tu correo de acceso y comunicaciones.';feedback.className='success-box';feedback.hidden=false}catch(err){feedback.textContent=`No se ha podido cambiar el correo: ${err.message||err}`;feedback.className='warning-box';feedback.hidden=false}finally{b.disabled=false;b.textContent='Cambiar correo'}};if($('#closeTemporaryAccessModal'))$('#closeTemporaryAccessModal').onclick=()=>$('#temporaryAccessModal').close();if($('#acceptTemporaryAccess'))$('#acceptTemporaryAccess').onclick=()=>$('#temporaryAccessModal').close();if($('#copyTemporaryPassword'))$('#copyTemporaryPassword').onclick=async()=>{const v=$('#temporaryAccessPassword').value;try{await navigator.clipboard.writeText(v);$('#copyTemporaryPassword').textContent='Copiada';setTimeout(()=>$('#copyTemporaryPassword').textContent='Copiar',1200)}catch{alert('No se ha podido copiar automáticamente. Selecciona la contraseña manualmente.')}};if($('#accountPasswordForm'))$('#accountPasswordForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,fd=new FormData(f),p=String(fd.get('password')||''),p2=String(fd.get('password2')||''),b=f.querySelector('button[type="submit"]');if(p!==p2){alert('Las contraseñas no coinciden.');return}if(p.length<8){alert('La contraseña debe tener al menos 8 caracteres.');return}b.disabled=true;b.textContent='Actualizando…';try{await changeOwnPassword(p);f.reset();$('#accountProfileModal').close();alert('Contraseña actualizada correctamente.')}catch(err){alert(`No se ha podido cambiar la contraseña: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Cambiar contraseña'}};
 
 function refreshCalculatedCategory(form){const birth=form?.elements?.birth?.value||'',cat=(currentUser?.source==='supabase'&&dbStructureLoaded)?dbCategoryForBirth(birth):categoryForBirth(birth,currentSeasonId),out=form?.querySelector?.('[data-category-calculated]');if(out)out.value=cat?cat.name:'Fuera de categorías configuradas'}
 $('#familySignupForm')?.elements?.birth?.addEventListener('change',()=>refreshCalculatedCategory($('#familySignupForm')));
@@ -2367,7 +2384,7 @@ async function refreshHotContextPreservingNavigation(){
   const coachId=editingCoachId;
 
   if(['family','player'].includes(currentRole)){
-    await renderRemoteFamily();
+    await renderRemoteFamily({silent:true,refresh:true});
   }else{
     if(view==='clubView')await renderRemoteClub({silent:true,refresh:true});
     else if(view==='medicalView')await renderRemoteMedical({refresh:true});
@@ -2381,6 +2398,7 @@ async function refreshHotContextPreservingNavigation(){
   if(accountTab){
     $('#accountProfileMeta').textContent=currentUser.email||currentUser.name||'';
     $('#accountProfileRoles').innerHTML=availableRoles(currentUser).map(r=>`<span class="role-badge">${esc(roleLabel(r))}</span>`).join('');
+    if($('#accountPhone'))$('#accountPhone').value=currentUser.phone||'';
     const c=coaches.find(x=>x.personId===currentUser.personId||x.userId===currentUser.authUserId);
     const av=$('#selfCoachAvailabilityWrap'),tab=$('#accountAvailabilityTab'),empty=$('#accountNoCoachAvailability');
     if(av){av.hidden=!c;if(c)renderCoachAvailabilityPanel('#selfCoachAvailabilityPanel',c,{self:true})}
