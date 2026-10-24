@@ -122,20 +122,29 @@ jobs:
             num="${BASH_REMATCH[1]}"
             ((10#$num >= 44)) || continue
             sha="$(sha256sum "$path" | awk '{print $1}')"
-            existing="$(psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -v filename="$file" -c "select sha256 from private.schema_migrations where filename=:'filename';")"
+
+            existing="$(PGOPTIONS="-c app.migration_filename=$file" psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select sha256 from private.schema_migrations where filename=current_setting('app.migration_filename');")"
             if [ -n "$existing" ]; then
               [ "$existing" = "$sha" ] || { echo "ERROR: already-applied migration changed: $file" >&2; echo "DB: $existing" >&2; echo "Repo: $sha" >&2; exit 1; }
               echo "SKIP $file (already applied, hash matches)"
               continue
             fi
+
             pending=$((pending+1))
             echo "APPLY $file"
-            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$path"
-            psql "$DB_URL" -X -v ON_ERROR_STOP=1 \
-              -v filename="$file" -v sha="$sha" -v source_ref="$SOURCE_REF" -v target_env="$TARGET_ENV" -v run_id="$RUN_ID" <<'SQL'
-            insert into private.schema_migrations(filename,sha256,source_ref,target_environment,run_id)
-            values (:'filename',:'sha',:'source_ref',:'target_env',:'run_id');
-          SQL
+            wrapper="$(mktemp)"
+            {
+              echo 'BEGIN;'
+              cat "$path"
+              printf '\n'
+              echo "insert into private.schema_migrations(filename,sha256,source_ref,target_environment,run_id)"
+              echo "values (current_setting('app.migration_filename'),current_setting('app.migration_sha'),current_setting('app.migration_source_ref'),current_setting('app.migration_target_env'),current_setting('app.migration_run_id'));"
+              echo 'COMMIT;'
+            } > "$wrapper"
+
+            PGOPTIONS="-c app.migration_filename=$file -c app.migration_sha=$sha -c app.migration_source_ref=$SOURCE_REF -c app.migration_target_env=$TARGET_ENV -c app.migration_run_id=$RUN_ID" \
+              psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$wrapper"
+            rm -f "$wrapper"
             applied=$((applied+1))
           done < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
           echo "Pending migrations detected: $pending"
