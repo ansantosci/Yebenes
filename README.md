@@ -1154,3 +1154,10 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Las cargas concurrentes de Familia se deduplican para evitar dobles consultas por eventos focus/visibilitychange cercanos.
 - Perfil > Mi perfil permite editar el teléfono de la Persona autenticada; tras guardar se rehidrata identidad y se refresca Familia silenciosamente.
 
+
+
+## V94.3.3
+- Familia/Jugador: separa telefono propio del jugador del telefono del tutor.
+- Los datos federativos exigibles quedan bloqueados para Familia tras validacion del Club; los datos no federativos permanecen editables.
+- SQL 044 anade `actualizar_contacto_menor_representado` para actualizar solo telefono sin degradar el estado de la ficha.
+- Orden TEST: aplicar SQL 044 antes de publicar frontend V94.3.3.
