@@ -1,6 +1,23 @@
 name: Deploy Supabase migrations
 
 on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      demo_confirmation:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SUPABASE_TEST_DB_URL:
+        required: false
+      SUPABASE_DEMO_DB_URL:
+        required: false
   workflow_dispatch:
     inputs:
       source_ref:

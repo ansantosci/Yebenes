@@ -1,67 +1,110 @@
-name: Deploy Supabase TEST Edge Functions
+name: Deploy Supabase Edge Functions
 
 on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+    secrets:
+      SUPABASE_ACCESS_TOKEN:
+        required: true
+      SUPABASE_TEST_PROJECT_REF:
+        required: false
+      SUPABASE_DEMO_PROJECT_REF:
+        required: false
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Repository branch containing Edge Functions
+        required: true
+        type: choice
+        options: [develop, test, main]
+        default: develop
+      target:
+        description: Supabase target environment
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
 
 permissions:
   contents: read
 
+concurrency:
+  group: supabase-edge-functions-${{ inputs.target }}
+  cancel-in-progress: false
+
 jobs:
   deploy-functions:
-    name: Deploy Edge Functions to TEST
+    name: Deploy Edge Functions to ${{ inputs.target }}
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Validate target guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref='${{ inputs.source_ref }}'
+          target='${{ inputs.target }}'
+          if [ "$target" = 'TEST' ]; then
+            case "$ref" in develop|test) ;; *) echo 'TEST Edge Functions may only run from develop or test.' >&2; exit 1;; esac
+          else
+            [ "$ref" = 'main' ] || { echo 'DEMO Edge Functions may only run from main.' >&2; exit 1; }
+          fi
+
+      - name: Checkout selected source branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Validate Edge Function sources
+      - name: Select project ref
+        id: project
+        shell: bash
+        env:
+          TEST_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+          DEMO_REF: ${{ secrets.SUPABASE_DEMO_PROJECT_REF }}
         run: |
+          set -euo pipefail
+          if [ '${{ inputs.target }}' = 'TEST' ]; then PROJECT_REF="$TEST_REF"; else PROJECT_REF="$DEMO_REF"; fi
+          [ -n "$PROJECT_REF" ] || { echo 'Target Supabase project ref secret is empty.' >&2; exit 1; }
+          echo "project_ref=$PROJECT_REF" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Edge Function sources
+        shell: bash
+        run: |
+          set -euo pipefail
           test -s supabase/functions/gestionar-acceso/index.ts
           test -s supabase/functions/mantenimiento-programado/index.ts
           test -s supabase/functions/procesar-notificaciones/index.ts
-
-          echo "Edge Function sources found:"
-          wc -l supabase/functions/gestionar-acceso/index.ts
-          wc -l supabase/functions/mantenimiento-programado/index.ts
-          wc -l supabase/functions/procesar-notificaciones/index.ts
+          echo 'Edge Function sources validated.'
 
       - name: Deploy gestionar-acceso
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
-        run: |
-          supabase functions deploy gestionar-acceso \
-            --project-ref "$PROJECT_REF"
+          PROJECT_REF: ${{ steps.project.outputs.project_ref }}
+        run: supabase functions deploy gestionar-acceso --project-ref "$PROJECT_REF"
 
       - name: Deploy mantenimiento-programado
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
-        run: |
-          supabase functions deploy mantenimiento-programado \
-            --project-ref "$PROJECT_REF" \
-            --no-verify-jwt
+          PROJECT_REF: ${{ steps.project.outputs.project_ref }}
+        run: supabase functions deploy mantenimiento-programado --project-ref "$PROJECT_REF" --no-verify-jwt
 
       - name: Deploy procesar-notificaciones
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
-        run: |
-          supabase functions deploy procesar-notificaciones \
-            --project-ref "$PROJECT_REF" \
-            --no-verify-jwt
+          PROJECT_REF: ${{ steps.project.outputs.project_ref }}
+        run: supabase functions deploy procesar-notificaciones --project-ref "$PROJECT_REF" --no-verify-jwt
 
       - name: Deployment completed
         run: |
-          echo "TEST Edge Functions deployment completed."
-          echo "gestionar-acceso: JWT verification enabled."
-          echo "mantenimiento-programado: JWT verification disabled."
-          echo "procesar-notificaciones: JWT verification disabled."
-          echo "No Cron jobs have been created or enabled."
-          echo "No custom Edge Function secrets have been configured."
+          echo "Edge Functions deployment completed for ${{ inputs.target }} from ${{ inputs.source_ref }}."
+          echo 'No Cron jobs are created or enabled by this workflow.'
