@@ -49,9 +49,16 @@ jobs:
           fi
           echo "Release guardrails passed: $ref -> $target"
 
+  architecture:
+    name: Repository architecture guardrails
+    needs: guardrails
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: ${{ inputs.source_ref }}
+
   migrations:
     name: Database migrations and contracts
-    needs: guardrails
+    needs: architecture
     uses: ./.github/workflows/supabase-migrations-deploy.yml
     with:
       source_ref: ${{ inputs.source_ref }}
@@ -116,11 +123,11 @@ jobs:
 
   summary:
     name: Release summary
-    needs: [migrations, edge-functions, frontend, smoke]
+    needs: [architecture, migrations, edge-functions, frontend, smoke]
     runs-on: ubuntu-latest
     steps:
       - run: |
           echo 'Release pipeline completed successfully.'
           echo 'Source: ${{ inputs.source_ref }}'
           echo 'Target: ${{ inputs.target }}'
-          echo 'Order: migrations/contracts -> Edge Functions -> frontend -> smoke tests.'
+          echo 'Order: architecture -> migrations/contracts -> Edge Functions -> frontend -> smoke tests.'
