@@ -153,6 +153,25 @@ jobs:
           echo "Pending migrations detected: $pending"
           echo "Migrations applied: $applied"
 
+      - name: Run post-migration contract tests
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          test -d supabase/tests/contracts || { echo 'Missing supabase/tests/contracts.' >&2; exit 1; }
+          mapfile -t contracts < <(find supabase/tests/contracts -maxdepth 1 -type f -name '*.sql' | sort)
+          [ "${#contracts[@]}" -gt 0 ] || { echo 'No contract tests found.' >&2; exit 1; }
+          echo "Contract tests found: ${#contracts[@]}"
+          passed=0
+          for contract in "${contracts[@]}"; do
+            echo "CONTRACT $(basename "$contract")"
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$contract"
+            echo "PASS $(basename "$contract")"
+            passed=$((passed+1))
+          done
+          echo "Contract tests passed: $passed"
+
       - name: Show migration registry
         shell: bash
         env:
