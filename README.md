@@ -1161,3 +1161,16 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Los datos federativos exigibles quedan bloqueados para Familia tras validacion del Club; los datos no federativos permanecen editables.
 - SQL 044 anade `actualizar_contacto_menor_representado` para actualizar solo telefono sin degradar el estado de la ficha.
 - Orden TEST: aplicar SQL 044 antes de publicar frontend V94.3.3.
+
+## Documentacion tecnica de arquitectura
+
+La documentacion operativa y de arquitectura se mantiene en `docs/architecture/`:
+
+- [Migraciones](docs/architecture/migrations.md)
+- [Contract tests](docs/architecture/contract-tests.md)
+- [Pipeline de releases](docs/architecture/release-pipeline.md)
+- [Baseline reproducible](docs/architecture/baseline.md)
+- [Estructura y fronteras del repositorio](docs/architecture/repository-layout.md)
+- [Datasets de TEST](docs/architecture/test-datasets.md)
+
+La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos de arquitectura no deben volver a crearse en raiz.
