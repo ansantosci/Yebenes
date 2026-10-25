@@ -41,7 +41,7 @@ jobs:
           test -n "$SUPABASE_TEST_SERVICE_ROLE_KEY"
           test -n "$TEST_APP_USER_PASSWORD"
 
-          test -s supabase/seed/test-data/00-infrastructure.sql
+          test -s supabase/test-support/00-test-infrastructure.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s scripts/bootstrap-test-access.mjs
 
@@ -61,7 +61,7 @@ jobs:
           set -euo pipefail
 
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 \
-            -f supabase/seed/test-data/00-infrastructure.sql
+            -f supabase/test-support/00-test-infrastructure.sql
 
       - name: Create/update permanent TEST-ACCESS Personas and roles
         env:
