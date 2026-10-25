@@ -6,7 +6,7 @@ errors=[]; notes=[]
 def err(s): errors.append(s)
 def ok(s): notes.append(s)
 required=[
- 'supabase/baseline','supabase/migrations','supabase/tests/contracts','supabase/seed','supabase/functions','supabase/config'
+ 'supabase/baseline','supabase/migrations','supabase/tests/contracts','supabase/seed','supabase/test-support','supabase/functions','supabase/config'
 ]
 for d in required:
  p=ROOT/d
@@ -43,6 +43,15 @@ for p in seed.rglob('*.sql') if seed.is_dir() else []:
  forbidden=[r'\bcreate\s+(table|schema|function|type|view|policy|trigger)\b',r'\balter\s+table\b',r'\bdrop\s+(table|schema|function|type|view)\b',r'\bgrant\s+',r'\brevoke\s+']
  for pat in forbidden:
   if re.search(pat,txt): err(f'seed contains schema/security DDL ({pat}): {p.relative_to(ROOT)}'); break
+# TEST-only infrastructure may contain DDL, but only for private TEST support objects.
+ts=ROOT/'supabase/test-support'
+if ts.is_dir():
+ for p in sorted(ts.glob('*.sql')):
+  txt=re.sub(r'--.*?$','',p.read_text(errors='ignore'),flags=re.M).lower()
+  if re.search(r'\b(create|alter|drop)\s+(table|function|schema|view|type|policy|trigger)\s+(?:if\s+(?:not\s+)?exists\s+)?public\.',txt):
+   err(f'test-support must not define public application schema objects: {p.relative_to(ROOT)}')
+  if 'test' not in p.name.lower(): err(f'test-support SQL must be explicitly TEST-named: {p.relative_to(ROOT)}')
+
 # No secret files in repository. Public client config is allowed, secret material is not.
 secret_names={'.env','.env.local','.env.production','.env.test','secrets.json','secrets.yml','secrets.yaml','service-role.json'}
 for p in ROOT.rglob('*'):

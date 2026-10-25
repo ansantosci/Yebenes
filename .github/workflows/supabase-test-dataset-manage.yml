@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$TEST_DB_URL"
-          test -s supabase/seed/test-data/00-infrastructure.sql
+          test -s supabase/test-support/00-test-infrastructure.sql
           test -s supabase/seed/test-data/01-reset-test-s.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
@@ -55,7 +55,7 @@ jobs:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
         run: |
           set -euo pipefail
-          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/00-infrastructure.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
