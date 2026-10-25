@@ -21,8 +21,8 @@ jobs:
           test -s "$file"
           test -s "$manifest"
           expected="$(python3 -c 'import json; print(json.load(open("supabase/baseline/manifest.json"))["sha256"])')"
-          actual="$(sha256sum "$file" | awk '{print $1}')"
-          test "$actual" = "$expected" || { echo "ERROR: baseline SHA256 mismatch" >&2; exit 1; }
+          actual="$(tr -d '\r' < "$file" | sha256sum | awk '{print $1}')"
+          test "$actual" = "$expected" || { echo "ERROR: baseline canonical SHA256 mismatch" >&2; echo "Expected: $expected" >&2; echo "Actual:   $actual" >&2; exit 1; }
           floor="$(python3 -c 'import json; print(json.load(open("supabase/baseline/manifest.json"))["migration_floor"])')"
           test "$floor" = "44" || { echo "ERROR: migration_floor must be 44" >&2; exit 1; }
           if grep -q 'actualizar_contacto_menor_representado' "$file"; then
