@@ -100,7 +100,8 @@ jobs:
           echo "Smoke testing $URL"
           ok=0
           for attempt in 1 2 3 4 5 6; do
-            if curl --fail --silent --show-error --location --max-time 20 "${URL}version.json" -o /tmp/version.json \n              && curl --fail --silent --show-error --location --max-time 20 "$URL" -o /tmp/index.html; then
+            if curl --fail --silent --show-error --location --max-time 20 "${URL}version.json" -o /tmp/version.json \
+              && curl --fail --silent --show-error --location --max-time 20 "$URL" -o /tmp/index.html; then
               ok=1
               break
             fi
