@@ -32,6 +32,20 @@ select private.test_uuid('tutor:'||codigo),'Tutor TEST', 'Familia '||lpad(n::tex
 on conflict(id) do update set email_contacto=excluded.email_contacto,activo=true;
 insert into private.test_dataset_entities select 'TEST-S','personas',private.test_uuid('tutor:'||e.codigo),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' on conflict do nothing;
 
+-- Functional tutor identities must be complete enough to exercise real family flows.
+with teams as (select e.codigo,row_number() over(order by e.codigo) n from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa'), docs as (
+  select codigo,72000000+n::int dni_number from teams
+)
+insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo)
+select private.test_uuid('doc:tutor:'||codigo),private.test_uuid('tutor:'||codigo),'dni',
+       lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
+       'ES',true,date '2026-07-01',true
+from docs
+on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_hasta=null,activo=true;
+insert into private.test_dataset_entities
+select 'TEST-S','documentos_identidad',private.test_uuid('doc:tutor:'||e.codigo),now()
+from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' on conflict do nothing;
+
 -- 46 player Personas: exactly two per active team, with age derived from category rules.
 with teams as (
  select e.*,c.codigo cat_codigo,coalesce(r.anio_nacimiento_hasta,2000) birth_year,row_number() over(order by e.codigo) team_n
@@ -110,9 +124,9 @@ on conflict(id) do update set activo=true;
 insert into private.test_dataset_entities select 'TEST-S','persona_roles',private.test_uuid('role:player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join generate_series(1,2) g where t.estado='activa' and c.codigo='SEN' on conflict do nothing;
 
 -- 10 coach-only Personas + first two SEN-A players as player+coach = 12 coaches.
-insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,email_contacto,activo)
-select private.test_uuid('coach-person:'||n),'Entrenador TEST',lpad(n::text,2,'0'),date '1980-01-01'+n::int,'entrenador'||lpad(n::text,2,'0')||'@test.invalid',true from generate_series(1,10) n
-on conflict(id) do update set activo=true,email_contacto=excluded.email_contacto;
+insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,email_contacto,telefono,activo)
+select private.test_uuid('coach-person:'||n),'Entrenador TEST',lpad(n::text,2,'0'),date '1980-01-01'+n::int,'entrenador'||lpad(n::text,2,'0')||'@test.invalid','620'||lpad(n::text,6,'0'),true from generate_series(1,10) n
+on conflict(id) do update set activo=true,email_contacto=excluded.email_contacto,telefono=excluded.telefono;
 insert into private.test_dataset_entities select 'TEST-S','personas',private.test_uuid('coach-person:'||n),now() from generate_series(1,10) n on conflict do nothing;
 
 with cp as (select n,private.test_s_coach_person_id(n) persona_id from generate_series(1,12)n)
