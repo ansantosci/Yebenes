@@ -1,21 +1,13 @@
-# Environment drift check (ARCH-06)
+# Environment drift check (ARCH-06 v2)
 
-`Compare environment state` is a read-only GitHub Actions workflow. It never applies migrations, deploys functions, writes data, or changes Pages.
+The project has three Git/Pages environments and two Supabase backends:
 
-It compares each environment against its intended repository ref:
+- **DEVELOP**: `develop` branch, Pages `/develop/`. No independent Supabase database in the current topology.
+- **TEST**: `test` branch, Pages `/test/`, Supabase TEST.
+- **DEMO**: `main` branch, root Pages URL, Supabase DEMO.
 
-- TEST normally against `develop`.
-- DEMO normally against `main`.
+`Compare three environment states` is read-only. It checks each frontend against its own branch, compares Supabase TEST against `test`, compares Supabase DEMO against `main`, and reports the Git promotion relationship `develop -> test -> main` as `SAME_COMMIT`, `AHEAD`, `BEHIND`, or `DIVERGED`.
 
-For PostgreSQL migrations it reads `private.schema_migrations` and classifies the database as:
+Database results are `ALIGNED`, `BEHIND`, `DRIFT`, or `ERROR`. `BEHIND` is a controlled lag; `DRIFT` means an unexpected migration or hash mismatch. Edge Function source hashes are repository expectations only because this check cannot retrieve deployed source hashes directly from Supabase.
 
-- `ALIGNED`: every managed migration expected by the ref is present with the same SHA-256 and there are no unexpected managed migrations.
-- `BEHIND`: expected migrations are missing, or the migration registry has not yet been introduced in that environment.
-- `DRIFT`: an applied filename has a different SHA-256, or the database contains managed migrations not present in the expected ref.
-- `ERROR`: the environment could not be inspected.
-
-For the frontend it reads the public `version.json` and compares it with the expected ref.
-
-Edge Function source hashes are recorded from Git, but this check deliberately reports them as `NOT_DIRECTLY_VERIFIABLE`: the deployed Supabase source hash is not exposed by the interfaces used here. The release manifest is the deployment evidence for Edge Functions. This distinction prevents the drift report from claiming a verification it did not perform.
-
-The workflow produces `environment-drift-report.json` as an artifact and in the GitHub Actions summary. `BEHIND` and `DRIFT` are diagnostic results and do not modify or automatically repair an environment.
+The workflow never deploys, migrates, seeds, or modifies an environment.
