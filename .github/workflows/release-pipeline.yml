@@ -121,13 +121,55 @@ jobs:
           echo 'Frontend smoke tests passed.'
           cat /tmp/version.json
 
+  manifest:
+    name: Release manifest
+    needs: [architecture, migrations, edge-functions, frontend, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout promoted source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Generate environment release manifest
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ inputs.target }}
+          RELEASE_SOURCE_REF: ${{ inputs.source_ref }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-release-manifest.py \
+            --target "$RELEASE_TARGET" \
+            --source-ref "$RELEASE_SOURCE_REF" \
+            --run-id "$RELEASE_RUN_ID" \
+            --run-number "$RELEASE_RUN_NUMBER" \
+            --output "release-manifest-${RELEASE_TARGET}.json"
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ inputs.target }}-${{ github.run_number }}
+          path: release-manifest-${{ inputs.target }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish manifest summary
+        shell: bash
+        run: |
+          echo '### Release manifest' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat 'release-manifest-${{ inputs.target }}.json' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
   summary:
     name: Release summary
-    needs: [architecture, migrations, edge-functions, frontend, smoke]
+    needs: [architecture, migrations, edge-functions, frontend, smoke, manifest]
     runs-on: ubuntu-latest
     steps:
       - run: |
           echo 'Release pipeline completed successfully.'
           echo 'Source: ${{ inputs.source_ref }}'
           echo 'Target: ${{ inputs.target }}'
-          echo 'Order: architecture -> migrations/contracts -> Edge Functions -> frontend -> smoke tests.'
+          echo 'Order: architecture -> migrations/contracts -> Edge Functions -> frontend -> smoke tests -> release manifest.'
