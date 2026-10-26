@@ -40,18 +40,21 @@ jobs:
         with:
           ref: ${{ inputs.develop_ref }}
           path: expected-develop
+          fetch-depth: 0
 
       - name: Checkout TEST expected ref
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.test_ref }}
           path: expected-test
+          fetch-depth: 0
 
       - name: Checkout DEMO expected ref
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.demo_ref }}
           path: expected-demo
+          fetch-depth: 0
 
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client

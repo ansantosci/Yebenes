@@ -11,3 +11,15 @@ The project has three Git/Pages environments and two Supabase backends:
 Database results are `ALIGNED`, `BEHIND`, `DRIFT`, or `ERROR`. `BEHIND` is a controlled lag; `DRIFT` means an unexpected migration or hash mismatch. Edge Function source hashes are repository expectations only because this check cannot retrieve deployed source hashes directly from Supabase.
 
 The workflow never deploys, migrates, seeds, or modifies an environment.
+
+
+## Promotion-path classification
+
+Branch ancestry is evaluated with full Git history (`fetch-depth: 0`). The promotion path uses:
+
+- `SAME_COMMIT`: both environment refs point to the same commit.
+- `PROMOTED`: the source commit is an ancestor of the target commit; this is the normal result after a pull-request merge promotion.
+- `AHEAD`: the source contains the target commit but has not yet been promoted.
+- `DIVERGED`: neither commit contains the other; manual reconciliation is required.
+
+A merge commit in TEST or DEMO is therefore not drift by itself. Environment alignment is determined separately from frontend/database state.
