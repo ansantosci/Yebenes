@@ -70,7 +70,7 @@ def git_relation(repo_a, repo_b, label_a, label_b):
     else:
         ab=subprocess.run(['git','-C',repo_a,'merge-base','--is-ancestor',a,b]).returncode==0
         ba=subprocess.run(['git','-C',repo_a,'merge-base','--is-ancestor',b,a]).returncode==0
-        relation='BEHIND' if ab else ('AHEAD' if ba else 'DIVERGED')
+        relation='PROMOTED' if ab else ('AHEAD' if ba else 'DIVERGED')
     return {'from':label_a,'to':label_b,'relation':relation,'from_commit':a,'to_commit':b}
 
 def main():
