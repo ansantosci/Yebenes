@@ -1,0 +1,34 @@
+name: Validate reproducible Supabase baseline
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate baseline manifest and invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          file="supabase/baseline/000_pre_044_schema.sql"
+          manifest="supabase/baseline/manifest.json"
+          test -s "$file"
+          test -s "$manifest"
+          expected="$(python3 -c 'import json; print(json.load(open("supabase/baseline/manifest.json"))["sha256"])')"
+          actual="$(tr -d '\r' < "$file" | sha256sum | awk '{print $1}')"
+          test "$actual" = "$expected" || { echo "ERROR: baseline canonical SHA256 mismatch" >&2; echo "Expected: $expected" >&2; echo "Actual:   $actual" >&2; exit 1; }
+          floor="$(python3 -c 'import json; print(json.load(open("supabase/baseline/manifest.json"))["migration_floor"])')"
+          test "$floor" = "44" || { echo "ERROR: migration_floor must be 44" >&2; exit 1; }
+          if grep -q 'actualizar_contacto_menor_representado' "$file"; then
+            echo "ERROR: baseline contains migration 044 content" >&2
+            exit 1
+          fi
+          grep -q 'CREATE SCHEMA IF NOT EXISTS "private"' "$file"
+          grep -q 'CREATE SCHEMA IF NOT EXISTS "public"' "$file"
+          echo "BASELINE PASS: pre-044 SHA256=$actual"

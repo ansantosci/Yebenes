@@ -1,0 +1,93 @@
+name: Compare three environment states
+
+on:
+  workflow_dispatch:
+    inputs:
+      develop_ref:
+        description: Repository ref expected in DEVELOP
+        required: true
+        type: choice
+        options: [develop, test, main]
+        default: develop
+      test_ref:
+        description: Repository ref expected in TEST
+        required: true
+        type: choice
+        options: [test, develop, main]
+        default: test
+      demo_ref:
+        description: Repository ref expected in DEMO
+        required: true
+        type: choice
+        options: [main, test, develop]
+        default: main
+
+permissions:
+  contents: read
+
+env:
+  DEVELOP_FRONTEND_URL: https://ansantosci.github.io/Yebenes/develop/
+  TEST_FRONTEND_URL: https://ansantosci.github.io/Yebenes/test/
+  DEMO_FRONTEND_URL: https://ansantosci.github.io/Yebenes/
+
+jobs:
+  compare:
+    name: Read-only three-environment drift check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout DEVELOP expected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.develop_ref }}
+          path: expected-develop
+
+      - name: Checkout TEST expected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.test_ref }}
+          path: expected-test
+
+      - name: Checkout DEMO expected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.demo_ref }}
+          path: expected-demo
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Compare DEVELOP, TEST and DEMO state
+        shell: bash
+        env:
+          SUPABASE_TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          SUPABASE_DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_TEST_DB_URL" || { echo 'Missing SUPABASE_TEST_DB_URL.' >&2; exit 1; }
+          test -n "$SUPABASE_DEMO_DB_URL" || { echo 'Missing SUPABASE_DEMO_DB_URL.' >&2; exit 1; }
+          python3 expected-develop/scripts/check-environment-drift.py \
+            --develop-repo expected-develop \
+            --test-repo expected-test \
+            --demo-repo expected-demo \
+            --test-db-url "$SUPABASE_TEST_DB_URL" \
+            --demo-db-url "$SUPABASE_DEMO_DB_URL" \
+            --develop-frontend-url "$DEVELOP_FRONTEND_URL" \
+            --test-frontend-url "$TEST_FRONTEND_URL" \
+            --demo-frontend-url "$DEMO_FRONTEND_URL" \
+            --output environment-drift-report.json
+
+      - name: Publish drift summary
+        shell: bash
+        run: |
+          echo '### Three-environment drift report' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat environment-drift-report.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload drift report
+        uses: actions/upload-artifact@v4
+        with:
+          name: environment-drift-report-${{ github.run_number }}
+          path: environment-drift-report.json
+          if-no-files-found: error
+          retention-days: 90

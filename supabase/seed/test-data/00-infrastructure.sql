@@ -1,0 +1,2 @@
+-- ARCH-04: TEST infrastructure moved to supabase/test-support/00-test-infrastructure.sql.
+-- This compatibility tombstone intentionally contains no DDL or fixture data.

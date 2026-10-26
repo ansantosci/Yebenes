@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import nodemailer from "npm:nodemailer@10.1.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,8 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
-const sleep = (ms: number) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -104,12 +103,58 @@ Deno.serve(async (req) => {
           return undefined;
         }
       })();
-    const mailtrapToken = Deno.env.get("MAILTRAP_API_TOKEN");
-    const inboxId = Deno.env.get("MAILTRAP_INBOX_ID");
+    const mailTransport = (Deno.env.get("MAIL_TRANSPORT") || "smtp").toLowerCase();
+    const mailHost = Deno.env.get("MAIL_HOST");
+    const mailPort = Number(Deno.env.get("MAIL_PORT") || "587");
+    const mailUsername = Deno.env.get("MAIL_USERNAME");
+    const mailPassword = Deno.env.get("MAIL_PASSWORD");
+    const mailScheme = (Deno.env.get("MAIL_SCHEME") || "smtp").toLowerCase();
+    const mailRequireTls =
+      (Deno.env.get("MAIL_REQUIRE_TLS") || "true").toLowerCase() !== "false";
+    const mailEnvironment =
+      (Deno.env.get("MAIL_ENVIRONMENT") || "UNKNOWN").trim().toUpperCase();
+    const mailFrom = Deno.env.get("MAIL_FROM") || "no-reply@yebenes.test";
+    const mailFromName =
+      Deno.env.get("MAIL_FROM_NAME") || "C.D. Los Yebenes San Bruno";
     const cronSecret = Deno.env.get("CRON_SECRET");
 
-    if (!supabaseUrl || !serviceRoleKey || !mailtrapToken || !inboxId) {
-      return json({ error: "Faltan variables de entorno" }, 500);
+    const missingMailConfig = [
+      ["MAIL_HOST", mailHost],
+      ["MAIL_USERNAME", mailUsername],
+      ["MAIL_PASSWORD", mailPassword],
+    ].filter(([, value]) => !value).map(([name]) => name);
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("[procesar-notificaciones] Configuracion Supabase incompleta", {
+        environment: mailEnvironment,
+        has_supabase_url: !!supabaseUrl,
+        has_service_role_key: !!serviceRoleKey,
+      });
+      return json({ error: "Faltan variables de entorno de Supabase" }, 500);
+    }
+
+    if (
+      mailTransport !== "smtp" ||
+      !Number.isFinite(mailPort) ||
+      mailPort <= 0 ||
+      missingMailConfig.length
+    ) {
+      console.error("[procesar-notificaciones] Configuracion SMTP invalida", {
+        environment: mailEnvironment,
+        transport: mailTransport,
+        host_configured: !!mailHost,
+        port: mailPort,
+        username_configured: !!mailUsername,
+        password_configured: !!mailPassword,
+        missing: missingMailConfig,
+      });
+      return json(
+        {
+          error: "Configuracion SMTP incompleta o no soportada",
+          missing: missingMailConfig,
+        },
+        500,
+      );
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -117,6 +162,23 @@ Deno.serve(async (req) => {
         persistSession: false,
         autoRefreshToken: false,
       },
+    });
+
+    const smtpSecure = mailScheme === "smtps" || mailPort === 465;
+    const transporter = nodemailer.createTransport({
+      host: mailHost!,
+      port: mailPort,
+      secure: smtpSecure,
+      requireTLS: !smtpSecure && mailRequireTls,
+      auth: {
+        user: mailUsername!,
+        pass: mailPassword!,
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+      disableFileAccess: true,
+      disableUrlAccess: true,
     });
 
 
@@ -238,8 +300,6 @@ Deno.serve(async (req) => {
     let sent = 0;
     let failed = 0;
     let deferred = 0;
-    let firstAttempt = true;
-
     const touchedCitas = new Set<string>();
 
     for (const notification of pending || []) {
@@ -247,87 +307,46 @@ Deno.serve(async (req) => {
         touchedCitas.add(notification.cita_id);
       }
 
-      // Mailtrap Sandbox limita la cadencia de envío.
-      // V79 aumenta el intervalo para reducir respuestas 429.
-      if (!firstAttempt) {
-        await sleep(2500);
-      }
-      firstAttempt = false;
-
       try {
-        const response = await fetch(
-          `https://sandbox.api.mailtrap.io/api/send/${
-            encodeURIComponent(inboxId)
-          }`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${mailtrapToken}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({
-              from: {
-                email: "no-reply@yebenes.test",
-                name:
-                  visualTheme?.nombre_club ||
-                  "C.D. Los Yebenes San Bruno",
-              },
-              to: [
-                {
-                  email: notification.destinatario_email,
-                },
-              ],
-              subject:
-                notification.asunto ||
-                visualTheme?.nombre_club ||
-                "C.D. Los Yebenes San Bruno",
-              text:
-                notification.cuerpo ||
-                "Tienes una nueva notificacion.",
-              html: brandedEmailHtml(
-                visualTheme,
-                activeSeason?.nombre || "",
-                notification.asunto ||
-                  visualTheme?.nombre_club ||
-                  "C.D. Los Yebenes San Bruno",
-                notification.cuerpo ||
-                  "Tienes una nueva notificacion.",
-              ),
-            }),
+        const baseSubject =
+          notification.asunto ||
+          visualTheme?.nombre_club ||
+          "C.D. Los Yebenes San Bruno";
+        const subjectPrefix =
+          mailEnvironment && mailEnvironment !== "PROD"
+            ? `[${mailEnvironment}] `
+            : "";
+        const outboundSubject = `${subjectPrefix}${baseSubject}`;
+        const outboundBody =
+          notification.cuerpo || "Tienes una nueva notificacion.";
+
+        const sendStartedAt = performance.now();
+        const info = await transporter.sendMail({
+          from: {
+            address: mailFrom,
+            name:
+              mailFromName ||
+              visualTheme?.nombre_club ||
+              "C.D. Los Yebenes San Bruno",
           },
-        );
+          to: notification.destinatario_email,
+          subject: outboundSubject,
+          text: outboundBody,
+          html: brandedEmailHtml(
+            visualTheme,
+            activeSeason?.nombre || "",
+            outboundSubject,
+            outboundBody,
+          ),
+        });
 
-        const responseText = await response.text();
-
-        if (response.status === 429) {
-          deferred++;
-
-          await admin
-            .from("notificaciones_salida")
-            .update({
-              estado: "pendiente",
-              disponible_desde: new Date(
-                Date.now() + 8000,
-              ).toISOString(),
-              ultimo_error:
-                `Mailtrap 429: ${responseText.slice(0, 1200)}`,
-              intentos: Number(notification.intentos || 0) + 1,
-            })
-            .eq("id", notification.id);
-
-          // No insistimos durante esta ejecución si el proveedor
-          // acaba de aplicar su límite de velocidad.
-          break;
-        }
-
-        if (!response.ok) {
-          throw new Error(
-            `Mailtrap ${response.status}: ${
-              responseText.slice(0, 1200)
-            }`,
-          );
-        }
+        console.info("[procesar-notificaciones] SMTP enviado", {
+          environment: mailEnvironment,
+          notification_id: notification.id,
+          cita_id: notification.cita_id || null,
+          message_id: info.messageId || null,
+          elapsed_ms: Math.round(performance.now() - sendStartedAt),
+        });
 
         const { error: updateError } = await admin
           .from("notificaciones_salida")
@@ -348,13 +367,19 @@ Deno.serve(async (req) => {
       } catch (error) {
         failed++;
 
+        const errorMessage = String((error as Error)?.message || error);
+        console.error("[procesar-notificaciones] Error SMTP", {
+          environment: mailEnvironment,
+          notification_id: notification.id,
+          cita_id: notification.cita_id || null,
+          error: errorMessage,
+        });
+
         await admin
           .from("notificaciones_salida")
           .update({
             estado: "error",
-            ultimo_error: String(
-              (error as Error)?.message || error,
-            ).slice(0, 1500),
+            ultimo_error: errorMessage.slice(0, 1500),
             intentos: Number(notification.intentos || 0) + 1,
           })
           .eq("id", notification.id);
@@ -391,11 +416,17 @@ Deno.serve(async (req) => {
       deferred,
       failed,
       internal: internalRequest,
+      environment: mailEnvironment,
+      transport: mailTransport,
     });
   } catch (error) {
+    const errorMessage = String((error as Error)?.message || error);
+    console.error("[procesar-notificaciones] Error no controlado", {
+      error: errorMessage,
+    });
     return json(
       {
-        error: String((error as Error)?.message || error),
+        error: errorMessage,
       },
       500,
     );

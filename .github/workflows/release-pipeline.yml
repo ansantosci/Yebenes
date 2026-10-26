@@ -1,0 +1,175 @@
+name: Promote Yebenes release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch to promote
+        required: true
+        type: choice
+        options: [develop, test, main]
+        default: develop
+      target:
+        description: Backend target environment
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
+      demo_confirmation:
+        description: For DEMO only, type DEPLOY_DEMO
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: yebenes-release-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  guardrails:
+    name: Validate release guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source and target
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref='${{ inputs.source_ref }}'
+          target='${{ inputs.target }}'
+          confirm='${{ inputs.demo_confirmation }}'
+          if [ "$target" = 'TEST' ]; then
+            case "$ref" in develop|test) ;; *) echo 'TEST release requires develop or test.' >&2; exit 1;; esac
+          else
+            [ "$ref" = 'main' ] || { echo 'DEMO release requires source_ref=main.' >&2; exit 1; }
+            [ "$confirm" = 'DEPLOY_DEMO' ] || { echo 'DEMO release requires DEPLOY_DEMO confirmation.' >&2; exit 1; }
+          fi
+          echo "Release guardrails passed: $ref -> $target"
+
+  architecture:
+    name: Repository architecture guardrails
+    needs: guardrails
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: ${{ inputs.source_ref }}
+
+  migrations:
+    name: Database migrations and contracts
+    needs: architecture
+    uses: ./.github/workflows/supabase-migrations-deploy.yml
+    with:
+      source_ref: ${{ inputs.source_ref }}
+      target: ${{ inputs.target }}
+      demo_confirmation: ${{ inputs.demo_confirmation }}
+    secrets: inherit
+
+  edge-functions:
+    name: Edge Functions
+    needs: migrations
+    uses: ./.github/workflows/supabase-test-edge-functions-deploy.yml
+    with:
+      source_ref: ${{ inputs.source_ref }}
+      target: ${{ inputs.target }}
+    secrets: inherit
+
+  frontend:
+    name: Build and publish frontend
+    needs: edge-functions
+    uses: ./.github/workflows/pages-multi-environment.yml
+    secrets: inherit
+
+  smoke:
+    name: Frontend smoke tests
+    needs: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select expected route
+        id: route
+        shell: bash
+        run: |
+          set -euo pipefail
+          case '${{ inputs.source_ref }}' in
+            main) url='https://ansantosci.github.io/Yebenes/' ;;
+            test) url='https://ansantosci.github.io/Yebenes/test/' ;;
+            develop) url='https://ansantosci.github.io/Yebenes/develop/' ;;
+          esac
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Pages and validate frontend
+        shell: bash
+        env:
+          URL: ${{ steps.route.outputs.url }}
+        run: |
+          set -euo pipefail
+          echo "Smoke testing $URL"
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --location --max-time 20 "${URL}version.json" -o /tmp/version.json \
+              && curl --fail --silent --show-error --location --max-time 20 "$URL" -o /tmp/index.html; then
+              ok=1
+              break
+            fi
+            echo "Pages not ready yet (attempt $attempt/6)."
+            sleep 10
+          done
+          [ "$ok" -eq 1 ] || { echo 'Frontend smoke test failed after retries.' >&2; exit 1; }
+          grep -q '"version"' /tmp/version.json
+          grep -qi '<html' /tmp/index.html
+          echo 'Frontend smoke tests passed.'
+          cat /tmp/version.json
+
+  manifest:
+    name: Release manifest
+    needs: [architecture, migrations, edge-functions, frontend, smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout promoted source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Generate environment release manifest
+        shell: bash
+        env:
+          RELEASE_TARGET: ${{ inputs.target }}
+          RELEASE_SOURCE_REF: ${{ inputs.source_ref }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          python3 scripts/generate-release-manifest.py \
+            --target "$RELEASE_TARGET" \
+            --source-ref "$RELEASE_SOURCE_REF" \
+            --run-id "$RELEASE_RUN_ID" \
+            --run-number "$RELEASE_RUN_NUMBER" \
+            --output "release-manifest-${RELEASE_TARGET}.json"
+
+      - name: Upload release manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest-${{ inputs.target }}-${{ github.run_number }}
+          path: release-manifest-${{ inputs.target }}.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish manifest summary
+        shell: bash
+        run: |
+          echo '### Release manifest' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat 'release-manifest-${{ inputs.target }}.json' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  summary:
+    name: Release summary
+    needs: [architecture, migrations, edge-functions, frontend, smoke, manifest]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Release pipeline completed successfully.'
+          echo 'Source: ${{ inputs.source_ref }}'
+          echo 'Target: ${{ inputs.target }}'
+          echo 'Order: architecture -> migrations/contracts -> Edge Functions -> frontend -> smoke tests -> release manifest.'

@@ -1,0 +1,8 @@
+{
+  "baseline_id": "pre-044",
+  "schema_file": "000_pre_044_schema.sql",
+  "sha256": "b13de3d9cb00fe8fa79f25bd0d9e04df7f0bfcfee07b144040b00ba18b12a7e5",
+  "hash_mode": "canonical-lf",
+  "migration_floor": 44,
+  "description": "Immutable public+private schema baseline immediately before migration 044. New environments are built from this baseline plus migrations 044+."
+}

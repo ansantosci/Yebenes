@@ -41,7 +41,7 @@ jobs:
 
           echo "Seed validation completed."
 
-      - name: Verify TEST is ready and empty
+      - name: Verify TEST schema is ready
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
         shell: bash
@@ -49,16 +49,6 @@ jobs:
           set -euo pipefail
 
           test -n "$TEST_DB_URL"
-
-          PERSONAS_COUNT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
-            -c "select count(*) from public.personas;")
-
-          echo "Current TEST personas count: $PERSONAS_COUNT"
-
-          if [ "$PERSONAS_COUNT" != "0" ]; then
-            echo "ERROR: public.personas is not empty. TEST-BASE deployment aborted."
-            exit 1
-          fi
 
           TABLES_COUNT=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
             -c "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE';")
@@ -103,8 +93,6 @@ jobs:
           select 'reglas_categoria_temporada', count(*) from public.reglas_categoria_temporada
           union all
           select 'configuracion_visual_club', count(*) from public.configuracion_visual_club
-          union all
-          select 'personas', count(*) from public.personas
           order by 1;
           SQL
           )
@@ -130,7 +118,6 @@ jobs:
           assert_count equipos 23
           assert_count reglas_categoria_temporada 8
           assert_count configuracion_visual_club 1
-          assert_count personas 0
 
           echo "TEST-BASE deployment validated successfully."
 
@@ -138,6 +125,6 @@ jobs:
         run: |
           echo "Supabase TEST-BASE deployment completed."
           echo "Only non-personal master data has been loaded."
-          echo "No Personas or Auth users have been created."
+          echo "TEST-BASE does not create or reset Personas/Auth users."
           echo "TEST-M has not been loaded."
           echo "Cron remains disabled."

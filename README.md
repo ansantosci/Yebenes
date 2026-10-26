@@ -1,3 +1,44 @@
+# V94.1.3
+
+- Optimiza el guardado de la configuración económica de un equipo.
+- Una modificación de cuota ya no recarga todo el modelo remoto de Fichas ni reconstruye Estructura.
+- Tras la RPC sólo se recarga `configuracion_economica_equipo`, se sincroniza la referencia económica en memoria y se repinta la tabla económica.
+- Añade diagnóstico `[Yebenes][PERF] Economía equipo` con tiempos `rpc_ms`, `refresh_ms` y `total_ms`.
+- No modifica la RPC `configurar_economia_equipo` ni reglas de negocio.
+- TEST-M continúa como objetivo principal de V94 tras cerrar la estabilización de rendimiento.
+
+# V94.1.2
+
+- Evita repintados visuales innecesarios al recuperar foco en Estructura, Entrenadores y Usuarios.
+- Mantiene la revalidación de sesión, permisos y contexto Supabase.
+- Fichas, RRMM, Personas y áreas Familia/Jugador conservan los refrescos remotos necesarios.
+- TEST-M continúa como siguiente objetivo principal de V94.
+
+# V94.1.1 — Homogeneización UX de listados e interacción
+
+- Parte de V94.0 validada en DEVELOP, donde BUG-TEST-01 deja de reproducirse al navegar, cambiar de pestaña/aplicación y recuperar el foco desde Personas.
+- Aplica la norma UX común de listados: cuando un registro tiene ficha de detalle, toda la fila es accionable, muestra cursor de interacción, feedback al pasar el ratón y permite apertura por teclado con Enter/Espacio.
+- Personas elimina el botón redundante «Abrir» y abre la ficha pulsando cualquier zona de la fila.
+- Estructura > Equipos elimina también el botón redundante «Abrir/Editar» cuando la fila ya representa la misma acción.
+- Fichas/Jugadores, RRMM, Entrenadores y Estructura mantienen/alinean el mismo patrón de filas interactivas.
+- Refuerza globalmente el cursor de interacción para botones, enlaces, pestañas, controles seleccionables y elementos con rol de botón; los controles deshabilitados muestran cursor no permitido.
+- No modifica reglas de negocio, esquema Supabase, Edge Functions ni TEST-BASE.
+- TEST-M continúa siendo el siguiente bloque principal de V94 tras validar esta normalización UX en DEVELOP y promoverla a TEST.
+- Política de entrega: frontend completo con README, versión visible y `version.json` sincronizados.
+
+# V94.0 — Estabilización multi-entorno y visibilidad de entorno
+
+- Parte exactamente de V93.8 y mantiene su comportamiento funcional, incorporando únicamente estabilización técnica previa a las pruebas de volumen de V94.
+- Añade una etiqueta discreta y permanente de entorno junto a la versión, obtenida de la misma configuración que selecciona Supabase: `DEVELOP`, `TEST`, `DEMO` y preparada para `PROD`.
+- Corrige BUG-TEST-01 observado en TEST: al perder y recuperar el foco desde la vista Personas podían multiplicarse las peticiones hasta provocar `net::ERR_INSUFFICIENT_RESOURCES` y terminar mostrando `TypeError: Failed to fetch`.
+- Reduce reconstrucciones innecesarias ante eventos de `storage`, evita precargar Personas cuando esa vista no está activa, elimina cargas duplicadas en la revalidación y serializa renders remotos concurrentes de Personas.
+- Mantiene la lógica robusta de restauración/revalidación de sesión de V93.8 y el flujo multi-entorno `develop -> DEVELOP`, `test -> TEST`, `main -> DEMO`.
+- TEST-BASE fase 1 ya está validado en Supabase TEST con 5 roles, 1 temporada, 8 categorías, 23 equipos, 8 reglas categoría/temporada, 1 configuración visual y 0 personas antes del bootstrap.
+- Se completó el bootstrap administrativo de TEST: Persona sintética vinculada a Supabase Auth con perfiles `administrador` y `club`; login, selector multirrol y panel administrativo validados.
+- Cambio Supabase Data API del 30/10/2026: toda nueva tabla/reconstrucción deberá declarar y versionar explícitamente los GRANT necesarios según mínimo privilegio; la validación de esquema deberá auditar también grants. No se concederá `anon` mecánicamente.
+- El objetivo principal de V94 sigue siendo TEST-M: disponer de un juego de datos sintéticos mucho mayor en los entornos de desarrollo/prueba para validar rendimiento, listados, relaciones, RRMM, disponibilidad, históricos, RLS y detectar patrones N+1. Los datos de volumen no se copiarán automáticamente a DEMO/PROD.
+- Política de entrega: cada versión se distribuye como frontend completo; `version.json`, versión visible y `README.md` deben quedar sincronizados antes de considerar una versión lista para desplegar.
+
 # V93.8 — Restauración de sesión y continuidad de navegación
 
 - El arranque y la reanudación ya no muestran Login mientras Supabase está resolviendo una sesión existente: se usa un estado neutro «Recuperando sesión…».
@@ -1063,3 +1104,73 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Registra aparición/desaparición de la clave de sesión Supabase y eventos `storage`, sin guardar tokens ni credenciales.
 - Corrige el identificador temprano `YEBENES_APP_VERSION` del `index.html`, que había quedado obsoleto en 93.5, para que el detector previo al arranque compare contra 93.7.1.
 - No cambia la política funcional 12 h / 7 días de V93.7.
+
+
+## V94.1.4 — estabilización de revalidación de roles y despertar por interacción
+
+- La revalidación de sesión registra `REVALIDATE_ROLES` con el rol previo y los perfiles recuperados.
+- Si el perfil activo parece desaparecer, se realiza una segunda lectura de identidad antes de aplicar el cambio; `REVALIDATE_ROLES_CONFIRMED` deja trazabilidad de ambas lecturas.
+- El primer gesto tras el umbral de inactividad se dedica exclusivamente a revalidar la sesión. El `click` asociado se consume para impedir que una reconstrucción de navegación pueda activar accidentalmente otro control, incluido Cerrar sesión.
+- Se añaden los eventos diagnósticos `IDLE_WAKE_REVALIDATION` e `IDLE_WAKE_CLICK_SUPPRESSED`.
+- No modifica workflows, datasets, Edge Functions ni esquema Supabase.
+
+
+## V94.2.1 — refresco silencioso de Fichas al recuperar foco
+
+- La revalidación de sesión mantiene visible la tabla de Fichas mientras actualiza datos desde Supabase.
+- `renderRemoteClub({silent:true})` evita sustituir temporalmente la tabla por el mensaje de carga durante `refreshHotContextPreservingNavigation()`.
+- Si una recarga silenciosa falla temporalmente, se conserva el contenido ya visible y el error queda en consola; las cargas explícitas mantienen el mensaje de carga/error habitual.
+- No modifica la lógica Auth/revalidación de roles validada en V94.1.4.
+
+
+## V94.2.1 - paginación común de listados
+- Paginación cliente en Fichas, RRMM, Entrenadores y Personas.
+- Tamaño global persistente: 25 / 50 / 100 (50 por defecto).
+- Filtros y búsquedas se aplican antes de paginar y reinician a página 1.
+- Mantiene el refresco silencioso de Fichas introducido en V94.2.
+
+
+### V94.3 - paginacion accesible desde ambos extremos del listado
+- Controles superiores compactos en Fichas, RRMM, Entrenadores y Personas.
+- Selector global 25/50/100 disponible antes de recorrer la tabla.
+- Navegacion de paginas sincronizada arriba y abajo.
+- Al cambiar de pagina, el foco visual vuelve al inicio del listado mediante scroll suave.
+- La barra inferior conserva el rango mostrado y la navegacion para continuar al terminar de revisar la pagina.
+
+
+### V94.3
+- Paginacion local instantanea en Personas: los cambios de pagina reutilizan filas preparadas en memoria y no repiten consultas Supabase.
+- Proteccion comun contra doble clic durante transiciones de paginacion.
+
+
+### V94.3.2 - scroll coherente y primera carga de Personas optimizada
+- Paginador superior conserva el scroll; el inferior vuelve al inicio del listado.
+- Entrar explicitamente en un listado posiciona su inicio; refresh silencioso no mueve el scroll.
+- Personas sigue siendo exclusiva de Administrador y elimina el patron N+1 de relaciones mediante consultas batch.
+- Sin cambios de esquema, RRMM, Auth, workflows ni TEST-S.
+
+### V94.3.2 - Familia silenciosa y teléfono propio
+- Familia/Jugador conserva las fichas visibles durante revalidaciones por foco/visibilidad; la primera carga sigue mostrando estado de carga.
+- Las cargas concurrentes de Familia se deduplican para evitar dobles consultas por eventos focus/visibilitychange cercanos.
+- Perfil > Mi perfil permite editar el teléfono de la Persona autenticada; tras guardar se rehidrata identidad y se refresca Familia silenciosamente.
+
+
+
+## V94.3.3
+- Familia/Jugador: separa telefono propio del jugador del telefono del tutor.
+- Los datos federativos exigibles quedan bloqueados para Familia tras validacion del Club; los datos no federativos permanecen editables.
+- SQL 044 anade `actualizar_contacto_menor_representado` para actualizar solo telefono sin degradar el estado de la ficha.
+- Orden TEST: aplicar SQL 044 antes de publicar frontend V94.3.3.
+
+## Documentacion tecnica de arquitectura
+
+La documentacion operativa y de arquitectura se mantiene en `docs/architecture/`:
+
+- [Migraciones](docs/architecture/migrations.md)
+- [Contract tests](docs/architecture/contract-tests.md)
+- [Pipeline de releases](docs/architecture/release-pipeline.md)
+- [Baseline reproducible](docs/architecture/baseline.md)
+- [Estructura y fronteras del repositorio](docs/architecture/repository-layout.md)
+- [Datasets de TEST](docs/architecture/test-datasets.md)
+
+La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos de arquitectura no deben volver a crearse en raiz.

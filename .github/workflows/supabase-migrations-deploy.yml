@@ -1,0 +1,198 @@
+name: Deploy Supabase migrations
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+      target:
+        required: true
+        type: string
+      demo_confirmation:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SUPABASE_TEST_DB_URL:
+        required: false
+      SUPABASE_DEMO_DB_URL:
+        required: false
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Repository branch containing migrations
+        required: true
+        type: choice
+        options: [develop, test, main]
+        default: develop
+      target:
+        description: Supabase target environment
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
+      demo_confirmation:
+        description: For DEMO only, type DEPLOY_DEMO
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migrations-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate target guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref='${{ inputs.source_ref }}'
+          target='${{ inputs.target }}'
+          confirm='${{ inputs.demo_confirmation }}'
+          if [ "$target" = 'TEST' ]; then
+            case "$ref" in develop|test) ;; *) echo 'TEST migrations may only run from develop or test.' >&2; exit 1;; esac
+          else
+            [ "$ref" = 'main' ] || { echo 'DEMO migrations may only run from main.' >&2; exit 1; }
+            [ "$confirm" = 'DEPLOY_DEMO' ] || { echo 'DEMO requires demo_confirmation=DEPLOY_DEMO.' >&2; exit 1; }
+          fi
+
+      - name: Checkout selected source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Select database URL
+        id: db
+        shell: bash
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.target }}' = 'TEST' ]; then DB_URL="$TEST_DB_URL"; else DB_URL="$DEMO_DB_URL"; fi
+          [ -n "$DB_URL" ] || { echo 'Database URL secret is empty.' >&2; exit 1; }
+          echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Validate migration files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d supabase/migrations
+          mapfile -t files < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort)
+          managed=0
+          previous=''
+          for file in "${files[@]}"; do
+            [[ "$file" =~ ^([0-9]{3})_.*\.sql$ ]] || { echo "Invalid migration filename: $file" >&2; exit 1; }
+            num="${BASH_REMATCH[1]}"
+            if ((10#$num >= 44)); then
+              managed=$((managed+1))
+              [ -z "$previous" ] || [[ "$file" > "$previous" ]] || { echo 'Migration order is invalid.' >&2; exit 1; }
+              previous="$file"
+            fi
+          done
+          [ "$managed" -gt 0 ] || { echo 'No managed migrations (044+) found.' >&2; exit 1; }
+          echo "Managed migration files: $managed"
+
+      - name: Bootstrap migration registry
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists private;
+          create table if not exists private.schema_migrations (
+            filename text primary key,
+            sha256 text not null,
+            applied_at timestamptz not null default now(),
+            source_ref text not null,
+            target_environment text not null,
+            run_id text
+          );
+          revoke all on table private.schema_migrations from public, anon, authenticated;
+          grant select, insert on table private.schema_migrations to service_role;
+          SQL
+
+      - name: Validate hashes and apply pending migrations
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          TARGET_ENV: ${{ inputs.target }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          pending=0
+          applied=0
+          while IFS= read -r path; do
+            file="$(basename "$path")"
+            [[ "$file" =~ ^([0-9]{3})_.*\.sql$ ]] || continue
+            num="${BASH_REMATCH[1]}"
+            ((10#$num >= 44)) || continue
+            sha="$(sha256sum "$path" | awk '{print $1}')"
+            sql_file="${file//\'/\'\'}"
+            sql_sha="${sha//\'/\'\'}"
+            sql_source="${SOURCE_REF//\'/\'\'}"
+            sql_target="${TARGET_ENV//\'/\'\'}"
+            sql_run="${RUN_ID//\'/\'\'}"
+
+            echo "CHECK $file"
+            existing="$(psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select sha256 from private.schema_migrations where filename='$sql_file';")"
+            if [ -n "$existing" ]; then
+              if [ "$existing" != "$sha" ]; then
+                echo "ERROR: already-applied migration changed: $file" >&2
+                echo "DB:   $existing" >&2
+                echo "Repo: $sha" >&2
+                exit 1
+              fi
+              echo "SKIP $file (already applied, hash matches)"
+              continue
+            fi
+
+            pending=$((pending+1))
+            echo "PENDING $file"
+            echo "APPLY $file"
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$path"
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -c "insert into private.schema_migrations(filename,sha256,source_ref,target_environment,run_id) values ('$sql_file','$sql_sha','$sql_source','$sql_target','$sql_run');"
+            echo "APPLIED $file"
+            echo "REGISTERED SHA256 $sha"
+            applied=$((applied+1))
+          done < <(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort)
+          echo "Pending migrations detected: $pending"
+          echo "Migrations applied: $applied"
+
+      - name: Run post-migration contract tests
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          test -d supabase/tests/contracts || { echo 'Missing supabase/tests/contracts.' >&2; exit 1; }
+          mapfile -t contracts < <(find supabase/tests/contracts -maxdepth 1 -type f -name '*.sql' | sort)
+          [ "${#contracts[@]}" -gt 0 ] || { echo 'No contract tests found.' >&2; exit 1; }
+          echo "Contract tests found: ${#contracts[@]}"
+          passed=0
+          for contract in "${contracts[@]}"; do
+            echo "CONTRACT $(basename "$contract")"
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$contract"
+            echo "PASS $(basename "$contract")"
+            passed=$((passed+1))
+          done
+          echo "Contract tests passed: $passed"
+
+      - name: Show migration registry
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -A -F ',' -v ON_ERROR_STOP=1 -c "select filename,sha256,applied_at,source_ref,target_environment,run_id from private.schema_migrations order by filename;"

@@ -1,0 +1,76 @@
+name: Manage Supabase TEST dataset
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Repository branch containing TEST dataset scripts
+        required: true
+        type: choice
+        options: [develop, test]
+        default: develop
+      action:
+        description: Data action
+        required: true
+        type: choice
+        options: [KEEP, RESET]
+        default: KEEP
+      scenario:
+        description: Scenario applied after RESET
+        required: true
+        type: choice
+        options: [BASELINE, NOTIFICATIONS]
+        default: BASELINE
+permissions:
+  contents: read
+jobs:
+  manage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: KEEP current TEST data
+        if: ${{ inputs.action == 'KEEP' }}
+        run: echo "KEEP selected. Source=${{ inputs.source_ref }}. No database changes performed."
+      - name: Install PostgreSQL client
+        if: ${{ inputs.action == 'RESET' }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Validate RESET inputs and scripts
+        if: ${{ inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$TEST_DB_URL"
+          test -s supabase/test-support/00-test-infrastructure.sql
+          test -s supabase/seed/test-data/01-reset-test-s.sql
+          test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
+          if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
+            test -s supabase/seed/test-data/scenarios/notifications-v1.sql
+          fi
+      - name: Reset and load TEST-S v1
+        if: ${{ inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          set -euo pipefail
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
+          if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
+            psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
+          fi
+      - name: Validate dataset
+        if: ${{ inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        run: |
+          set -euo pipefail
+          psql "$TEST_DB_URL" -X -A -F ',' -v ON_ERROR_STOP=1 <<'SQL'
+          select 'dataset',id,version,scenario from private.test_datasets where id='TEST-S';
+          select 'players',count(*) from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id;
+          select 'coaches',count(*) from public.entrenadores c join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='entrenadores' and e.entity_id=c.id;
+          select 'tutors',count(*) from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='persona_roles' and e.entity_id in (select id from public.persona_roles where rol_id='5b569d29-62f1-40b9-bfb7-7a65f62ee8aa');
+          select 'pending_notifications',count(*) from public.notificaciones_salida n join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='notificaciones_salida' and e.entity_id=n.id where n.estado='pendiente';
+          SQL
