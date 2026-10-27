@@ -1,4 +1,4 @@
-const APP_VERSION='94.3.4';
+const APP_VERSION='95.0.0';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -91,28 +91,48 @@ const DB_ROLE_TO_APP={administrador:'admin',club:'club',entrenador:'coach',tutor
 const DEFAULT_VISUAL_THEME={
   nombre_club:'C.D. Los Yebenes San Bruno',
   logo_url:'https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png',
-  color_primario:'#c51230',color_primario_oscuro:'#8f0c22',color_acento:'#f4c542',
-  color_fondo:'#f5f6f8',color_tarjeta:'#ffffff',color_texto:'#20232a'
+  color_primario:'#d20f32',color_primario_oscuro:'#9d0b26',color_acento:'#f5c542',
+  color_secundario:'#0069a8',color_secundario_oscuro:'#004f82',
+  color_fondo:'#f4f7fb',color_tarjeta:'#ffffff',color_texto:'#17233b',
+  lema_cabecera:'De Madrid al cielo',mostrar_lema:true
 };
 let visualTheme={...DEFAULT_VISUAL_THEME};
+let clubSponsors=[];
 async function loadVisualTheme(){
   if(!sb)return visualTheme;
   try{
-    const {data,error}=await sb.from('configuracion_visual_club').select('nombre_club,logo_url,color_primario,color_primario_oscuro,color_acento,color_fondo,color_tarjeta,color_texto').eq('id',1).maybeSingle();
+    const {data,error}=await sb.from('configuracion_visual_club').select('nombre_club,logo_url,color_primario,color_primario_oscuro,color_acento,color_secundario,color_secundario_oscuro,color_fondo,color_tarjeta,color_texto,lema_cabecera,mostrar_lema').eq('id',1).maybeSingle();
     if(!error&&data)visualTheme={...visualTheme,...data};
   }catch(err){console.warn('Tema visual remoto no disponible',err)}
   const root=document.documentElement;
   root.style.setProperty('--red',visualTheme.color_primario||DEFAULT_VISUAL_THEME.color_primario);
   root.style.setProperty('--red-dark',visualTheme.color_primario_oscuro||DEFAULT_VISUAL_THEME.color_primario_oscuro);
   root.style.setProperty('--yellow',visualTheme.color_acento||DEFAULT_VISUAL_THEME.color_acento);
+  root.style.setProperty('--blue',visualTheme.color_secundario||DEFAULT_VISUAL_THEME.color_secundario);
+  root.style.setProperty('--blue-dark',visualTheme.color_secundario_oscuro||DEFAULT_VISUAL_THEME.color_secundario_oscuro);
   root.style.setProperty('--bg',visualTheme.color_fondo||DEFAULT_VISUAL_THEME.color_fondo);
   root.style.setProperty('--card',visualTheme.color_tarjeta||DEFAULT_VISUAL_THEME.color_tarjeta);
   root.style.setProperty('--ink',visualTheme.color_texto||DEFAULT_VISUAL_THEME.color_texto);
   document.querySelectorAll('.auth-brand img,.brand-mark img').forEach(img=>{img.src=visualTheme.logo_url;img.alt=`Escudo ${visualTheme.nombre_club}`});
   document.querySelectorAll('.auth-brand strong,.club-name').forEach(el=>el.textContent=visualTheme.nombre_club);
+  const motto=$('#clubMotto');if(motto){motto.textContent=visualTheme.lema_cabecera||'';motto.parentElement.classList.toggle('hidden',visualTheme.mostrar_lema===false||!visualTheme.lema_cabecera)}
   const themeMeta=document.querySelector('meta[name="theme-color"]');if(themeMeta)themeMeta.setAttribute('content',visualTheme.color_primario);
   document.title=`${visualTheme.nombre_club} · Gestión de inscripciones`;
   return visualTheme;
+}
+async function loadClubSponsors(){
+  if(!sb)return [];
+  try{
+    const {data,error}=await sb.from('patrocinadores_club').select('id,nombre,logo_url,url,orden,activo').eq('activo',true).order('orden',{ascending:true}).order('nombre',{ascending:true});
+    if(error){console.warn('Patrocinadores no disponibles',error.message||error);clubSponsors=[]}else clubSponsors=data||[];
+  }catch(err){console.warn('Patrocinadores no disponibles',err);clubSponsors=[]}
+  renderClubSponsors();return clubSponsors;
+}
+function renderClubSponsors(){
+  const strip=$('#sponsorsStrip'),list=$('#sponsorsList');if(!strip||!list)return;
+  if(!clubSponsors.length){strip.classList.add('hidden');list.innerHTML='';return}
+  strip.classList.remove('hidden');
+  list.innerHTML=clubSponsors.map(x=>{const body=x.logo_url?`<img src="${esc(x.logo_url)}" alt="${esc(x.nombre)}" loading="lazy" />`:`<span>${esc(x.nombre)}</span>`;return x.url?`<a class="sponsor-item" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(x.nombre)}">${body}</a>`:`<div class="sponsor-item">${body}</div>`}).join('');
 }
 
 // Configuración operativa de medios de cobro manual.
@@ -2566,7 +2586,7 @@ setInterval(()=>{
   if(nowPresent!==authTokenWasPresent){authDiag(nowPresent?'AUTH_TOKEN_STORAGE_APPEARED':'AUTH_TOKEN_STORAGE_DISAPPEARED',{previous:authTokenWasPresent,current:nowPresent,storage:authStorageSummary()});authTokenWasPresent=nowPresent;}
 },5000);
 
-renderEnvironmentBadge();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme();if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
+renderEnvironmentBadge();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme().then(()=>loadClubSponsors());if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.

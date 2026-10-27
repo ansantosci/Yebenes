@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '94.3.4';
+    window.YEBENES_APP_VERSION = '95.0.0';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=94.3.4" />
+  <link rel="stylesheet" href="styles.css?v=95.0.0" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -238,6 +238,13 @@
       </section>
     </main>
 
+    <section id="sponsorsStrip" class="sponsors-strip hidden" aria-label="Patrocinadores del club">
+      <div class="sponsors-strip-inner">
+        <div class="sponsors-heading"><span class="kit-stripes" aria-hidden="true"></span><strong>Patrocinadores</strong></div>
+        <div id="sponsorsList" class="sponsors-list"></div>
+      </div>
+    </section>
+
     <nav class="bottom-nav" id="familyNav">
       <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
     </nav>
@@ -349,7 +356,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=94.3.4"></script>
-  <script src="app.js?v=94.3.4"></script>
+  <script src="config.js?v=95.0.0"></script>
+  <script src="app.js?v=95.0.0"></script>
 </body>
 </html>

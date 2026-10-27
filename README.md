@@ -1174,3 +1174,21 @@ La documentacion operativa y de arquitectura se mantiene en `docs/architecture/`
 - [Datasets de TEST](docs/architecture/test-datasets.md)
 
 La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos de arquitectura no deben volver a crearse en raiz.
+
+## V94.3.4 - cierre de la generación V94
+
+- Conserva la pestaña activa de cada ficha de Familia durante refrescos silenciosos y recuperación de foco.
+- Elimina la versión duplicada del formulario de acceso y unifica la detección de actualización en 94.3.4.
+- TEST-ACCESS y TEST-S quedan saneados para identidades funcionales: tutores con identidad mínima y BASELINE con jugadores 14+ documentados y menores de 14 con/sin DNI de forma determinista.
+
+## V95.0.0 - identidad visual y navegación 2026/27
+
+- Abre una nueva generación visual inspirada en la equipación 2026/27: azul estructural, rojo de acción y amarillo de acento.
+- La cabecera incorpora el lema configurable `De Madrid al cielo` y una firma gráfica tipo skyline.
+- `configuracion_visual_club` se amplía con color secundario, lema y control de visibilidad del lema.
+- Se incorpora `patrocinadores_club`: nombre, logo, URL opcional, orden y estado activo/inactivo. El frontend solo muestra patrocinadores activos y respeta su orden.
+- La franja de patrocinadores es responsive y desaparece si el club no tiene patrocinadores activos.
+- V95 mantiene las reglas de negocio de V94; el rediseño se implantará progresivamente sin inventar módulos no existentes.
+- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.0.0` se reserva para el siguiente cambio estructural mayor.
+- Regla de release: todo incremento de versión debe actualizar también este `README.md`.
+
