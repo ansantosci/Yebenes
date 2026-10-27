@@ -1306,7 +1306,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No requiere migración Supabase ni RESET del dataset.
 
 
-## V95.2.4 - pulido responsive de cabecera Madrid
+## V95.2.5 - pulido responsive de cabecera Madrid
 
 - En escritorio, la marca grafica de Madrid gana aproximadamente un 35-40% de presencia y se desplaza ligeramente hacia el centro, sin aumentar la altura de la cabecera.
 - En tablet se aplica una escala intermedia.
@@ -1314,3 +1314,12 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - En la cabecera autenticada movil se mantiene oculta la marca completa para priorizar nombre, rol y controles; permanece visible en login de forma compacta.
 - La insignia de entorno/version se hace algo mas discreta sin alterar el activador oculto del modo soporte.
 - No requiere migracion Supabase ni RESET del dataset.
+
+
+## V95.2.5 - rediseño responsive de cabecera
+
+- Escritorio: cabecera dividida en dos zonas equilibradas para la identidad del club y la marca Madrid.
+- Móvil: cabecera en dos filas; la segunda dedica todo el ancho a bandera + “De Madrid al cielo” + Oso y Madroño.
+- La cabecera autenticada adopta el mismo principio responsive en móvil.
+- No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
+- No requiere migración Supabase ni RESET.
