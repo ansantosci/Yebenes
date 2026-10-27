@@ -1,4 +1,4 @@
-const APP_VERSION='95.0.1';
+const APP_VERSION='95.0.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -922,8 +922,23 @@ function familyCardTabSnapshot(){
 function restoreFamilyCardTabs(state={}){
   $$('.player-card[data-family-player]').forEach(card=>{const key=state[card.dataset.familyPlayer];if(!key)return;const tab=card.querySelector(`[data-family-card-tab="${CSS.escape(key)}"]`);if(tab)tab.click()});
 }
+function syncFamilyContextNav(tabKey='summary'){
+  $$('[data-family-context-tab]').forEach(b=>b.classList.toggle('active',b.dataset.familyContextTab===tabKey));
+}
+function activateFamilySection(tabKey='summary'){
+  const selected=getFamilySelectedPlayer();if(!selected)return;
+  const card=document.querySelector(`.player-card[data-family-player="${CSS.escape(selected.id)}"]`);if(!card)return;
+  const tab=card.querySelector(`[data-family-card-tab="${CSS.escape(tabKey)}"]`);if(tab)tab.click();
+}
+function bindFamilyContextNav(){
+  $$('[data-family-context-tab]').forEach(b=>b.onclick=()=>activateFamilySection(b.dataset.familyContextTab));
+  const profile=$('[data-family-profile-action]');if(profile)profile.onclick=openAccountProfile;
+  const selected=getFamilySelectedPlayer();
+  const card=selected?document.querySelector(`.player-card[data-family-player="${CSS.escape(selected.id)}"]`):null;
+  const active=card?.querySelector('[data-family-card-tab].active')?.dataset.familyCardTab||'summary';syncFamilyContextNav(active);
+}
 function bindFamilyCardTabs(){
-  $$('.player-card[data-family-player]').forEach(card=>{const tabs=[...card.querySelectorAll('[data-family-card-tab]')],panels=[...card.querySelectorAll('[data-family-card-panel]')];tabs.forEach(tab=>tab.onclick=()=>{tabs.forEach(x=>x.classList.toggle('active',x===tab));panels.forEach(p=>p.classList.toggle('active',p.dataset.familyCardPanel===tab.dataset.familyCardTab))})});
+  $$('.player-card[data-family-player]').forEach(card=>{const tabs=[...card.querySelectorAll('[data-family-card-tab]')],panels=[...card.querySelectorAll('[data-family-card-panel]')];tabs.forEach(tab=>tab.onclick=()=>{tabs.forEach(x=>x.classList.toggle('active',x===tab));panels.forEach(p=>p.classList.toggle('active',p.dataset.familyCardPanel===tab.dataset.familyCardTab));if(card.dataset.familyPlayer===familySelectedPlayerId)syncFamilyContextNav(tab.dataset.familyCardTab)})});
 }
 async function renderMinorCoachConsents(){
   const box=$('#minorCoachConsentSection');
@@ -995,7 +1010,7 @@ function paintRemoteFamily(){
   if(mobile)mobile.innerHTML=selected?`<span>Jugador seleccionado</span><strong>${esc(selected.name)}</strong><small>${esc(selected.categoryName||'')} · ${esc(dbActiveSeason()?.name||'')}</small>`:'';
   $('#playersList').innerHTML=selected?familyPlayerTabbedCard(selected):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
   $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));$$('.edit-self-player').forEach(b=>b.onclick=()=>openSelfPlayerEdit(b.dataset.id));
-  bindFamilyCardTabs();bindFamilyPlayerSelector();
+  bindFamilyCardTabs();bindFamilyPlayerSelector();bindFamilyContextNav();
   bindMinorCoachConsentButtons($('#playersList'));
   renderFamilyActionBanner();renderFamilyDocumentsSummary();
   $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;

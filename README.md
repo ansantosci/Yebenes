@@ -1202,3 +1202,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - El hijo seleccionado se conserva durante la sesión y los refrescos silenciosos; las pestañas internas siguen conservando su contexto.
 - En móvil el selector de hijos se transforma en una banda horizontal compacta.
 - Mantiene la franja de patrocinadores basada exclusivamente en registros activos de `patrocinadores_club`.
+
+### V95.0.2 - navegación contextual y pulido de layout
+
+- Ensancha el selector `Mis hijos` para mostrar nombres completos con mayor claridad.
+- Añade navegación contextual lateral del jugador seleccionado: Resumen, Datos, Documentos, RRMM e Inscripción.
+- Mantiene sincronizada la navegación lateral con las pestañas reales de la ficha y conserva sección/hijo tras refrescos silenciosos.
+- Reduce el hero de Familia en escritorio para priorizar la información operativa.
+- Oculta la navegación inferior redundante de Familia en escritorio; en móvil se conserva la navegación compacta existente.
+- Refuerza la presencia del lema `De Madrid al cielo` en la cabecera sin alterar su configuración dinámica.
+- No modifica reglas de negocio ni requiere migraciones Supabase adicionales.

@@ -459,3 +459,37 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed}
 .family-context-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start}.family-player-sidebar{position:sticky;top:88px;background:#fff;border:1px solid #e4ebf3;border-radius:18px;padding:12px;box-shadow:0 8px 24px rgba(20,43,76,.07)}.family-player-sidebar-title{text-transform:uppercase;letter-spacing:.11em;font-size:.68rem;font-weight:950;color:var(--red);padding:3px 6px 9px}.family-player-selector{display:grid;gap:8px}.family-player-choice{width:100%;display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px 9px;align-items:center;text-align:left;border:1px solid transparent;border-radius:13px;background:#f7f9fc;padding:9px;color:var(--ink)}.family-player-choice:hover{background:#eef5fb;border-color:#d8e5f0}.family-player-choice.active{background:linear-gradient(135deg,var(--red),#e11d48);color:#fff;border-color:var(--red);box-shadow:0 7px 18px rgba(210,15,50,.2)}.family-player-avatar{grid-row:1/3;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--yellow),#ffe18a);color:var(--blue-dark);font-weight:950;border:2px solid rgba(255,255,255,.8)}.family-player-choice-copy{display:grid;min-width:0}.family-player-choice-copy strong{font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.family-player-choice-copy small{font-size:.68rem;color:var(--muted);margin-top:2px}.family-player-choice.active .family-player-choice-copy small{color:rgba(255,255,255,.82)}.family-player-choice .status{grid-column:2;padding:3px 6px;font-size:.62rem;justify-self:start}.family-player-choice.active .status{background:rgba(255,255,255,.18);color:#fff}.family-context-main{min-width:0}.family-single-player{grid-template-columns:1fr!important}.family-single-player .player-card{min-height:390px}.family-selected-player-mobile{display:none}.family-card-tabs{overflow-x:auto;scrollbar-width:none}.family-card-tabs::-webkit-scrollbar{display:none}
 .sponsors-strip-inner{border-top:3px solid var(--yellow)}
 @media(max-width:760px){.topbar:after{right:0;width:86px;opacity:.55}.club-motto-row{max-width:220px}.family-context-layout{display:block}.family-player-sidebar{position:static;padding:0;background:transparent;border:0;box-shadow:none;margin-bottom:10px}.family-player-sidebar-title{padding-left:0}.family-player-selector{display:flex;overflow-x:auto;gap:8px;padding-bottom:5px;scrollbar-width:thin}.family-player-choice{flex:0 0 210px}.family-selected-player-mobile{display:grid;gap:2px;background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;border-radius:14px;padding:10px 12px;margin-bottom:10px}.family-selected-player-mobile span,.family-selected-player-mobile small{font-size:.68rem;opacity:.82}.family-selected-player-mobile strong{font-size:.9rem}.family-single-player .player-card{min-height:0}}
+
+
+/* V95.0.2 - navegación contextual y pulido de layout */
+@media(min-width:761px){
+  #familyView .hero-card{padding:18px 28px 20px;min-height:0;margin-bottom:12px}
+  #familyView .hero-card h1{font-size:1.72rem;line-height:1.08;margin:3px 0 6px;max-width:720px}
+  #familyView .hero-card p{font-size:.9rem;margin:0;max-width:720px}
+  #familyView .section{padding-top:10px}
+  #familyNav{display:none!important}
+  .family-context-layout{grid-template-columns:285px minmax(0,1fr);gap:18px}
+  .family-player-sidebar{top:94px;padding:14px}
+  .family-player-choice{grid-template-columns:38px minmax(0,1fr);padding:11px 10px}
+  .family-player-avatar{width:38px;height:38px}
+  .family-player-choice-copy strong{font-size:.88rem;white-space:normal;line-height:1.15;overflow:visible;text-overflow:clip}
+  .family-player-choice-copy small{font-size:.7rem}
+  .family-card-tabs{display:none}
+  .family-single-player .player-card{min-height:420px;padding:18px}
+}
+.family-context-nav{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e7edf5}
+.family-context-nav-item{width:100%;border:0;background:transparent;border-radius:10px;padding:9px 10px;display:flex;align-items:center;gap:9px;text-align:left;color:#40516a;font-weight:800;font-size:.79rem;cursor:pointer}
+.family-context-nav-item span{width:20px;text-align:center;color:var(--blue)}
+.family-context-nav-item:hover{background:#eef5fb;color:var(--blue-dark)}
+.family-context-nav-item.active{background:var(--blue-dark);color:#fff;box-shadow:0 5px 14px rgba(0,79,130,.14)}
+.family-context-nav-item.active span{color:var(--yellow)}
+.family-context-profile{margin-top:7px;border-top:1px solid #e7edf5;border-radius:0 0 10px 10px;padding-top:12px}
+.club-motto-row{font-size:.82rem;gap:9px}.madrid-skyline{font-size:.95rem}.club-name{font-size:1.08rem}
+@media(max-width:760px){
+  #familyView .hero-card{padding:16px 18px;margin-bottom:10px}
+  #familyView .hero-card h1{font-size:1.45rem;line-height:1.08}
+  #familyView .hero-card p{font-size:.84rem}
+  .family-context-nav{display:none}
+  .family-card-tabs{display:flex}
+  .family-player-choice-copy strong{white-space:normal;line-height:1.15}
+}

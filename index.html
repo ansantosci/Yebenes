@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '95.0.1';
+    window.YEBENES_APP_VERSION = '95.0.2';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=95.0.1" />
+  <link rel="stylesheet" href="styles.css?v=95.0.2" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -132,6 +132,14 @@
             <aside class="family-player-sidebar" aria-label="Selector de jugador">
               <div class="family-player-sidebar-title">Mis hijos</div>
               <div id="familyPlayerSelector" class="family-player-selector"></div>
+              <nav id="familyContextNav" class="family-context-nav" aria-label="Secciones del jugador seleccionado">
+                <button type="button" class="family-context-nav-item active" data-family-context-tab="summary"><span>⌂</span>Resumen</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="data"><span>◉</span>Datos</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="docs"><span>▤</span>Documentos</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="medical"><span>♥</span>RRMM</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="inscription"><span>✓</span>Inscripción</button>
+                <button type="button" class="family-context-nav-item family-context-profile" data-family-profile-action><span>●</span>Mi perfil</button>
+              </nav>
             </aside>
             <div class="family-context-main">
               <div id="familySelectedPlayerMobile" class="family-selected-player-mobile"></div>
@@ -367,7 +375,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=95.0.1"></script>
-  <script src="app.js?v=95.0.1"></script>
+  <script src="config.js?v=95.0.2"></script>
+  <script src="app.js?v=95.0.2"></script>
 </body>
 </html>
