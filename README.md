@@ -1251,3 +1251,10 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Las herramientas de soporte se activan temporalmente con 7 clics/toques consecutivos sobre la insignia de entorno/version.
 - El modo soporte se conserva solo en `sessionStorage` de la pestana actual y no modifica datos del usuario ni configuracion del club.
 - El footer global de patrocinadores de V95.1.2 se mantiene sin cambios.
+
+
+## V95.1.4 - Hidden diagnostics activator fix
+
+- Corrige el activador oculto de soporte: la insignia de entorno tenia `pointer-events: none` y no podia recibir clics.
+- El modo soporte se activa/desactiva con 5 clics o toques consecutivos sobre la insignia de version, tambien desde el login.
+- Mantiene el diagnostico oculto para usuarios normales y temporal por pestana mediante `sessionStorage`.

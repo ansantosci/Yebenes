@@ -1,4 +1,4 @@
-const APP_VERSION='95.1.3';
+const APP_VERSION='95.1.4';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -66,7 +66,7 @@ function renderEnvironmentBadge(){
   const label=String(YEBENES_CONFIG?.name||YEBENES_ENVIRONMENT||'ENTORNO').toUpperCase();
   badge.textContent=`${label} · v${APP_VERSION}`;
   badge.dataset.environment=YEBENES_ENVIRONMENT;
-  badge.setAttribute('aria-label',`Entorno ${label}, version ${APP_VERSION}. Pulsa siete veces para activar herramientas de soporte.`);
+  badge.setAttribute('aria-label',`Entorno ${label}, version ${APP_VERSION}. Pulsa cinco veces para activar herramientas de soporte.`);
 }
 
 const SUPPORT_MODE_KEY='yebenes_support_mode';
@@ -85,7 +85,7 @@ function initHiddenSupportMode(){
     supportBadgeClicks+=1;
     clearTimeout(supportBadgeTimer);
     supportBadgeTimer=setTimeout(()=>{supportBadgeClicks=0},3000);
-    if(supportBadgeClicks>=7){
+    if(supportBadgeClicks>=5){
       supportBadgeClicks=0;
       clearTimeout(supportBadgeTimer);
       const next=sessionStorage.getItem(SUPPORT_MODE_KEY)!=='1';
