@@ -415,7 +415,7 @@ input[readonly],input:disabled,select:disabled,textarea:disabled,.readonly-field
 @keyframes yebenes-spin{to{transform:rotate(360deg)}}
 
 /* V94.0 - indicador discreto y permanente del entorno activo */
-.environment-badge{position:fixed;z-index:10000;top:8px;left:50%;transform:translateX(-50%);padding:4px 9px;border-radius:999px;border:1px solid rgba(15,23,42,.16);background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(15,23,42,.08);backdrop-filter:blur(6px);color:#475467;font-size:.64rem;font-weight:900;letter-spacing:.08em;line-height:1;pointer-events:auto;cursor:pointer;user-select:none;touch-action:manipulation;white-space:nowrap}
+.environment-badge{position:fixed;z-index:10000;top:8px;left:50%;transform:translateX(-50%);padding:4px 9px;border-radius:999px;border:1px solid rgba(15,23,42,.16);background:rgba(255,255,255,.9);box-shadow:0 2px 8px rgba(15,23,42,.08);backdrop-filter:blur(6px);color:#475467;font-size:.64rem;font-weight:900;letter-spacing:.08em;line-height:1;pointer-events:auto;cursor:default;user-select:none;touch-action:manipulation;white-space:nowrap}
 .environment-badge[data-environment=develop]{border-style:dashed}
 .environment-badge[data-environment=test]{font-weight:950}
 .environment-badge[data-environment=demo]{opacity:.82}

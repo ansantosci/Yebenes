@@ -1258,3 +1258,11 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Corrige el activador oculto de soporte: la insignia de entorno tenia `pointer-events: none` y no podia recibir clics.
 - El modo soporte se activa/desactiva con 5 clics o toques consecutivos sobre la insignia de version, tambien desde el login.
 - Mantiene el diagnostico oculto para usuarios normales y temporal por pestana mediante `sessionStorage`.
+
+
+## V95.1.5 - Stealth support trigger
+
+- Mantiene el activador oculto de modo soporte mediante cinco clics/toques consecutivos sobre la insignia de entorno/version.
+- La insignia conserva el cursor normal y no muestra hover, animacion ni otra pista visual de interactividad.
+- Los cuatro primeros clics/toques no generan feedback visible; solo el quinto activa o desactiva el modo soporte.
+- No modifica autenticacion, diagnostico de sesion, patrocinadores ni reglas de negocio.
