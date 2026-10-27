@@ -1278,3 +1278,12 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Pestañas, navegación, enlaces estructurales, foco y progreso pasan a azul; botones de acción como Entrar, Guardar, Añadir o Confirmar permanecen rojos.
 - Se mantienen sin cambios la gestión de patrocinadores, el footer responsive, el modo soporte oculto y las reglas de negocio.
 - No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.1 - skyline organico y ajuste de viewport del login
+
+- Sustituye el skyline geométrico incrustado en HTML por `assets/madrid-skyline-yellow.png`, un recurso PNG RGBA transparente amarillo reutilizado en login y cabecera autenticada.
+- El nuevo skyline usa trazado lineal y proporción panorámica para integrarse con `De Madrid al cielo` sin el aspecto rectangular/cuadriculado de V95.2.0.
+- Ajusta la composición vertical del login para que el footer global de patrocinadores participe en el viewport en lugar de quedar desplazado por un bloque de autenticación de 100vh.
+- En escritorios con altura suficiente se muestran cabecera, formulario y patrocinadores sin scroll; en alturas reducidas se conserva scroll vertical normal y se compacta moderadamente el formulario.
+- Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.
