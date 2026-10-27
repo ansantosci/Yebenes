@@ -579,3 +579,34 @@ body:has(#authScreen:not(.hidden)) .global-sponsors-footer .sponsor-item img{max
 .topbar-skyline .madrid-identity-art{width:100%;max-height:66px}
 @media(max-width:820px){.public-motto{width:min(330px,43vw)}.public-motto .madrid-identity-art{max-height:58px}.topbar-skyline{right:72px;width:250px}.topbar-skyline .madrid-identity-art{max-height:50px}}
 @media(max-width:560px){.public-motto{right:8px;bottom:4px;width:190px}.public-motto .madrid-identity-art{max-height:40px}.topbar-skyline{display:none}}
+
+/* V95.2.4 - pulido responsive de cabecera Madrid */
+/* Escritorio: la marca Madrid gana presencia y se acerca al centro sin aumentar la altura. */
+@media(min-width:821px){
+  .public-motto{width:min(820px,50vw);margin-right:clamp(8px,2vw,34px)}
+  .public-motto .madrid-identity-art{max-height:92px}
+  .topbar-skyline{right:110px;width:min(650px,44vw);bottom:3px}
+  .topbar-skyline .madrid-identity-art{max-height:72px}
+  .environment-badge{font-size:.61rem;padding:3px 7px;opacity:.78}
+}
+/* Tablet: presencia intermedia, sin competir con la marca del club. */
+@media(min-width:561px) and (max-width:820px){
+  .public-motto{width:min(300px,39vw)}
+  .public-motto .madrid-identity-art{max-height:52px}
+  .topbar-skyline{right:82px;width:215px;bottom:5px}
+  .topbar-skyline .madrid-identity-art{max-height:44px}
+}
+/* Movil: justo al contrario que escritorio: se reduce y se mantiene secundaria. */
+@media(max-width:560px){
+  .public-masthead{height:96px;padding:9px 12px;align-items:flex-start}
+  .auth-screen{padding-top:108px}
+  .public-brand{gap:8px;max-width:54%}
+  .public-brand img{width:42px;height:42px}
+  .public-brand strong{font-size:.78rem;line-height:1.08}
+  .public-brand span{font-size:.62rem;margin-top:2px}
+  .public-motto{position:absolute;right:8px;bottom:9px;width:min(145px,40vw)}
+  .public-motto .madrid-identity-art{max-height:34px}
+  /* En la cabecera autenticada no forzamos la marca completa: priorizamos nombre, rol y controles. */
+  .topbar-skyline{display:none}
+  .environment-badge{font-size:.54rem;padding:2px 6px;opacity:.72}
+}

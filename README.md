@@ -1304,3 +1304,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Elimina el texto HTML visible del lema para evitar duplicidad y asegurar una composición gráfica consistente.
 - Mantiene el layout de login/footer validado en V95.2.1 y la publicación de `assets/` corregida en V95.2.2.
 - No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.4 - pulido responsive de cabecera Madrid
+
+- En escritorio, la marca grafica de Madrid gana aproximadamente un 35-40% de presencia y se desplaza ligeramente hacia el centro, sin aumentar la altura de la cabecera.
+- En tablet se aplica una escala intermedia.
+- En movil se hace deliberadamente lo contrario: la marca se reduce para no competir con el escudo, el nombre del club ni el formulario.
+- En la cabecera autenticada movil se mantiene oculta la marca completa para priorizar nombre, rol y controles; permanece visible en login de forma compacta.
+- La insignia de entorno/version se hace algo mas discreta sin alterar el activador oculto del modo soporte.
+- No requiere migracion Supabase ni RESET del dataset.
