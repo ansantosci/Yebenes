@@ -1,3 +1,13 @@
+# V95.2.6 — Cabecera responsive sin solapamientos
+
+- Reserva una franja propia para la versión global y conserva el activador de soporte de cinco pulsaciones.
+- Elimina los límites de altura que reducían la composición Madrid y mantiene su proporción original.
+- Login: dos zonas equilibradas en escritorio y dos filas compactas en móvil; temporada en una sola línea cuando cabe.
+- Corrige las columnas de la cabecera autenticada para escudo, nombre, marca Madrid y controles; en tablet y móvil distribuye la marca en una segunda fila.
+- Conserva el PNG aprobado, el formulario y los patrocinadores. No requiere migraciones, Edge Functions ni RESET.
+- Estado: preparada para revisión; validación visual del usuario y despliegue pendientes.
+- Corrige los títulos históricos duplicados de V95.2.2/V95.2.4 sin eliminar su contenido.
+
 # V94.1.3
 
 - Optimiza el guardado de la configuración económica de un equipo.
@@ -1288,7 +1298,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
 - No requiere migración Supabase ni RESET del dataset.
 
-## V95.2.3 - publicación de assets en GitHub Pages
+## V95.2.2 - publicación de assets en GitHub Pages
 
 - Corrige el pipeline multi-entorno para copiar el directorio `assets/` de MAIN, TEST y DEVELOP al artefacto de GitHub Pages.
 - El skyline PNG de V95.2.1 estaba correctamente versionado en Git, pero no era publicado por el workflow, que solo copiaba archivos raíz.
@@ -1306,7 +1316,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No requiere migración Supabase ni RESET del dataset.
 
 
-## V95.2.5 - pulido responsive de cabecera Madrid
+## V95.2.4 - pulido responsive de cabecera Madrid
 
 - En escritorio, la marca grafica de Madrid gana aproximadamente un 35-40% de presencia y se desplaza ligeramente hacia el centro, sin aumentar la altura de la cabecera.
 - En tablet se aplica una escala intermedia.
