@@ -1287,3 +1287,11 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - En escritorios con altura suficiente se muestran cabecera, formulario y patrocinadores sin scroll; en alturas reducidas se conserva scroll vertical normal y se compacta moderadamente el formulario.
 - Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
 - No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.2 - publicación de assets en GitHub Pages
+
+- Corrige el pipeline multi-entorno para copiar el directorio `assets/` de MAIN, TEST y DEVELOP al artefacto de GitHub Pages.
+- El skyline PNG de V95.2.1 estaba correctamente versionado en Git, pero no era publicado por el workflow, que solo copiaba archivos raíz.
+- Mantiene las rutas relativas `assets/...`, válidas en `/`, `/test/` y `/develop/` una vez publicado el directorio.
+- Añade validaciones del asset del skyline cuando existe en la rama correspondiente.
+- No requiere migración Supabase ni RESET del dataset.
