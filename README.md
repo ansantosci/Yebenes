@@ -1266,3 +1266,15 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La insignia conserva el cursor normal y no muestra hover, animacion ni otra pista visual de interactividad.
 - Los cuatro primeros clics/toques no generan feedback visible; solo el quinto activa o desactiva el modo soporte.
 - No modifica autenticacion, diagnostico de sesion, patrocinadores ni reglas de negocio.
+
+
+## V95.2.0 - identidad visual deportiva refinada
+
+- Sustituye la composición azul con grandes bandas diagonales rojo/amarillo por una identidad menos ambigua y más propia del club.
+- Formaliza la semántica de color: azul para estructura y navegación, rojo para acciones principales y amarillo para identidad/acento.
+- Incorpora el lema `De Madrid al cielo` junto a un skyline amarillo de Madrid en la cabecera pública y autenticada.
+- El login adopta una cabecera institucional azul y un fondo deportivo sobrio, manteniendo el formulario limpio y el footer global de patrocinadores.
+- Las cabeceras de sección usan azul, título blanco y eyebrow amarillo; se elimina el rojo de grandes superficies de cabecera.
+- Pestañas, navegación, enlaces estructurales, foco y progreso pasan a azul; botones de acción como Entrar, Guardar, Añadir o Confirmar permanecen rojos.
+- Se mantienen sin cambios la gestión de patrocinadores, el footer responsive, el modo soporte oculto y las reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.

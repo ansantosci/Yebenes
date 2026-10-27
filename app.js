@@ -1,4 +1,4 @@
-const APP_VERSION='95.1.5';
+const APP_VERSION='95.2.0';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
