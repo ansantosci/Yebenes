@@ -1,4 +1,4 @@
-const APP_VERSION='95.0.0';
+const APP_VERSION='95.0.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -896,6 +896,7 @@ function renderFamilyActionBanner(){
   box.querySelectorAll('.family-action-item').forEach(b=>b.onclick=()=>focusFamilyPlayerData(b.dataset.player));
 }
 function focusFamilyPlayerData(playerId){
+  if(playerId&&playerId!==familySelectedPlayerId){familySelectedPlayerId=playerId;sessionStorage.setItem(familyContextStorageKey(),playerId);paintRemoteFamily()}
   const card=document.querySelector(`.player-card[data-family-player="${CSS.escape(playerId)}"]`);if(!card)return;
   const tab=card.querySelector('[data-family-card-tab="data"]');if(tab)tab.click();card.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -966,16 +967,40 @@ async function refreshRemoteFamilyData(){
   })();
   try{return await remoteFamilyLoadPromise}finally{remoteFamilyLoadPromise=null}
 }
+let familySelectedPlayerId='';
+function familyContextStorageKey(){return `yebenes-family-player:${currentUser?.id||currentUser?.personId||'anonymous'}`}
+function getFamilySelectedPlayer(){
+  if(!remoteFamilyPlayers.length)return null;
+  const stored=sessionStorage.getItem(familyContextStorageKey())||'';
+  const wanted=familySelectedPlayerId||stored;
+  const player=remoteFamilyPlayers.find(p=>p.id===wanted)||remoteFamilyPlayers[0];
+  familySelectedPlayerId=player.id;sessionStorage.setItem(familyContextStorageKey(),player.id);return player;
+}
+function familyPlayerSelectorItem(p,selected){
+  const [cls,badge]=p.inscription?remoteStateMeta(p.inscription.estado):['pending','Pendiente'];
+  return `<button type="button" class="family-player-choice ${selected?'active':''}" data-family-select-player="${esc(p.id)}" aria-pressed="${selected?'true':'false'}"><span class="family-player-avatar" aria-hidden="true">${esc((p.name||'?').trim().charAt(0).toUpperCase())}</span><span class="family-player-choice-copy"><strong>${esc(p.name)}</strong><small>${esc(p.categoryName||'Sin categoría')} · ${esc(dbActiveSeason()?.name||'')}</small></span><span class="status ${cls}">${esc(badge)}</span></button>`;
+}
+function bindFamilyPlayerSelector(){
+  $$('[data-family-select-player]').forEach(b=>b.onclick=()=>{
+    const tabs=familyCardTabSnapshot();
+    familySelectedPlayerId=b.dataset.familySelectPlayer;sessionStorage.setItem(familyContextStorageKey(),familySelectedPlayerId);
+    paintRemoteFamily();restoreFamilyCardTabs(tabs);
+  });
+}
 function paintRemoteFamily(){
-  $('#playersList').innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(familyPlayerTabbedCard).join(''):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
-    $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));$$('.edit-self-player').forEach(b=>b.onclick=()=>openSelfPlayerEdit(b.dataset.id));
-    bindFamilyCardTabs();
-    bindMinorCoachConsentButtons($('#playersList'));
-    renderFamilyActionBanner();
-    renderFamilyDocumentsSummary();
-    $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
-    const progress=remoteFamilyPlayers.length?remoteFamilyPlayers.reduce((a,p)=>a+remoteStateProgress(p.inscription?.estado),0)/remoteFamilyPlayers.length:0;
-    setFamilyProgress(progress);
+  const selected=getFamilySelectedPlayer();
+  const selector=$('#familyPlayerSelector');
+  if(selector)selector.innerHTML=remoteFamilyPlayers.length?remoteFamilyPlayers.map(p=>familyPlayerSelectorItem(p,selected?.id===p.id)).join(''):'<div class="meta">Sin jugadores asociados.</div>';
+  const mobile=$('#familySelectedPlayerMobile');
+  if(mobile)mobile.innerHTML=selected?`<span>Jugador seleccionado</span><strong>${esc(selected.name)}</strong><small>${esc(selected.categoryName||'')} · ${esc(dbActiveSeason()?.name||'')}</small>`:'';
+  $('#playersList').innerHTML=selected?familyPlayerTabbedCard(selected):'<div class="empty-card">No hay jugadores asociados a tu cuenta.</div>';
+  $$('.edit-remote-family').forEach(b=>b.onclick=()=>openRemoteFamilyEdit(b.dataset.id));$$('.edit-self-player').forEach(b=>b.onclick=()=>openSelfPlayerEdit(b.dataset.id));
+  bindFamilyCardTabs();bindFamilyPlayerSelector();
+  bindMinorCoachConsentButtons($('#playersList'));
+  renderFamilyActionBanner();renderFamilyDocumentsSummary();
+  $('#familyPlayerCount').textContent=currentRole==='player'?(remoteFamilyPlayers.length?'1 jugador · autorrepresentación':'Sin inscripción activa'):`${remoteFamilyPlayers.length} ${remoteFamilyPlayers.length===1?'jugador representado':'jugadores representados'}`;
+  const progress=remoteFamilyPlayers.length?remoteFamilyPlayers.reduce((a,p)=>a+remoteStateProgress(p.inscription?.estado),0)/remoteFamilyPlayers.length:0;
+  setFamilyProgress(progress);
 }
 async function renderRemoteFamily(options={}){
   const refresh=options.refresh!==false;

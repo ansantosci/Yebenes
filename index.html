@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '95.0.0';
+    window.YEBENES_APP_VERSION = '95.0.1';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=95.0.0" />
+  <link rel="stylesheet" href="styles.css?v=95.0.1" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -109,6 +109,7 @@
       <div class="brand-mark"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /></div>
       <div class="brand-copy">
         <div class="club-name">C.D. Los Yébenes San Bruno</div>
+        <div class="club-motto-row"><span class="madrid-skyline" aria-hidden="true">⌁⌂⌁⌂⌁</span><span id="clubMotto">De Madrid al cielo</span></div>
         <div class="season">Temporada <span id="currentSeasonLabel">2026/2027</span> · <span id="currentRoleLabel"></span></div>
       </div>
       <button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
@@ -126,7 +127,17 @@
             <div><span class="eyebrow dark">Mis jugadores</span><h2 id="familyTitle">Mi familia</h2></div>
             <button class="primary small" id="addPlayerButton" data-open="playerModal">+ Añadir</button>
           </div>
-          <div id="familyActionBanner" class="family-action-banner hidden"></div><div id="playersList" class="cards-grid"></div>
+          <div id="familyActionBanner" class="family-action-banner hidden"></div>
+          <div class="family-context-layout">
+            <aside class="family-player-sidebar" aria-label="Selector de jugador">
+              <div class="family-player-sidebar-title">Mis hijos</div>
+              <div id="familyPlayerSelector" class="family-player-selector"></div>
+            </aside>
+            <div class="family-context-main">
+              <div id="familySelectedPlayerMobile" class="family-selected-player-mobile"></div>
+              <div id="playersList" class="cards-grid family-single-player"></div>
+            </div>
+          </div>
         </section>
         <section class="section compact" id="familyStatusSection">
           <div class="progress-card"><div><span class="eyebrow dark">Estado familiar</span><h3 id="familyPlayerCount">0 jugadores registrados</h3></div><div class="progress-ring" style="--p:0"><span>0%</span></div></div>
@@ -356,7 +367,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=95.0.0"></script>
-  <script src="app.js?v=95.0.0"></script>
+  <script src="config.js?v=95.0.1"></script>
+  <script src="app.js?v=95.0.1"></script>
 </body>
 </html>

@@ -1192,3 +1192,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.0.0` se reserva para el siguiente cambio estructural mayor.
 - Regla de release: todo incremento de versión debe actualizar también este `README.md`.
 
+
+
+### V95.0.1 - cabecera definitiva y navegación contextual de Familia
+
+- Corrige la aplicación efectiva de la capa CSS V95 del primer bloque visual.
+- Activa la cabecera azul 2026/27 con acentos rojo/amarillo y el lema configurable `De Madrid al cielo`.
+- Familia pasa a un contexto de jugador seleccionado: selector `Mis hijos` + una única ficha activa.
+- El hijo seleccionado se conserva durante la sesión y los refrescos silenciosos; las pestañas internas siguen conservando su contexto.
+- En móvil el selector de hijos se transforma en una banda horizontal compacta.
+- Mantiene la franja de patrocinadores basada exclusivamente en registros activos de `patrocinadores_club`.
