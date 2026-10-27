@@ -1222,3 +1222,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La franja pública se refresca inmediatamente y muestra solo registros activos respetando su orden.
 - El logo se configura mediante URL; esta versión no introduce todavía almacenamiento de ficheros en Supabase Storage.
 - No requiere una nueva migración: reutiliza RLS y permisos ya desplegados en V95.0.0.
+
+### V95.1.1 - subida de logos y orden visual de patrocinadores
+
+- Sustituye la URL manual del logo por subida directa de PNG, JPG, WEBP o SVG (máximo 2 MB).
+- Añade el bucket público `patrocinadores` en Supabase Storage; solo los roles Club/Administrador pueden escribir o borrar archivos.
+- Elimina el campo técnico `Orden` del formulario. Los nuevos patrocinadores se añaden al final automáticamente.
+- Permite reordenar patrocinadores mediante arrastrar y soltar, con controles ↑/↓ equivalentes para móvil, teclado y accesibilidad.
+- La aplicación mantiene internamente `orden` como secuencia 1..N y la recalcula después de cada movimiento o eliminación.
+- Al sustituir o eliminar un patrocinador se retira también del Storage el logo administrado por la aplicación.
+- Requiere aplicar la migración `047_v95_1_1_patrocinadores_storage.sql` antes de probar la subida de logos.
