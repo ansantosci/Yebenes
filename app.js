@@ -1,4 +1,4 @@
-const APP_VERSION='95.1.1';
+const APP_VERSION='95.1.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -133,6 +133,7 @@ function renderClubSponsors(){
   if(!clubSponsors.length){strip.classList.add('hidden');list.innerHTML='';return}
   strip.classList.remove('hidden');
   list.innerHTML=clubSponsors.map(x=>{const body=x.logo_url?`<img src="${esc(x.logo_url)}" alt="${esc(x.nombre)}" loading="lazy" />`:`<span>${esc(x.nombre)}</span>`;return x.url?`<a class="sponsor-item" href="${esc(x.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(x.nombre)}">${body}</a>`:`<div class="sponsor-item">${body}</div>`}).join('');
+  const season=$('#sponsorsSeasonLabel'),authSeason=$('#authSeasonLabel');if(season&&authSeason)season.textContent=authSeason.textContent||'2026/2027';
 }
 
 let sponsorAdminRows=[];

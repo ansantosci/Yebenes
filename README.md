@@ -1232,3 +1232,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La aplicación mantiene internamente `orden` como secuencia 1..N y la recalcula después de cada movimiento o eliminación.
 - Al sustituir o eliminar un patrocinador se retira también del Storage el logo administrado por la aplicación.
 - Requiere aplicar la migración `047_v95_1_1_patrocinadores_storage.sql` antes de probar la subida de logos.
+
+### V95.1.2 - footer global de patrocinadores
+
+- Convierte la franja de patrocinadores en un footer global compartido por login y todas las areas autenticadas de la aplicacion.
+- El footer solo aparece cuando existen patrocinadores activos y conserva el orden configurado por el Club.
+- Sustituye el carrusel/scroll horizontal por un grid responsive con salto automatico de linea; en movil los logos se distribuyen en varias filas sin ocultar patrocinadores fuera de pantalla.
+- Todos los logos usan cajas equivalentes y conservan su proporcion mediante `object-fit: contain`.
+- Los enlaces configurados siguen siendo clicables y se abren de forma segura en una pestana nueva.
+- La migracion `048_v95_1_2_patrocinadores_publicos_activos.sql` limita la lectura anonima a patrocinadores activos; los usuarios autenticados conservan lectura completa para administracion.
+- Mantiene la regla de release: toda version actualiza tambien este `README.md`.

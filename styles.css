@@ -500,3 +500,18 @@ button:disabled,select:disabled,input:disabled{cursor:not-allowed}
 
 /* V95.1.1 - logos administrados y orden visual de patrocinadores */
 .sponsor-admin-grid{grid-template-columns:1fr}.sponsor-sort-help{grid-column:1/-1;color:#64748b;font-size:.86rem;margin:0 0 2px;padding:0 2px}.sponsor-admin-card{grid-template-columns:28px 150px 1fr;cursor:grab;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}.sponsor-admin-card:active{cursor:grabbing}.sponsor-admin-card.dragging{opacity:.48;transform:scale(.99)}.sponsor-admin-card.drag-over{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(245,197,66,.22)}.sponsor-drag-handle{font-size:1.3rem;color:#94a3b8;text-align:center;user-select:none}.sponsor-admin-actions .sponsor-up,.sponsor-admin-actions .sponsor-down{min-width:38px;font-size:1.05rem}.sponsor-admin-actions button:disabled{opacity:.35;cursor:not-allowed}.sponsor-file-field input[type=file]{padding:10px;background:#fff}.field-help{display:block;margin-top:6px;color:#64748b;font-size:.8rem;font-weight:600}.optional{font-weight:600;color:#64748b}.sponsor-logo-preview{min-height:104px}.sponsor-logo-preview img{max-width:220px;max-height:72px}@media(max-width:760px){.sponsor-admin-card{grid-template-columns:24px 90px 1fr}.sponsor-admin-logo{height:64px}.sponsor-drag-handle{font-size:1.1rem}}
+
+/* V95.1.2 - footer global de patrocinadores */
+html,body{min-height:100%}
+body{min-height:100vh;display:flex;flex-direction:column}
+.auth-screen{min-height:0;flex:1 0 auto}
+.app-shell{min-height:0;flex:1 0 auto;width:100%}
+.sponsors-strip.global-sponsors-footer{width:100%;max-width:none;margin:28px 0 0;padding:0 16px 92px;flex:0 0 auto}
+.global-sponsors-footer .sponsors-strip-inner{max-width:1100px;margin:0 auto;border-top:3px solid var(--yellow);border-radius:18px 18px 0 0;padding:16px 18px 12px}
+.global-sponsors-footer .sponsors-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));align-items:stretch;gap:12px;overflow:visible;padding:2px 0 8px}
+.global-sponsors-footer .sponsor-item{min-width:0;width:100%;height:64px;padding:10px 14px}
+.global-sponsors-footer .sponsor-item img{max-width:100%;max-height:42px}
+.sponsors-club-signature{text-align:center;color:#64748b;font-size:.72rem;font-weight:700;border-top:1px solid #edf1f6;margin-top:8px;padding-top:10px}
+@media(min-width:900px){.global-sponsors-footer .sponsors-list{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
+@media(max-width:640px){.sponsors-strip.global-sponsors-footer{margin-top:18px;padding:0 10px 84px}.global-sponsors-footer .sponsors-strip-inner{padding:13px 12px 10px}.global-sponsors-footer .sponsors-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.global-sponsors-footer .sponsor-item{height:58px;padding:8px 10px}.global-sponsors-footer .sponsor-item img{max-height:38px}.sponsors-club-signature{font-size:.66rem}}
+@media(max-width:360px){.global-sponsors-footer .sponsors-list{grid-template-columns:1fr}}
