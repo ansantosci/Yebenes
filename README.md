@@ -1212,3 +1212,13 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Oculta la navegación inferior redundante de Familia en escritorio; en móvil se conserva la navegación compacta existente.
 - Refuerza la presencia del lema `De Madrid al cielo` en la cabecera sin alterar su configuración dinámica.
 - No modifica reglas de negocio ni requiere migraciones Supabase adicionales.
+
+
+### V95.1.0 - gestión configurable de patrocinadores
+
+- Añade al panel Club/Administrador una vista de Patrocinadores basada en `public.patrocinadores_club` creada por la migración 046.
+- Permite alta, edición, orden, enlace opcional y activación/desactivación sin desplegar código.
+- Permite eliminar patrocinadores con confirmación explícita.
+- La franja pública se refresca inmediatamente y muestra solo registros activos respetando su orden.
+- El logo se configura mediante URL; esta versión no introduce todavía almacenamiento de ficheros en Supabase Storage.
+- No requiere una nueva migración: reutiliza RLS y permisos ya desplegados en V95.0.0.

@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '95.0.2';
+    window.YEBENES_APP_VERSION = '95.1.0';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=95.0.2" />
+  <link rel="stylesheet" href="styles.css?v=95.1.0" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -173,6 +173,21 @@
         </section>
       </section>
 
+      <section id="sponsorsView" class="view">
+        <div class="hero-card admin-hero">
+          <span class="eyebrow">Identidad del club</span>
+          <h1>Patrocinadores</h1>
+          <p>Gestiona los colaboradores que aparecen en la franja pública de la aplicación.</p>
+        </div>
+        <section class="section">
+          <div class="section-head stacked-mobile">
+            <div><span class="eyebrow dark">Visibilidad</span><h2>Patrocinadores del club</h2><p class="meta">Solo los patrocinadores activos se muestran a familias, jugadores y personal.</p></div>
+            <button class="primary small" id="openSponsorModal">+ Nuevo patrocinador</button>
+          </div>
+          <div id="sponsorAdminList" class="sponsor-admin-grid"></div>
+        </section>
+      </section>
+
       <section id="medicalView" class="view">
         <div class="hero-card admin-hero">
           <span class="eyebrow">Control sanitario</span>
@@ -274,10 +289,13 @@
       <button class="nav-item" id="structureNavButton" data-club-view="structureView"><span>▦</span>Estructura</button>
       <button class="nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
       
+      <button class="nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span>★</span>Patrocinadores</button>
       <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
   </div>
 
+
+  <dialog id="sponsorModal"><form id="sponsorForm"><div class="modal-head"><div><span class="eyebrow dark">Patrocinador</span><h2 id="sponsorModalTitle">Nuevo patrocinador</h2><div class="meta">Configura cómo aparece en la franja pública del club.</div></div><button type="button" class="icon-button" id="closeSponsorModal">✕</button></div><input type="hidden" name="id" /><div class="form-grid"><label>Nombre<input name="nombre" required maxlength="120" /></label><label>Orden<input name="orden" type="number" step="1" value="100" required /></label><label class="span-2">URL del logo<input name="logo_url" type="url" placeholder="https://…/logo.png" /></label><label class="span-2">Enlace del patrocinador<input name="url" type="url" placeholder="https://…" /></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label></div><div id="sponsorLogoPreview" class="sponsor-logo-preview"><span>Vista previa del logo</span></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSponsor">Cancelar</button><button type="submit" class="primary">Guardar patrocinador</button></div></form></dialog>
 
   <dialog id="temporaryAccessModal" class="account-access-modal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Cuenta creada</span><h2>Credenciales temporales</h2><div class="meta">Entrega estas credenciales de forma segura a la persona. La contraseña solo se muestra ahora.</div></div><button type="button" class="icon-button" id="closeTemporaryAccessModal">✕</button></div><div class="credential-card"><label>Correo<input id="temporaryAccessEmail" readonly /></label><label>Contraseña temporal<div class="credential-copy-row"><input id="temporaryAccessPassword" readonly /><button type="button" class="secondary" id="copyTemporaryPassword">Copiar</button></div></label></div><div class="warning-box">En el primer acceso la aplicación bloqueará el resto de funciones hasta que la persona cambie esta contraseña.</div><div class="modal-actions"><button type="button" class="primary" id="acceptTemporaryAccess">Entendido</button></div></div></dialog>
 
@@ -375,7 +393,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=95.0.2"></script>
-  <script src="app.js?v=95.0.2"></script>
+  <script src="config.js?v=95.1.0"></script>
+  <script src="app.js?v=95.1.0"></script>
 </body>
 </html>
