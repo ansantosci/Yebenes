@@ -82,6 +82,10 @@ select private.test_uuid('doc:player:'||codigo||':'||g),private.test_s_player_pe
        lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
        'ES',true,date '2026-07-01',true
 from docs
+where not exists (
+  select 1 from private.test_access_identities a
+  where a.persona_id=private.test_s_player_person_id(docs.codigo,docs.g)
+)
 on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_hasta=null,activo=true;
 insert into private.test_dataset_entities
 select 'TEST-S','documentos_identidad',private.test_uuid('doc:player:'||codigo||':'||g),now()
@@ -93,8 +97,14 @@ from (
   join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
   where t.estado='activa'
 ) x
-where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
-   or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
+where (
+       date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
+       or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
+      )
+  and not exists (
+    select 1 from private.test_access_identities a
+    where a.persona_id=private.test_s_player_person_id(x.codigo,x.g)
+  )
 on conflict do nothing;
 
 -- Player facets, inscriptions and team assignments.
