@@ -1,4 +1,4 @@
-const APP_VERSION='95.1.2';
+const APP_VERSION='95.1.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -66,7 +66,33 @@ function renderEnvironmentBadge(){
   const label=String(YEBENES_CONFIG?.name||YEBENES_ENVIRONMENT||'ENTORNO').toUpperCase();
   badge.textContent=`${label} · v${APP_VERSION}`;
   badge.dataset.environment=YEBENES_ENVIRONMENT;
-  badge.setAttribute('aria-label',`Entorno ${label}, version ${APP_VERSION}`);
+  badge.setAttribute('aria-label',`Entorno ${label}, version ${APP_VERSION}. Pulsa siete veces para activar herramientas de soporte.`);
+}
+
+const SUPPORT_MODE_KEY='yebenes_support_mode';
+let supportBadgeClicks=0;
+let supportBadgeTimer=null;
+function setSupportMode(enabled){
+  if(enabled)sessionStorage.setItem(SUPPORT_MODE_KEY,'1');
+  else sessionStorage.removeItem(SUPPORT_MODE_KEY);
+  document.querySelectorAll('.support-tool').forEach(el=>el.classList.toggle('hidden',!enabled));
+}
+function initHiddenSupportMode(){
+  setSupportMode(sessionStorage.getItem(SUPPORT_MODE_KEY)==='1');
+  const badge=document.getElementById('environmentBadge');
+  if(!badge)return;
+  badge.addEventListener('click',()=>{
+    supportBadgeClicks+=1;
+    clearTimeout(supportBadgeTimer);
+    supportBadgeTimer=setTimeout(()=>{supportBadgeClicks=0},3000);
+    if(supportBadgeClicks>=7){
+      supportBadgeClicks=0;
+      clearTimeout(supportBadgeTimer);
+      const next=sessionStorage.getItem(SUPPORT_MODE_KEY)!=='1';
+      setSupportMode(next);
+      alert(next?'Modo soporte activado temporalmente.':'Modo soporte desactivado.');
+    }
+  });
 }
 
 if(!YEBENES_CONFIG){
@@ -2713,7 +2739,8 @@ setInterval(()=>{
   if(nowPresent!==authTokenWasPresent){authDiag(nowPresent?'AUTH_TOKEN_STORAGE_APPEARED':'AUTH_TOKEN_STORAGE_DISAPPEARED',{previous:authTokenWasPresent,current:nowPresent,storage:authStorageSummary()});authTokenWasPresent=nowPresent;}
 },5000);
 
-renderEnvironmentBadge();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme().then(()=>loadClubSponsors());if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
+renderEnvironmentBadge();
+initHiddenSupportMode();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme().then(()=>loadClubSponsors());if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.

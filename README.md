@@ -1242,3 +1242,12 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Los enlaces configurados siguen siendo clicables y se abren de forma segura en una pestana nueva.
 - La migracion `048_v95_1_2_patrocinadores_publicos_activos.sql` limita la lectura anonima a patrocinadores activos; los usuarios autenticados conservan lectura completa para administracion.
 - Mantiene la regla de release: toda version actualiza tambien este `README.md`.
+
+
+### V95.1.3 - limpieza de login y diagnostico oculto
+
+- Elimina del login el aviso tecnico `Autenticacion real activa`; Supabase Auth es ya el comportamiento normal de la aplicacion.
+- Oculta por defecto `Diagnostico de sesion` tanto en Login como en Perfil -> Seguridad.
+- Las herramientas de soporte se activan temporalmente con 7 clics/toques consecutivos sobre la insignia de entorno/version.
+- El modo soporte se conserva solo en `sessionStorage` de la pestana actual y no modifica datos del usuario ni configuracion del club.
+- El footer global de patrocinadores de V95.1.2 se mantiene sin cambios.
