@@ -893,6 +893,14 @@ function familyPlayerTabbedCard(p){
   <div class="family-card-panel" data-family-card-panel="medical"><div class="checklist"><div class="check"><span>Estado RRMM</span><strong>${esc(m.label)}</strong></div>${p.medical?`<div class="check"><span>Válido hasta</span><strong>${fmt(p.medical.fecha_valido_hasta)}</strong></div>`:''}</div>${p.appointment?`<div class="appointment-family"><strong>📅 Próximo reconocimiento médico</strong><div>${esc(formatDateTime(p.appointment.fecha_hora))}</div><div>${esc(p.appointment.lugar||'')}</div>${p.appointment.direccion?`<div>${esc(p.appointment.direccion)}</div>`:''}${p.appointment.indicaciones?`<div class="meta">${esc(p.appointment.indicaciones)}</div>`:''}</div>`:'<div class="meta">Sin cita programada.</div>'}</div>
   <div class="family-card-panel" data-family-card-panel="inscription"><div class="checklist"><div class="check"><span>Estado</span><strong>${esc(fed)}</strong></div><div class="check"><span>Equipo</span><strong>${esc(p.teamName)}</strong></div><div class="check"><span>Situación económica</span><strong>${esc(econ.label)}</strong></div><div class="check"><span>Detalle económico</span><strong>${esc(econ.detail||'')}</strong></div></div></div></article>`;
 }
+function familyCardTabSnapshot(){
+  const state={};
+  $$('.player-card[data-family-player]').forEach(card=>{const active=card.querySelector('[data-family-card-tab].active');if(active)state[card.dataset.familyPlayer]=active.dataset.familyCardTab||'summary'});
+  return state;
+}
+function restoreFamilyCardTabs(state={}){
+  $$('.player-card[data-family-player]').forEach(card=>{const key=state[card.dataset.familyPlayer];if(!key)return;const tab=card.querySelector(`[data-family-card-tab="${CSS.escape(key)}"]`);if(tab)tab.click()});
+}
 function bindFamilyCardTabs(){
   $$('.player-card[data-family-player]').forEach(card=>{const tabs=[...card.querySelectorAll('[data-family-card-tab]')],panels=[...card.querySelectorAll('[data-family-card-panel]')];tabs.forEach(tab=>tab.onclick=()=>{tabs.forEach(x=>x.classList.toggle('active',x===tab));panels.forEach(p=>p.classList.toggle('active',p.dataset.familyCardPanel===tab.dataset.familyCardTab))})});
 }
@@ -952,8 +960,9 @@ function paintRemoteFamily(){
 async function renderRemoteFamily(options={}){
   const refresh=options.refresh!==false;
   const silent=options.silent===true||remoteFamilyPlayers.length>0;
+  const familyTabs=familyCardTabSnapshot();
   if(refresh&&!silent)$('#playersList').innerHTML='<div class="empty-card">Cargando jugadores…</div>';
-  try{if(refresh)await refreshRemoteFamilyData();paintRemoteFamily()}
+  try{if(refresh)await refreshRemoteFamilyData();paintRemoteFamily();restoreFamilyCardTabs(familyTabs)}
   catch(err){
     console.error('Carga familia Supabase',err);
     if(remoteFamilyPlayers.length){paintRemoteFamily();return}

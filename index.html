@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '94.3.2';
+    window.YEBENES_APP_VERSION = '94.3.3';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -46,7 +46,6 @@
   </div>
   <div id="authScreen" class="auth-screen hidden">
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v94.3.2</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -350,7 +349,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=94.3.2"></script>
+  <script src="config.js?v=94.3.3"></script>
   <script src="app.js?v=94.3.3"></script>
 </body>
 </html>
