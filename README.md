@@ -1288,10 +1288,19 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
 - No requiere migración Supabase ni RESET del dataset.
 
-## V95.2.2 - publicación de assets en GitHub Pages
+## V95.2.3 - publicación de assets en GitHub Pages
 
 - Corrige el pipeline multi-entorno para copiar el directorio `assets/` de MAIN, TEST y DEVELOP al artefacto de GitHub Pages.
 - El skyline PNG de V95.2.1 estaba correctamente versionado en Git, pero no era publicado por el workflow, que solo copiaba archivos raíz.
 - Mantiene las rutas relativas `assets/...`, válidas en `/`, `/test/` y `/develop/` una vez publicado el directorio.
 - Añade validaciones del asset del skyline cuando existe en la rama correspondiente.
+- No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.3 - identidad Madrid integrada
+
+- Sustituye el skyline y el lema renderizados por separado por un único PNG transparente reutilizable en cabecera pública y autenticada.
+- El recurso combina la bandera rectangular oficial de la Comunidad de Madrid, `De Madrid al cielo` en amarillo y el Oso y el Madroño en blanco, siguiendo la referencia visual de la equipación 2026/2027.
+- Elimina el texto HTML visible del lema para evitar duplicidad y asegurar una composición gráfica consistente.
+- Mantiene el layout de login/footer validado en V95.2.1 y la publicación de `assets/` corregida en V95.2.2.
 - No requiere migración Supabase ni RESET del dataset.
