@@ -85,6 +85,37 @@ jobs:
                 and (nullif(trim(coalesce(p.telefono,'')),'') is null
                      or not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie')))
             ) then raise exception 'TEST-S functional identity contract failed: tutor without phone or principal DNI/NIE'; end if;
+            -- Age-aware player identity contract. At the 2026/2027 season reference date,
+            -- every player aged 14+ must have a valid principal DNI. Under 14, DNI is optional
+            -- and BASELINE must retain coverage of both variants (with and without DNI).
+            if exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' >= (p.fecha_nacimiento + interval '14 years')::date
+                and not exists (
+                  select 1 from public.documentos_identidad d
+                  where d.persona_id=p.id and d.activo and d.es_principal and d.tipo='dni'
+                    and private.documento_espanol_valido(d.tipo,d.numero)
+                )
+            ) then raise exception 'TEST-S BASELINE contract failed: player aged 14+ without valid principal DNI'; end if;
+            if not exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' < (p.fecha_nacimiento + interval '14 years')::date
+                and exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo='dni' and private.documento_espanol_valido(d.tipo,d.numero))
+            ) then raise exception 'TEST-S BASELINE coverage contract failed: no under-14 player with DNI'; end if;
+            if not exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' < (p.fecha_nacimiento + interval '14 years')::date
+                and not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie'))
+            ) then raise exception 'TEST-S BASELINE coverage contract failed: no under-14 player without DNI/NIE'; end if;
             if exists (
               select 1 from private.test_access_identities a
               join public.personas p on p.id=a.persona_id

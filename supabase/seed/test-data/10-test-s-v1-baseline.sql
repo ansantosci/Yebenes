@@ -1,7 +1,7 @@
--- TEST-S v1.1 BASELINE: deterministic synthetic dataset.
+-- TEST-S v1.2 BASELINE: deterministic synthetic dataset.
 -- 46 players (2/team), 23 tutors, 12 coaches (2 are also senior players), 23 team schedules.
 begin;
-insert into private.test_datasets(id,version,scenario,metadata) values('TEST-S','1.1','BASELINE','{"purpose":"small reproducible functional dataset"}')
+insert into private.test_datasets(id,version,scenario,metadata) values('TEST-S','1.2','BASELINE','{"purpose":"small reproducible functional dataset"}')
 on conflict(id) do update set version=excluded.version,scenario=excluded.scenario,loaded_at=now(),metadata=excluded.metadata;
 
 -- Team schedules: deterministic and deliberately varied.
@@ -59,6 +59,43 @@ select private.test_uuid('player:'||codigo||':'||g), 'Jugador TEST', codigo||' '
        lower(codigo)||'-'||g||'@test.invalid',true from p
 on conflict(id) do update set fecha_nacimiento=excluded.fecha_nacimiento,email_contacto=excluded.email_contacto,activo=true;
 insert into private.test_dataset_entities select 'TEST-S','personas',private.test_uuid('player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
+
+-- Player identity coverage follows the real age rule at the season reference date (2026-09-01):
+-- * age >= 14: principal DNI is always present and valid;
+-- * age < 14: DNI is optional, so BASELINE deliberately alternates cases with and without DNI.
+-- Missing-document regression cases for players aged 14+ belong in explicit regression scenarios.
+with players as (
+  select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2) g
+  join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
+  where t.estado='activa'
+), docs as (
+  select codigo,g,73000000+n::int dni_number
+  from players
+  where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
+     or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
+)
+insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo)
+select private.test_uuid('doc:player:'||codigo||':'||g),private.test_s_player_person_id(codigo,g),'dni',
+       lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
+       'ES',true,date '2026-07-01',true
+from docs
+on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_hasta=null,activo=true;
+insert into private.test_dataset_entities
+select 'TEST-S','documentos_identidad',private.test_uuid('doc:player:'||codigo||':'||g),now()
+from (
+  select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2) g
+  join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
+  where t.estado='activa'
+) x
+where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
+   or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
+on conflict do nothing;
 
 -- Player facets, inscriptions and team assignments.
 insert into public.jugadores(id,persona_id,activo,fecha_alta)
