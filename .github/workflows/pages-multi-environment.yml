@@ -122,6 +122,10 @@ jobs:
             test -s site/assets/madrid-skyline-yellow.png
           fi
 
+          if [ -f source-main/assets/madrid-motto-community.png ]; then
+            test -s site/assets/madrid-motto-community.png
+          fi
+
           echo "MAIN validation completed."
 
       - name: Validate TEST
@@ -139,6 +143,10 @@ jobs:
 
           if [ -f source-test/assets/madrid-skyline-yellow.png ]; then
             test -s site/test/assets/madrid-skyline-yellow.png
+          fi
+
+          if [ -f source-test/assets/madrid-motto-community.png ]; then
+            test -s site/test/assets/madrid-motto-community.png
           fi
 
           if grep -q "ypyzochuqtetddffohpv.supabase.co" site/test/app.js; then
@@ -162,6 +170,10 @@ jobs:
 
           if [ -f source-develop/assets/madrid-skyline-yellow.png ]; then
             test -s site/develop/assets/madrid-skyline-yellow.png
+          fi
+
+          if [ -f source-develop/assets/madrid-motto-community.png ]; then
+            test -s site/develop/assets/madrid-motto-community.png
           fi
           grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/develop/config.js
 
