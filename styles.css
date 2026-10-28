@@ -640,3 +640,8 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .topbar{row-gap:0;padding-top:4px;padding-bottom:4px}
   .topbar-skyline .madrid-identity-art{width:min(48vw,180px)}
 }
+
+/* V95.2.11 - escritorio equilibrado; tablet y movil conservan su composicion */
+@media(min-width:1025px){
+  .public-motto{justify-content:flex-end}
+}

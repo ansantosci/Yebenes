@@ -1,3 +1,9 @@
+# V95.2.11 — Alineación de identidad en escritorio
+
+- Solo desde 1025 px: ancla la composición Madrid al margen derecho de la cabecera pública, equilibrándola con la identidad del club a la izquierda.
+- Tablet (hasta 1024 px) conserva el centrado anterior para proteger la separación entre elementos; móvil conserva la composición validada de V95.2.10.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.10 — Cabecera móvil anclada a los extremos
 
 - Conserva sin cambios la composición aprobada de escritorio y tablet.
