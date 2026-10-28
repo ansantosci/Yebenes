@@ -1,3 +1,10 @@
+# V95.2.9 — Identidad móvil en dos filas compactas
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: sitúa escudo y marca Madrid en una primera fila; centra debajo el nombre del club y la temporada.
+- La cabecera aprovecha mejor el ancho, reduce el apilado visual y adelanta ligeramente el acceso y los patrocinadores, sin recortar campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.8 — Jerarquía y altura de cabecera en móvil
 
 - Conserva sin cambios la composición de escritorio validada en V95.2.6.
