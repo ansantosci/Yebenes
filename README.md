@@ -1,3 +1,48 @@
+# V95.2.11 — Alineación de identidad en escritorio
+
+- Solo desde 1025 px: ancla la composición Madrid al margen derecho de la cabecera pública, equilibrándola con la identidad del club a la izquierda.
+- Tablet (hasta 1024 px) conserva el centrado anterior para proteger la separación entre elementos; móvil conserva la composición validada de V95.2.10.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.10 — Cabecera móvil anclada a los extremos
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: mantiene escudo y marca Madrid en la misma fila, anclando la marca al margen derecho y el escudo al izquierdo.
+- El nombre y la temporada siguen centrados debajo, sin cambios de tamaño ni altura de las zonas de acceso.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.9 — Identidad móvil en dos filas compactas
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: sitúa escudo y marca Madrid en una primera fila; centra debajo el nombre del club y la temporada.
+- La cabecera aprovecha mejor el ancho, reduce el apilado visual y adelanta ligeramente el acceso y los patrocinadores, sin recortar campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.8 — Jerarquía y altura de cabecera en móvil
+
+- Conserva sin cambios la composición de escritorio validada en V95.2.6.
+- Solo hasta 640 px: reduce la composición Madrid a un máximo de 180 px y mantiene el escudo a 52 px para equilibrar ambas identidades.
+- Reduce el aire vertical de la cabecera y el espacio previo al formulario, adelantando visiblemente el bloque de patrocinadores sin reducir campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.7 — Proporciones y espacio de cabecera en móvil
+
+- Conserva íntegramente el diseño de escritorio de V95.2.6 aprobado por el usuario.
+- Solo hasta 640 px: reduce Madrid a un máximo de 220 px y da algo más de presencia al escudo del login.
+- Compacta los espacios de la cabecera y del acceso para adelantar el pie de patrocinadores, sin alterar sus logos ni su distribución.
+- Mantiene separada la versión global y conserva el modo soporte.
+- Estado: candidata local; despliegue y aceptación visual en iPhone pendientes. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.6 — Cabecera responsive sin solapamientos
+
+- Reserva una franja propia para la versión global y conserva el activador de soporte de cinco pulsaciones.
+- Elimina los límites de altura que reducían la composición Madrid y mantiene su proporción original.
+- Login: dos zonas equilibradas en escritorio y dos filas compactas en móvil; temporada en una sola línea cuando cabe.
+- Corrige las columnas de la cabecera autenticada para escudo, nombre, marca Madrid y controles; en tablet y móvil distribuye la marca en una segunda fila.
+- Conserva el PNG aprobado, el formulario y los patrocinadores. No requiere migraciones, Edge Functions ni RESET.
+- Estado: preparada para revisión; validación visual del usuario y despliegue pendientes.
+- Corrige los títulos históricos duplicados de V95.2.2/V95.2.4 sin eliminar su contenido.
+
 # V94.1.3
 
 - Optimiza el guardado de la configuración económica de un equipo.
@@ -1174,3 +1219,152 @@ La documentacion operativa y de arquitectura se mantiene en `docs/architecture/`
 - [Datasets de TEST](docs/architecture/test-datasets.md)
 
 La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos de arquitectura no deben volver a crearse en raiz.
+
+## V94.3.4 - cierre de la generación V94
+
+- Conserva la pestaña activa de cada ficha de Familia durante refrescos silenciosos y recuperación de foco.
+- Elimina la versión duplicada del formulario de acceso y unifica la detección de actualización en 94.3.4.
+- TEST-ACCESS y TEST-S quedan saneados para identidades funcionales: tutores con identidad mínima y BASELINE con jugadores 14+ documentados y menores de 14 con/sin DNI de forma determinista.
+
+## V95.0.0 - identidad visual y navegación 2026/27
+
+- Abre una nueva generación visual inspirada en la equipación 2026/27: azul estructural, rojo de acción y amarillo de acento.
+- La cabecera incorpora el lema configurable `De Madrid al cielo` y una firma gráfica tipo skyline.
+- `configuracion_visual_club` se amplía con color secundario, lema y control de visibilidad del lema.
+- Se incorpora `patrocinadores_club`: nombre, logo, URL opcional, orden y estado activo/inactivo. El frontend solo muestra patrocinadores activos y respeta su orden.
+- La franja de patrocinadores es responsive y desaparece si el club no tiene patrocinadores activos.
+- V95 mantiene las reglas de negocio de V94; el rediseño se implantará progresivamente sin inventar módulos no existentes.
+- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.0.0` se reserva para el siguiente cambio estructural mayor.
+- Regla de release: todo incremento de versión debe actualizar también este `README.md`.
+
+
+
+### V95.0.1 - cabecera definitiva y navegación contextual de Familia
+
+- Corrige la aplicación efectiva de la capa CSS V95 del primer bloque visual.
+- Activa la cabecera azul 2026/27 con acentos rojo/amarillo y el lema configurable `De Madrid al cielo`.
+- Familia pasa a un contexto de jugador seleccionado: selector `Mis hijos` + una única ficha activa.
+- El hijo seleccionado se conserva durante la sesión y los refrescos silenciosos; las pestañas internas siguen conservando su contexto.
+- En móvil el selector de hijos se transforma en una banda horizontal compacta.
+- Mantiene la franja de patrocinadores basada exclusivamente en registros activos de `patrocinadores_club`.
+
+### V95.0.2 - navegación contextual y pulido de layout
+
+- Ensancha el selector `Mis hijos` para mostrar nombres completos con mayor claridad.
+- Añade navegación contextual lateral del jugador seleccionado: Resumen, Datos, Documentos, RRMM e Inscripción.
+- Mantiene sincronizada la navegación lateral con las pestañas reales de la ficha y conserva sección/hijo tras refrescos silenciosos.
+- Reduce el hero de Familia en escritorio para priorizar la información operativa.
+- Oculta la navegación inferior redundante de Familia en escritorio; en móvil se conserva la navegación compacta existente.
+- Refuerza la presencia del lema `De Madrid al cielo` en la cabecera sin alterar su configuración dinámica.
+- No modifica reglas de negocio ni requiere migraciones Supabase adicionales.
+
+
+### V95.1.0 - gestión configurable de patrocinadores
+
+- Añade al panel Club/Administrador una vista de Patrocinadores basada en `public.patrocinadores_club` creada por la migración 046.
+- Permite alta, edición, orden, enlace opcional y activación/desactivación sin desplegar código.
+- Permite eliminar patrocinadores con confirmación explícita.
+- La franja pública se refresca inmediatamente y muestra solo registros activos respetando su orden.
+- El logo se configura mediante URL; esta versión no introduce todavía almacenamiento de ficheros en Supabase Storage.
+- No requiere una nueva migración: reutiliza RLS y permisos ya desplegados en V95.0.0.
+
+### V95.1.1 - subida de logos y orden visual de patrocinadores
+
+- Sustituye la URL manual del logo por subida directa de PNG, JPG, WEBP o SVG (máximo 2 MB).
+- Añade el bucket público `patrocinadores` en Supabase Storage; solo los roles Club/Administrador pueden escribir o borrar archivos.
+- Elimina el campo técnico `Orden` del formulario. Los nuevos patrocinadores se añaden al final automáticamente.
+- Permite reordenar patrocinadores mediante arrastrar y soltar, con controles ↑/↓ equivalentes para móvil, teclado y accesibilidad.
+- La aplicación mantiene internamente `orden` como secuencia 1..N y la recalcula después de cada movimiento o eliminación.
+- Al sustituir o eliminar un patrocinador se retira también del Storage el logo administrado por la aplicación.
+- Requiere aplicar la migración `047_v95_1_1_patrocinadores_storage.sql` antes de probar la subida de logos.
+
+### V95.1.2 - footer global de patrocinadores
+
+- Convierte la franja de patrocinadores en un footer global compartido por login y todas las areas autenticadas de la aplicacion.
+- El footer solo aparece cuando existen patrocinadores activos y conserva el orden configurado por el Club.
+- Sustituye el carrusel/scroll horizontal por un grid responsive con salto automatico de linea; en movil los logos se distribuyen en varias filas sin ocultar patrocinadores fuera de pantalla.
+- Todos los logos usan cajas equivalentes y conservan su proporcion mediante `object-fit: contain`.
+- Los enlaces configurados siguen siendo clicables y se abren de forma segura en una pestana nueva.
+- La migracion `048_v95_1_2_patrocinadores_publicos_activos.sql` limita la lectura anonima a patrocinadores activos; los usuarios autenticados conservan lectura completa para administracion.
+- Mantiene la regla de release: toda version actualiza tambien este `README.md`.
+
+
+### V95.1.3 - limpieza de login y diagnostico oculto
+
+- Elimina del login el aviso tecnico `Autenticacion real activa`; Supabase Auth es ya el comportamiento normal de la aplicacion.
+- Oculta por defecto `Diagnostico de sesion` tanto en Login como en Perfil -> Seguridad.
+- Las herramientas de soporte se activan temporalmente con 7 clics/toques consecutivos sobre la insignia de entorno/version.
+- El modo soporte se conserva solo en `sessionStorage` de la pestana actual y no modifica datos del usuario ni configuracion del club.
+- El footer global de patrocinadores de V95.1.2 se mantiene sin cambios.
+
+
+## V95.1.4 - Hidden diagnostics activator fix
+
+- Corrige el activador oculto de soporte: la insignia de entorno tenia `pointer-events: none` y no podia recibir clics.
+- El modo soporte se activa/desactiva con 5 clics o toques consecutivos sobre la insignia de version, tambien desde el login.
+- Mantiene el diagnostico oculto para usuarios normales y temporal por pestana mediante `sessionStorage`.
+
+
+## V95.1.5 - Stealth support trigger
+
+- Mantiene el activador oculto de modo soporte mediante cinco clics/toques consecutivos sobre la insignia de entorno/version.
+- La insignia conserva el cursor normal y no muestra hover, animacion ni otra pista visual de interactividad.
+- Los cuatro primeros clics/toques no generan feedback visible; solo el quinto activa o desactiva el modo soporte.
+- No modifica autenticacion, diagnostico de sesion, patrocinadores ni reglas de negocio.
+
+
+## V95.2.0 - identidad visual deportiva refinada
+
+- Sustituye la composición azul con grandes bandas diagonales rojo/amarillo por una identidad menos ambigua y más propia del club.
+- Formaliza la semántica de color: azul para estructura y navegación, rojo para acciones principales y amarillo para identidad/acento.
+- Incorpora el lema `De Madrid al cielo` junto a un skyline amarillo de Madrid en la cabecera pública y autenticada.
+- El login adopta una cabecera institucional azul y un fondo deportivo sobrio, manteniendo el formulario limpio y el footer global de patrocinadores.
+- Las cabeceras de sección usan azul, título blanco y eyebrow amarillo; se elimina el rojo de grandes superficies de cabecera.
+- Pestañas, navegación, enlaces estructurales, foco y progreso pasan a azul; botones de acción como Entrar, Guardar, Añadir o Confirmar permanecen rojos.
+- Se mantienen sin cambios la gestión de patrocinadores, el footer responsive, el modo soporte oculto y las reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.1 - skyline organico y ajuste de viewport del login
+
+- Sustituye el skyline geométrico incrustado en HTML por `assets/madrid-skyline-yellow.png`, un recurso PNG RGBA transparente amarillo reutilizado en login y cabecera autenticada.
+- El nuevo skyline usa trazado lineal y proporción panorámica para integrarse con `De Madrid al cielo` sin el aspecto rectangular/cuadriculado de V95.2.0.
+- Ajusta la composición vertical del login para que el footer global de patrocinadores participe en el viewport en lugar de quedar desplazado por un bloque de autenticación de 100vh.
+- En escritorios con altura suficiente se muestran cabecera, formulario y patrocinadores sin scroll; en alturas reducidas se conserva scroll vertical normal y se compacta moderadamente el formulario.
+- Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.2 - publicación de assets en GitHub Pages
+
+- Corrige el pipeline multi-entorno para copiar el directorio `assets/` de MAIN, TEST y DEVELOP al artefacto de GitHub Pages.
+- El skyline PNG de V95.2.1 estaba correctamente versionado en Git, pero no era publicado por el workflow, que solo copiaba archivos raíz.
+- Mantiene las rutas relativas `assets/...`, válidas en `/`, `/test/` y `/develop/` una vez publicado el directorio.
+- Añade validaciones del asset del skyline cuando existe en la rama correspondiente.
+- No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.3 - identidad Madrid integrada
+
+- Sustituye el skyline y el lema renderizados por separado por un único PNG transparente reutilizable en cabecera pública y autenticada.
+- El recurso combina la bandera rectangular oficial de la Comunidad de Madrid, `De Madrid al cielo` en amarillo y el Oso y el Madroño en blanco, siguiendo la referencia visual de la equipación 2026/2027.
+- Elimina el texto HTML visible del lema para evitar duplicidad y asegurar una composición gráfica consistente.
+- Mantiene el layout de login/footer validado en V95.2.1 y la publicación de `assets/` corregida en V95.2.2.
+- No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.4 - pulido responsive de cabecera Madrid
+
+- En escritorio, la marca grafica de Madrid gana aproximadamente un 35-40% de presencia y se desplaza ligeramente hacia el centro, sin aumentar la altura de la cabecera.
+- En tablet se aplica una escala intermedia.
+- En movil se hace deliberadamente lo contrario: la marca se reduce para no competir con el escudo, el nombre del club ni el formulario.
+- En la cabecera autenticada movil se mantiene oculta la marca completa para priorizar nombre, rol y controles; permanece visible en login de forma compacta.
+- La insignia de entorno/version se hace algo mas discreta sin alterar el activador oculto del modo soporte.
+- No requiere migracion Supabase ni RESET del dataset.
+
+
+## V95.2.5 - rediseño responsive de cabecera
+
+- Escritorio: cabecera dividida en dos zonas equilibradas para la identidad del club y la marca Madrid.
+- Móvil: cabecera en dos filas; la segunda dedica todo el ancho a bandera + “De Madrid al cielo” + Oso y Madroño.
+- La cabecera autenticada adopta el mismo principio responsive en móvil.
+- No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
+- No requiere migración Supabase ni RESET.

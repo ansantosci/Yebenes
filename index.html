@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#c51230" />
+  <meta name="theme-color" content="#075985" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    window.YEBENES_APP_VERSION = '94.3.2';
+window.YEBENES_APP_VERSION = '95.2.11';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="styles.css?v=94.3.3" />
+<link rel="stylesheet" href="styles.css?v=95.2.11" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -45,8 +45,8 @@
     </div>
   </div>
   <div id="authScreen" class="auth-screen hidden">
+<div class="public-masthead" aria-label="C.D. Los Yébenes San Bruno"><div class="public-brand"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span class="public-season-label">2026/2027</span></span></div></div><div class="public-motto"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.2.11" alt="De Madrid al cielo · Comunidad de Madrid" /></div></div>
     <div class="auth-card">
-      <div class="version-badge" aria-label="Versión de prueba">v94.3.2</div>
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
         <div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span id="authSeasonLabel">2026/2027</span></span></div>
@@ -64,7 +64,7 @@
         <button class="primary" type="submit">Entrar</button>
         <button class="secondary auth-resend" id="forgotPasswordButton" type="button">¿Has olvidado tu contraseña?</button>
         <div class="auth-confirmation-context hidden" id="confirmationContext"><strong>Cuenta pendiente de confirmar</strong><span id="confirmationContextText">Revisa el correo que te enviamos al registrarte.</span><button class="secondary auth-resend" id="resendConfirmationButton" type="button">Reenviar correo de confirmación</button></div>
-        <div class="demo-box"><strong>Autenticación real activa</strong><span>Accede con tu cuenta de Supabase Auth.</span><span>Si olvidaste la contraseña, solicita un enlace de recuperación.</span></div><button class="secondary auth-resend" id="openAuthDiagnostic" type="button">Diagnóstico de sesión</button>
+        <button class="secondary auth-resend support-tool hidden" id="openAuthDiagnostic" type="button">Diagnóstico de sesión</button>
       </form>
 
       <form id="familySignupForm" class="auth-form hidden">
@@ -110,9 +110,10 @@
       <div class="brand-mark"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /></div>
       <div class="brand-copy">
         <div class="club-name">C.D. Los Yébenes San Bruno</div>
+        <div class="club-motto-row" aria-hidden="true"><span id="clubMotto">De Madrid al cielo</span></div>
         <div class="season">Temporada <span id="currentSeasonLabel">2026/2027</span> · <span id="currentRoleLabel"></span></div>
       </div>
-      <button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
+<div class="topbar-skyline"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.2.11" alt="De Madrid al cielo · Comunidad de Madrid" /></div><button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
     </header>
 
     <main>
@@ -127,7 +128,25 @@
             <div><span class="eyebrow dark">Mis jugadores</span><h2 id="familyTitle">Mi familia</h2></div>
             <button class="primary small" id="addPlayerButton" data-open="playerModal">+ Añadir</button>
           </div>
-          <div id="familyActionBanner" class="family-action-banner hidden"></div><div id="playersList" class="cards-grid"></div>
+          <div id="familyActionBanner" class="family-action-banner hidden"></div>
+          <div class="family-context-layout">
+            <aside class="family-player-sidebar" aria-label="Selector de jugador">
+              <div class="family-player-sidebar-title">Mis hijos</div>
+              <div id="familyPlayerSelector" class="family-player-selector"></div>
+              <nav id="familyContextNav" class="family-context-nav" aria-label="Secciones del jugador seleccionado">
+                <button type="button" class="family-context-nav-item active" data-family-context-tab="summary"><span>⌂</span>Resumen</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="data"><span>◉</span>Datos</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="docs"><span>▤</span>Documentos</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="medical"><span>♥</span>RRMM</button>
+                <button type="button" class="family-context-nav-item" data-family-context-tab="inscription"><span>✓</span>Inscripción</button>
+                <button type="button" class="family-context-nav-item family-context-profile" data-family-profile-action><span>●</span>Mi perfil</button>
+              </nav>
+            </aside>
+            <div class="family-context-main">
+              <div id="familySelectedPlayerMobile" class="family-selected-player-mobile"></div>
+              <div id="playersList" class="cards-grid family-single-player"></div>
+            </div>
+          </div>
         </section>
         <section class="section compact" id="familyStatusSection">
           <div class="progress-card"><div><span class="eyebrow dark">Estado familiar</span><h3 id="familyPlayerCount">0 jugadores registrados</h3></div><div class="progress-ring" style="--p:0"><span>0%</span></div></div>
@@ -152,6 +171,21 @@
             <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="clubCategoryFilter"><option value="all">Todas las categorías</option></select><select id="clubActiveFilter"><option value="active">Solo activos</option><option value="inactive">Solo inactivos</option><option value="all">Activos e inactivos</option></select><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
           <div id="clubQuickFilterChip" class="quick-filter-chip hidden"></div><div id="clubPaginationTop" class="list-pagination list-pagination-top" aria-label="Paginación superior de fichas"></div><div class="table-wrap players-table-wrap"><table class="players-table"><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>RRMM</th><th>Datos</th><th>Docs.</th><th id="paymentTableHead">Pago</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div><div id="clubPagination" class="list-pagination" aria-label="Paginación de fichas"></div>
+        </section>
+      </section>
+
+      <section id="sponsorsView" class="view">
+        <div class="hero-card admin-hero">
+          <span class="eyebrow">Identidad del club</span>
+          <h1>Patrocinadores</h1>
+          <p>Gestiona los colaboradores que aparecen en la franja pública de la aplicación.</p>
+        </div>
+        <section class="section">
+          <div class="section-head stacked-mobile">
+            <div><span class="eyebrow dark">Visibilidad</span><h2>Patrocinadores del club</h2><p class="meta">Solo los patrocinadores activos se muestran a familias, jugadores y personal.</p></div>
+            <button class="primary small" id="openSponsorModal">+ Nuevo patrocinador</button>
+          </div>
+          <div id="sponsorAdminList" class="sponsor-admin-grid"></div>
         </section>
       </section>
 
@@ -249,10 +283,21 @@
       <button class="nav-item" id="structureNavButton" data-club-view="structureView"><span>▦</span>Estructura</button>
       <button class="nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
       
+      <button class="nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span>★</span>Patrocinadores</button>
       <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
   </div>
 
+  <footer id="sponsorsStrip" class="sponsors-strip global-sponsors-footer hidden" aria-label="Patrocinadores del club">
+    <div class="sponsors-strip-inner">
+      <div class="sponsors-heading"><span class="kit-stripes" aria-hidden="true"></span><strong>Patrocinadores</strong></div>
+      <div id="sponsorsList" class="sponsors-list"></div>
+      <div class="sponsors-club-signature">C.D. Los Yébenes San Bruno · Temporada <span id="sponsorsSeasonLabel">2026/2027</span></div>
+    </div>
+  </footer>
+
+
+  <dialog id="sponsorModal"><form id="sponsorForm"><div class="modal-head"><div><span class="eyebrow dark">Patrocinador</span><h2 id="sponsorModalTitle">Nuevo patrocinador</h2><div class="meta">Configura cómo aparece en la franja pública del club.</div></div><button type="button" class="icon-button" id="closeSponsorModal">✕</button></div><input type="hidden" name="id" /><input type="hidden" name="logo_url" /><div class="form-grid"><label>Nombre<input name="nombre" required maxlength="120" /></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label><label class="span-2 sponsor-file-field">Logo del patrocinador<input name="logo_file" id="sponsorLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" /><span class="field-help">PNG, JPG, WEBP o SVG · máximo 2 MB · recomendado fondo transparente.</span></label><label class="span-2">Enlace del patrocinador <span class="optional">(opcional)</span><input name="url" type="url" placeholder="https://…" /></label></div><div id="sponsorLogoPreview" class="sponsor-logo-preview"><span>Selecciona una imagen para ver la vista previa</span></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSponsor">Cancelar</button><button type="submit" class="primary">Guardar patrocinador</button></div></form></dialog>
 
   <dialog id="temporaryAccessModal" class="account-access-modal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Cuenta creada</span><h2>Credenciales temporales</h2><div class="meta">Entrega estas credenciales de forma segura a la persona. La contraseña solo se muestra ahora.</div></div><button type="button" class="icon-button" id="closeTemporaryAccessModal">✕</button></div><div class="credential-card"><label>Correo<input id="temporaryAccessEmail" readonly /></label><label>Contraseña temporal<div class="credential-copy-row"><input id="temporaryAccessPassword" readonly /><button type="button" class="secondary" id="copyTemporaryPassword">Copiar</button></div></label></div><div class="warning-box">En el primer acceso la aplicación bloqueará el resto de funciones hasta que la persona cambie esta contraseña.</div><div class="modal-actions"><button type="button" class="primary" id="acceptTemporaryAccess">Entendido</button></div></div></dialog>
 
@@ -260,7 +305,7 @@
 
   <dialog id="forcePasswordChangeModal" class="account-access-modal"><form id="forcePasswordChangeForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Seguridad</span><h2>Crea tu contraseña</h2><div class="meta">Has aceptado la invitación del C.D. Los Yébenes San Bruno. Define ahora tu contraseña para completar la activación de tu cuenta.</div></div></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="warning-box">Usa al menos 8 caracteres. Después podrás volver a cambiarla desde Perfil cuando quieras.</div><div class="modal-actions"><button type="button" class="secondary" id="forcePasswordLogout">Cerrar sesión</button><button type="submit" class="primary">Guardar contraseña y continuar</button></div></form></dialog>
 
-  <dialog id="accountProfileModal" class="account-access-modal"><form id="accountPasswordForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Mi cuenta</span><h2>Perfil</h2><div class="meta" id="accountProfileMeta"></div></div><button type="button" class="icon-button" id="closeAccountProfileModal">✕</button></div><nav class="entity-tabs account-tabs" aria-label="Secciones del perfil"><button type="button" class="entity-tab active" data-account-tab="profile">Mi perfil</button><button type="button" class="entity-tab" data-account-tab="availability" id="accountAvailabilityTab">Disponibilidad</button><button type="button" class="entity-tab" data-account-tab="security">Seguridad</button></nav><div class="entity-tab-panel active" data-account-panel="profile"><div class="person-admin-card"><span class="eyebrow dark">Datos personales</span><div class="form-grid single-column"><label>Teléfono<input id="accountPhone" type="tel" autocomplete="tel" /></label></div><div class="modal-actions"><button type="button" class="primary" id="saveAccountPhone">Guardar teléfono</button></div><div id="accountPhoneFeedback" hidden></div><div class="meta profile-security-note">Este teléfono pertenece a tu Persona y se reutiliza en las fichas que representas. El correo de acceso y la contraseña se gestionan desde Seguridad.</div></div><div class="person-admin-card"><span class="eyebrow dark">Perfiles activos</span><div id="accountProfileRoles" class="role-badges"></div></div></div><div class="entity-tab-panel" data-account-panel="availability"><section class="person-admin-card" id="selfCoachAvailabilityWrap" hidden><span class="eyebrow dark">Mi disponibilidad como entrenador</span><div id="selfCoachAvailabilityPanel"></div></section><div id="accountNoCoachAvailability" class="empty-card" hidden>Este perfil no tiene rol Entrenador.</div></div><div class="entity-tab-panel" data-account-panel="security"><div class="person-admin-card"><span class="eyebrow dark">Correo de acceso y comunicaciones</span><div class="form-grid"><label>Correo electrónico<input id="accountEmail" type="email" autocomplete="email" /></label><label>Repite el correo electrónico<input id="accountEmailConfirm" type="email" autocomplete="off" data-email-confirm /></label></div><div class="meta">Puedes cambiarlo sin perder tu Persona, perfiles, fichas ni historial. Si tienes cuenta de acceso, el nuevo correo será también tu usuario de login.</div><div class="modal-actions"><button type="button" class="secondary" id="changeAccountEmail">Cambiar correo</button></div><div id="accountEmailFeedback" hidden></div></div><div class="form-section-title"><strong>Contraseña</strong><span>Puedes cambiarla cuando quieras.</span></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="modal-actions"><button type="submit" class="primary">Cambiar contraseña</button></div><div class="form-section-title"><strong>Diagnóstico de sesión</strong><span>Solo para soporte. No incluye contraseñas ni contenido de tokens.</span></div><div class="modal-actions"><button type="button" class="secondary" id="openAuthDiagnosticAuthenticated">Abrir diagnóstico de sesión</button></div></div></form></dialog>
+  <dialog id="accountProfileModal" class="account-access-modal"><form id="accountPasswordForm" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Mi cuenta</span><h2>Perfil</h2><div class="meta" id="accountProfileMeta"></div></div><button type="button" class="icon-button" id="closeAccountProfileModal">✕</button></div><nav class="entity-tabs account-tabs" aria-label="Secciones del perfil"><button type="button" class="entity-tab active" data-account-tab="profile">Mi perfil</button><button type="button" class="entity-tab" data-account-tab="availability" id="accountAvailabilityTab">Disponibilidad</button><button type="button" class="entity-tab" data-account-tab="security">Seguridad</button></nav><div class="entity-tab-panel active" data-account-panel="profile"><div class="person-admin-card"><span class="eyebrow dark">Datos personales</span><div class="form-grid single-column"><label>Teléfono<input id="accountPhone" type="tel" autocomplete="tel" /></label></div><div class="modal-actions"><button type="button" class="primary" id="saveAccountPhone">Guardar teléfono</button></div><div id="accountPhoneFeedback" hidden></div><div class="meta profile-security-note">Este teléfono pertenece a tu Persona y se reutiliza en las fichas que representas. El correo de acceso y la contraseña se gestionan desde Seguridad.</div></div><div class="person-admin-card"><span class="eyebrow dark">Perfiles activos</span><div id="accountProfileRoles" class="role-badges"></div></div></div><div class="entity-tab-panel" data-account-panel="availability"><section class="person-admin-card" id="selfCoachAvailabilityWrap" hidden><span class="eyebrow dark">Mi disponibilidad como entrenador</span><div id="selfCoachAvailabilityPanel"></div></section><div id="accountNoCoachAvailability" class="empty-card" hidden>Este perfil no tiene rol Entrenador.</div></div><div class="entity-tab-panel" data-account-panel="security"><div class="person-admin-card"><span class="eyebrow dark">Correo de acceso y comunicaciones</span><div class="form-grid"><label>Correo electrónico<input id="accountEmail" type="email" autocomplete="email" /></label><label>Repite el correo electrónico<input id="accountEmailConfirm" type="email" autocomplete="off" data-email-confirm /></label></div><div class="meta">Puedes cambiarlo sin perder tu Persona, perfiles, fichas ni historial. Si tienes cuenta de acceso, el nuevo correo será también tu usuario de login.</div><div class="modal-actions"><button type="button" class="secondary" id="changeAccountEmail">Cambiar correo</button></div><div id="accountEmailFeedback" hidden></div></div><div class="form-section-title"><strong>Contraseña</strong><span>Puedes cambiarla cuando quieras.</span></div><div class="form-grid single-column"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required /></label><label>Repite la nueva contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required /></label></div><div class="modal-actions"><button type="submit" class="primary">Cambiar contraseña</button></div><div class="support-tool hidden" id="authenticatedDiagnosticTools"><div class="form-section-title"><strong>Diagnóstico de sesión</strong><span>Solo para soporte. No incluye contraseñas ni contenido de tokens.</span></div><div class="modal-actions"><button type="button" class="secondary" id="openAuthDiagnosticAuthenticated">Abrir diagnóstico de sesión</button></div></div></div></form></dialog>
 
   <dialog id="roleChooserModal"><div class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">Perfiles de acceso</span><h2>¿Cómo quieres acceder?</h2><div class="meta">Tu cuenta tiene varios perfiles. Puedes cambiar de perfil en cualquier momento sin cerrar sesión.</div></div><button type="button" class="icon-button" id="closeRoleChooser">✕</button></div><div id="roleChooserList" class="role-chooser-list"></div></div></dialog>
 
@@ -350,7 +395,7 @@
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=94.3.2"></script>
-  <script src="app.js?v=94.3.3"></script>
+<script src="config.js?v=95.2.11"></script>
+<script src="app.js?v=95.2.11"></script>
 </body>
 </html>

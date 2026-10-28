@@ -214,9 +214,13 @@ insert into public.configuracion_visual_club
     color_primario,
     color_primario_oscuro,
     color_acento,
+    color_secundario,
+    color_secundario_oscuro,
     color_fondo,
     color_tarjeta,
-    color_texto
+    color_texto,
+    lema_cabecera,
+    mostrar_lema
   )
 values
   (
@@ -225,10 +229,14 @@ values
     'https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png',
     '#c51230',
     '#8f0c22',
-    '#f4c542',
-    '#f5f6f8',
+    '#f5c542',
+    '#0069a8',
+    '#004f82',
+    '#f4f7fb',
     '#ffffff',
-    '#20232a'
+    '#17233b',
+    'De Madrid al cielo',
+    true
   )
 on conflict (id) do update set
   nombre_club = excluded.nombre_club,
@@ -236,9 +244,13 @@ on conflict (id) do update set
   color_primario = excluded.color_primario,
   color_primario_oscuro = excluded.color_primario_oscuro,
   color_acento = excluded.color_acento,
+  color_secundario = excluded.color_secundario,
+  color_secundario_oscuro = excluded.color_secundario_oscuro,
   color_fondo = excluded.color_fondo,
   color_tarjeta = excluded.color_tarjeta,
-  color_texto = excluded.color_texto;
+  color_texto = excluded.color_texto,
+  lema_cabecera = excluded.lema_cabecera,
+  mostrar_lema = excluded.mostrar_lema;
 
 
 -- ============================================================
