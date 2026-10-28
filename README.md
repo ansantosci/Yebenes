@@ -1,3 +1,10 @@
+# V95.2.8 — Jerarquía y altura de cabecera en móvil
+
+- Conserva sin cambios la composición de escritorio validada en V95.2.6.
+- Solo hasta 640 px: reduce la composición Madrid a un máximo de 180 px y mantiene el escudo a 52 px para equilibrar ambas identidades.
+- Reduce el aire vertical de la cabecera y el espacio previo al formulario, adelantando visiblemente el bloque de patrocinadores sin reducir campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.7 — Proporciones y espacio de cabecera en móvil
 
 - Conserva íntegramente el diseño de escritorio de V95.2.6 aprobado por el usuario.

@@ -626,12 +626,12 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .topbar .season{font-size:.66rem}
 }
 
-/* V95.2.7 - ajuste exclusivo de movil; escritorio conserva V95.2.6 */
+/* V95.2.8 - jerarquia mas equilibrada y menos altura, solo en movil */
 @media(max-width:640px){
-  .public-masthead{gap:2px;padding:8px 16px 6px}
+  .public-masthead{gap:0;padding:6px 16px 4px}
   .public-brand img{width:52px;height:52px}
-  .public-motto .madrid-identity-art{width:min(62vw,220px)}
-  body:has(#authScreen:not(.hidden)) .auth-screen{gap:12px;padding-bottom:12px}
-  .topbar{row-gap:2px;padding-top:6px;padding-bottom:6px}
-  .topbar-skyline .madrid-identity-art{width:min(62vw,220px)}
+  .public-motto .madrid-identity-art{width:min(48vw,180px)}
+  body:has(#authScreen:not(.hidden)) .auth-screen{gap:6px;padding-bottom:8px}
+  .topbar{row-gap:0;padding-top:4px;padding-bottom:4px}
+  .topbar-skyline .madrid-identity-art{width:min(48vw,180px)}
 }
