@@ -1,3 +1,11 @@
+# V95.2.7 — Proporciones y espacio de cabecera en móvil
+
+- Conserva íntegramente el diseño de escritorio de V95.2.6 aprobado por el usuario.
+- Solo hasta 640 px: reduce Madrid a un máximo de 220 px y da algo más de presencia al escudo del login.
+- Compacta los espacios de la cabecera y del acceso para adelantar el pie de patrocinadores, sin alterar sus logos ni su distribución.
+- Mantiene separada la versión global y conserva el modo soporte.
+- Estado: candidata local; despliegue y aceptación visual en iPhone pendientes. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.6 — Cabecera responsive sin solapamientos
 
 - Reserva una franja propia para la versión global y conserva el activador de soporte de cinco pulsaciones.

@@ -625,3 +625,13 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .topbar .club-name{font-size:.85rem;line-height:1.2}
   .topbar .season{font-size:.66rem}
 }
+
+/* V95.2.7 - ajuste exclusivo de movil; escritorio conserva V95.2.6 */
+@media(max-width:640px){
+  .public-masthead{gap:2px;padding:8px 16px 6px}
+  .public-brand img{width:52px;height:52px}
+  .public-motto .madrid-identity-art{width:min(62vw,220px)}
+  body:has(#authScreen:not(.hidden)) .auth-screen{gap:12px;padding-bottom:12px}
+  .topbar{row-gap:2px;padding-top:6px;padding-bottom:6px}
+  .topbar-skyline .madrid-identity-art{width:min(62vw,220px)}
+}
