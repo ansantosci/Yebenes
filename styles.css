@@ -626,7 +626,7 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .topbar .season{font-size:.66rem}
 }
 
-/* V95.2.9 - identidad en dos filas compactas, solo en movil */
+/* V95.2.10 - identidad movil anclada a ambos extremos */
 @media(max-width:640px){
   .public-masthead{grid-template-columns:52px minmax(0,1fr);grid-template-areas:"crest motto" "copy copy";column-gap:12px;row-gap:4px;padding:6px 16px 4px}
   .public-brand{display:contents}
@@ -634,7 +634,7 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .public-brand>div{grid-area:copy;justify-self:center;text-align:center}
   .public-brand strong{font-size:.96rem}
   .public-brand span{font-size:.72rem}
-  .public-motto{grid-area:motto;justify-self:center;width:100%}
+  .public-motto{grid-area:motto;justify-self:end;justify-content:flex-end;width:100%}
   .public-motto .madrid-identity-art{width:min(48vw,180px)}
   body:has(#authScreen:not(.hidden)) .auth-screen{gap:4px;padding-bottom:6px}
   .topbar{row-gap:0;padding-top:4px;padding-bottom:4px}

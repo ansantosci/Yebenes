@@ -1,3 +1,10 @@
+# V95.2.10 — Cabecera móvil anclada a los extremos
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: mantiene escudo y marca Madrid en la misma fila, anclando la marca al margen derecho y el escudo al izquierdo.
+- El nombre y la temporada siguen centrados debajo, sin cambios de tamaño ni altura de las zonas de acceso.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.9 — Identidad móvil en dos filas compactas
 
 - Conserva sin cambios la composición aprobada de escritorio y tablet.
