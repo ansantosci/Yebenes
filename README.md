@@ -1,3 +1,95 @@
+# V95.2.12 — Acciones autenticadas compactas en móvil
+
+- Solo hasta 640 px: reduce los dos controles de cambio de perfil y salida a 36 px, con menor contraste de fondo y separación más contenida.
+- Mantiene la cabecera autenticada en dos líneas: identidad del club y acciones arriba; composición Madrid centrada debajo.
+- Escritorio, tableta y la cabecera de acceso público quedan sin cambios. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.11 — Alineación de identidad en escritorio
+
+- Solo desde 1025 px: ancla la composición Madrid al margen derecho de la cabecera pública, equilibrándola con la identidad del club a la izquierda.
+- Tablet (hasta 1024 px) conserva el centrado anterior para proteger la separación entre elementos; móvil conserva la composición validada de V95.2.10.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.10 — Cabecera móvil anclada a los extremos
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: mantiene escudo y marca Madrid en la misma fila, anclando la marca al margen derecho y el escudo al izquierdo.
+- El nombre y la temporada siguen centrados debajo, sin cambios de tamaño ni altura de las zonas de acceso.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.9 — Identidad móvil en dos filas compactas
+
+- Conserva sin cambios la composición aprobada de escritorio y tablet.
+- Solo hasta 640 px: sitúa escudo y marca Madrid en una primera fila; centra debajo el nombre del club y la temporada.
+- La cabecera aprovecha mejor el ancho, reduce el apilado visual y adelanta ligeramente el acceso y los patrocinadores, sin recortar campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.8 — Jerarquía y altura de cabecera en móvil
+
+- Conserva sin cambios la composición de escritorio validada en V95.2.6.
+- Solo hasta 640 px: reduce la composición Madrid a un máximo de 180 px y mantiene el escudo a 52 px para equilibrar ambas identidades.
+- Reduce el aire vertical de la cabecera y el espacio previo al formulario, adelantando visiblemente el bloque de patrocinadores sin reducir campos ni zonas táctiles.
+- Mantiene versión global y modo soporte. Estado: pendiente de despliegue y validación visual en iPhone. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.7 — Proporciones y espacio de cabecera en móvil
+
+- Conserva íntegramente el diseño de escritorio de V95.2.6 aprobado por el usuario.
+- Solo hasta 640 px: reduce Madrid a un máximo de 220 px y da algo más de presencia al escudo del login.
+- Compacta los espacios de la cabecera y del acceso para adelantar el pie de patrocinadores, sin alterar sus logos ni su distribución.
+- Mantiene separada la versión global y conserva el modo soporte.
+- Estado: candidata local; despliegue y aceptación visual en iPhone pendientes. No requiere SQL, Edge Functions ni RESET.
+
+# V95.2.6 — Cabecera responsive sin solapamientos
+
+- Reserva una franja propia para la versión global y conserva el activador de soporte de cinco pulsaciones.
+- Elimina los límites de altura que reducían la composición Madrid y mantiene su proporción original.
+- Login: dos zonas equilibradas en escritorio y dos filas compactas en móvil; temporada en una sola línea cuando cabe.
+- Corrige las columnas de la cabecera autenticada para escudo, nombre, marca Madrid y controles; en tablet y móvil distribuye la marca en una segunda fila.
+- Conserva el PNG aprobado, el formulario y los patrocinadores. No requiere migraciones, Edge Functions ni RESET.
+- Estado: preparada para revisión; validación visual del usuario y despliegue pendientes.
+- Corrige los títulos históricos duplicados de V95.2.2/V95.2.4 sin eliminar su contenido.
+
+# V94.1.3
+
+- Optimiza el guardado de la configuración económica de un equipo.
+- Una modificación de cuota ya no recarga todo el modelo remoto de Fichas ni reconstruye Estructura.
+- Tras la RPC sólo se recarga `configuracion_economica_equipo`, se sincroniza la referencia económica en memoria y se repinta la tabla económica.
+- Añade diagnóstico `[Yebenes][PERF] Economía equipo` con tiempos `rpc_ms`, `refresh_ms` y `total_ms`.
+- No modifica la RPC `configurar_economia_equipo` ni reglas de negocio.
+- TEST-M continúa como objetivo principal de V94 tras cerrar la estabilización de rendimiento.
+
+# V94.1.2
+
+- Evita repintados visuales innecesarios al recuperar foco en Estructura, Entrenadores y Usuarios.
+- Mantiene la revalidación de sesión, permisos y contexto Supabase.
+- Fichas, RRMM, Personas y áreas Familia/Jugador conservan los refrescos remotos necesarios.
+- TEST-M continúa como siguiente objetivo principal de V94.
+
+# V94.1.1 — Homogeneización UX de listados e interacción
+
+- Parte de V94.0 validada en DEVELOP, donde BUG-TEST-01 deja de reproducirse al navegar, cambiar de pestaña/aplicación y recuperar el foco desde Personas.
+- Aplica la norma UX común de listados: cuando un registro tiene ficha de detalle, toda la fila es accionable, muestra cursor de interacción, feedback al pasar el ratón y permite apertura por teclado con Enter/Espacio.
+- Personas elimina el botón redundante «Abrir» y abre la ficha pulsando cualquier zona de la fila.
+- Estructura > Equipos elimina también el botón redundante «Abrir/Editar» cuando la fila ya representa la misma acción.
+- Fichas/Jugadores, RRMM, Entrenadores y Estructura mantienen/alinean el mismo patrón de filas interactivas.
+- Refuerza globalmente el cursor de interacción para botones, enlaces, pestañas, controles seleccionables y elementos con rol de botón; los controles deshabilitados muestran cursor no permitido.
+- No modifica reglas de negocio, esquema Supabase, Edge Functions ni TEST-BASE.
+- TEST-M continúa siendo el siguiente bloque principal de V94 tras validar esta normalización UX en DEVELOP y promoverla a TEST.
+- Política de entrega: frontend completo con README, versión visible y `version.json` sincronizados.
+
+# V94.0 — Estabilización multi-entorno y visibilidad de entorno
+
+- Parte exactamente de V93.8 y mantiene su comportamiento funcional, incorporando únicamente estabilización técnica previa a las pruebas de volumen de V94.
+- Añade una etiqueta discreta y permanente de entorno junto a la versión, obtenida de la misma configuración que selecciona Supabase: `DEVELOP`, `TEST`, `DEMO` y preparada para `PROD`.
+- Corrige BUG-TEST-01 observado en TEST: al perder y recuperar el foco desde la vista Personas podían multiplicarse las peticiones hasta provocar `net::ERR_INSUFFICIENT_RESOURCES` y terminar mostrando `TypeError: Failed to fetch`.
+- Reduce reconstrucciones innecesarias ante eventos de `storage`, evita precargar Personas cuando esa vista no está activa, elimina cargas duplicadas en la revalidación y serializa renders remotos concurrentes de Personas.
+- Mantiene la lógica robusta de restauración/revalidación de sesión de V93.8 y el flujo multi-entorno `develop -> DEVELOP`, `test -> TEST`, `main -> DEMO`.
+- TEST-BASE fase 1 ya está validado en Supabase TEST con 5 roles, 1 temporada, 8 categorías, 23 equipos, 8 reglas categoría/temporada, 1 configuración visual y 0 personas antes del bootstrap.
+- Se completó el bootstrap administrativo de TEST: Persona sintética vinculada a Supabase Auth con perfiles `administrador` y `club`; login, selector multirrol y panel administrativo validados.
+- Cambio Supabase Data API del 30/10/2026: toda nueva tabla/reconstrucción deberá declarar y versionar explícitamente los GRANT necesarios según mínimo privilegio; la validación de esquema deberá auditar también grants. No se concederá `anon` mecánicamente.
+- El objetivo principal de V94 sigue siendo TEST-M: disponer de un juego de datos sintéticos mucho mayor en los entornos de desarrollo/prueba para validar rendimiento, listados, relaciones, RRMM, disponibilidad, históricos, RLS y detectar patrones N+1. Los datos de volumen no se copiarán automáticamente a DEMO/PROD.
+- Política de entrega: cada versión se distribuye como frontend completo; `version.json`, versión visible y `README.md` deben quedar sincronizados antes de considerar una versión lista para desplegar.
+
 # V93.8 — Restauración de sesión y continuidad de navegación
 
 - El arranque y la reanudación ya no muestran Login mientras Supabase está resolviendo una sesión existente: se usa un estado neutro «Recuperando sesión…».
@@ -1063,3 +1155,222 @@ No deben almacenarse secretos en GitHub ni en el frontend.
 - Registra aparición/desaparición de la clave de sesión Supabase y eventos `storage`, sin guardar tokens ni credenciales.
 - Corrige el identificador temprano `YEBENES_APP_VERSION` del `index.html`, que había quedado obsoleto en 93.5, para que el detector previo al arranque compare contra 93.7.1.
 - No cambia la política funcional 12 h / 7 días de V93.7.
+
+
+## V94.1.4 — estabilización de revalidación de roles y despertar por interacción
+
+- La revalidación de sesión registra `REVALIDATE_ROLES` con el rol previo y los perfiles recuperados.
+- Si el perfil activo parece desaparecer, se realiza una segunda lectura de identidad antes de aplicar el cambio; `REVALIDATE_ROLES_CONFIRMED` deja trazabilidad de ambas lecturas.
+- El primer gesto tras el umbral de inactividad se dedica exclusivamente a revalidar la sesión. El `click` asociado se consume para impedir que una reconstrucción de navegación pueda activar accidentalmente otro control, incluido Cerrar sesión.
+- Se añaden los eventos diagnósticos `IDLE_WAKE_REVALIDATION` e `IDLE_WAKE_CLICK_SUPPRESSED`.
+- No modifica workflows, datasets, Edge Functions ni esquema Supabase.
+
+
+## V94.2.1 — refresco silencioso de Fichas al recuperar foco
+
+- La revalidación de sesión mantiene visible la tabla de Fichas mientras actualiza datos desde Supabase.
+- `renderRemoteClub({silent:true})` evita sustituir temporalmente la tabla por el mensaje de carga durante `refreshHotContextPreservingNavigation()`.
+- Si una recarga silenciosa falla temporalmente, se conserva el contenido ya visible y el error queda en consola; las cargas explícitas mantienen el mensaje de carga/error habitual.
+- No modifica la lógica Auth/revalidación de roles validada en V94.1.4.
+
+
+## V94.2.1 - paginación común de listados
+- Paginación cliente en Fichas, RRMM, Entrenadores y Personas.
+- Tamaño global persistente: 25 / 50 / 100 (50 por defecto).
+- Filtros y búsquedas se aplican antes de paginar y reinician a página 1.
+- Mantiene el refresco silencioso de Fichas introducido en V94.2.
+
+
+### V94.3 - paginacion accesible desde ambos extremos del listado
+- Controles superiores compactos en Fichas, RRMM, Entrenadores y Personas.
+- Selector global 25/50/100 disponible antes de recorrer la tabla.
+- Navegacion de paginas sincronizada arriba y abajo.
+- Al cambiar de pagina, el foco visual vuelve al inicio del listado mediante scroll suave.
+- La barra inferior conserva el rango mostrado y la navegacion para continuar al terminar de revisar la pagina.
+
+
+### V94.3
+- Paginacion local instantanea en Personas: los cambios de pagina reutilizan filas preparadas en memoria y no repiten consultas Supabase.
+- Proteccion comun contra doble clic durante transiciones de paginacion.
+
+
+### V94.3.2 - scroll coherente y primera carga de Personas optimizada
+- Paginador superior conserva el scroll; el inferior vuelve al inicio del listado.
+- Entrar explicitamente en un listado posiciona su inicio; refresh silencioso no mueve el scroll.
+- Personas sigue siendo exclusiva de Administrador y elimina el patron N+1 de relaciones mediante consultas batch.
+- Sin cambios de esquema, RRMM, Auth, workflows ni TEST-S.
+
+### V94.3.2 - Familia silenciosa y teléfono propio
+- Familia/Jugador conserva las fichas visibles durante revalidaciones por foco/visibilidad; la primera carga sigue mostrando estado de carga.
+- Las cargas concurrentes de Familia se deduplican para evitar dobles consultas por eventos focus/visibilitychange cercanos.
+- Perfil > Mi perfil permite editar el teléfono de la Persona autenticada; tras guardar se rehidrata identidad y se refresca Familia silenciosamente.
+
+
+
+## V94.3.3
+- Familia/Jugador: separa telefono propio del jugador del telefono del tutor.
+- Los datos federativos exigibles quedan bloqueados para Familia tras validacion del Club; los datos no federativos permanecen editables.
+- SQL 044 anade `actualizar_contacto_menor_representado` para actualizar solo telefono sin degradar el estado de la ficha.
+- Orden TEST: aplicar SQL 044 antes de publicar frontend V94.3.3.
+
+## Documentacion tecnica de arquitectura
+
+La documentacion operativa y de arquitectura se mantiene en `docs/architecture/`:
+
+- [Migraciones](docs/architecture/migrations.md)
+- [Contract tests](docs/architecture/contract-tests.md)
+- [Pipeline de releases](docs/architecture/release-pipeline.md)
+- [Baseline reproducible](docs/architecture/baseline.md)
+- [Estructura y fronteras del repositorio](docs/architecture/repository-layout.md)
+- [Datasets de TEST](docs/architecture/test-datasets.md)
+
+La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos de arquitectura no deben volver a crearse en raiz.
+
+## V94.3.4 - cierre de la generación V94
+
+- Conserva la pestaña activa de cada ficha de Familia durante refrescos silenciosos y recuperación de foco.
+- Elimina la versión duplicada del formulario de acceso y unifica la detección de actualización en 94.3.4.
+- TEST-ACCESS y TEST-S quedan saneados para identidades funcionales: tutores con identidad mínima y BASELINE con jugadores 14+ documentados y menores de 14 con/sin DNI de forma determinista.
+
+## V95.0.0 - identidad visual y navegación 2026/27
+
+- Abre una nueva generación visual inspirada en la equipación 2026/27: azul estructural, rojo de acción y amarillo de acento.
+- La cabecera incorpora el lema configurable `De Madrid al cielo` y una firma gráfica tipo skyline.
+- `configuracion_visual_club` se amplía con color secundario, lema y control de visibilidad del lema.
+- Se incorpora `patrocinadores_club`: nombre, logo, URL opcional, orden y estado activo/inactivo. El frontend solo muestra patrocinadores activos y respeta su orden.
+- La franja de patrocinadores es responsive y desaparece si el club no tiene patrocinadores activos.
+- V95 mantiene las reglas de negocio de V94; el rediseño se implantará progresivamente sin inventar módulos no existentes.
+- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.0.0` se reserva para el siguiente cambio estructural mayor.
+- Regla de release: todo incremento de versión debe actualizar también este `README.md`.
+
+
+
+### V95.0.1 - cabecera definitiva y navegación contextual de Familia
+
+- Corrige la aplicación efectiva de la capa CSS V95 del primer bloque visual.
+- Activa la cabecera azul 2026/27 con acentos rojo/amarillo y el lema configurable `De Madrid al cielo`.
+- Familia pasa a un contexto de jugador seleccionado: selector `Mis hijos` + una única ficha activa.
+- El hijo seleccionado se conserva durante la sesión y los refrescos silenciosos; las pestañas internas siguen conservando su contexto.
+- En móvil el selector de hijos se transforma en una banda horizontal compacta.
+- Mantiene la franja de patrocinadores basada exclusivamente en registros activos de `patrocinadores_club`.
+
+### V95.0.2 - navegación contextual y pulido de layout
+
+- Ensancha el selector `Mis hijos` para mostrar nombres completos con mayor claridad.
+- Añade navegación contextual lateral del jugador seleccionado: Resumen, Datos, Documentos, RRMM e Inscripción.
+- Mantiene sincronizada la navegación lateral con las pestañas reales de la ficha y conserva sección/hijo tras refrescos silenciosos.
+- Reduce el hero de Familia en escritorio para priorizar la información operativa.
+- Oculta la navegación inferior redundante de Familia en escritorio; en móvil se conserva la navegación compacta existente.
+- Refuerza la presencia del lema `De Madrid al cielo` en la cabecera sin alterar su configuración dinámica.
+- No modifica reglas de negocio ni requiere migraciones Supabase adicionales.
+
+
+### V95.1.0 - gestión configurable de patrocinadores
+
+- Añade al panel Club/Administrador una vista de Patrocinadores basada en `public.patrocinadores_club` creada por la migración 046.
+- Permite alta, edición, orden, enlace opcional y activación/desactivación sin desplegar código.
+- Permite eliminar patrocinadores con confirmación explícita.
+- La franja pública se refresca inmediatamente y muestra solo registros activos respetando su orden.
+- El logo se configura mediante URL; esta versión no introduce todavía almacenamiento de ficheros en Supabase Storage.
+- No requiere una nueva migración: reutiliza RLS y permisos ya desplegados en V95.0.0.
+
+### V95.1.1 - subida de logos y orden visual de patrocinadores
+
+- Sustituye la URL manual del logo por subida directa de PNG, JPG, WEBP o SVG (máximo 2 MB).
+- Añade el bucket público `patrocinadores` en Supabase Storage; solo los roles Club/Administrador pueden escribir o borrar archivos.
+- Elimina el campo técnico `Orden` del formulario. Los nuevos patrocinadores se añaden al final automáticamente.
+- Permite reordenar patrocinadores mediante arrastrar y soltar, con controles ↑/↓ equivalentes para móvil, teclado y accesibilidad.
+- La aplicación mantiene internamente `orden` como secuencia 1..N y la recalcula después de cada movimiento o eliminación.
+- Al sustituir o eliminar un patrocinador se retira también del Storage el logo administrado por la aplicación.
+- Requiere aplicar la migración `047_v95_1_1_patrocinadores_storage.sql` antes de probar la subida de logos.
+
+### V95.1.2 - footer global de patrocinadores
+
+- Convierte la franja de patrocinadores en un footer global compartido por login y todas las areas autenticadas de la aplicacion.
+- El footer solo aparece cuando existen patrocinadores activos y conserva el orden configurado por el Club.
+- Sustituye el carrusel/scroll horizontal por un grid responsive con salto automatico de linea; en movil los logos se distribuyen en varias filas sin ocultar patrocinadores fuera de pantalla.
+- Todos los logos usan cajas equivalentes y conservan su proporcion mediante `object-fit: contain`.
+- Los enlaces configurados siguen siendo clicables y se abren de forma segura en una pestana nueva.
+- La migracion `048_v95_1_2_patrocinadores_publicos_activos.sql` limita la lectura anonima a patrocinadores activos; los usuarios autenticados conservan lectura completa para administracion.
+- Mantiene la regla de release: toda version actualiza tambien este `README.md`.
+
+
+### V95.1.3 - limpieza de login y diagnostico oculto
+
+- Elimina del login el aviso tecnico `Autenticacion real activa`; Supabase Auth es ya el comportamiento normal de la aplicacion.
+- Oculta por defecto `Diagnostico de sesion` tanto en Login como en Perfil -> Seguridad.
+- Las herramientas de soporte se activan temporalmente con 7 clics/toques consecutivos sobre la insignia de entorno/version.
+- El modo soporte se conserva solo en `sessionStorage` de la pestana actual y no modifica datos del usuario ni configuracion del club.
+- El footer global de patrocinadores de V95.1.2 se mantiene sin cambios.
+
+
+## V95.1.4 - Hidden diagnostics activator fix
+
+- Corrige el activador oculto de soporte: la insignia de entorno tenia `pointer-events: none` y no podia recibir clics.
+- El modo soporte se activa/desactiva con 5 clics o toques consecutivos sobre la insignia de version, tambien desde el login.
+- Mantiene el diagnostico oculto para usuarios normales y temporal por pestana mediante `sessionStorage`.
+
+
+## V95.1.5 - Stealth support trigger
+
+- Mantiene el activador oculto de modo soporte mediante cinco clics/toques consecutivos sobre la insignia de entorno/version.
+- La insignia conserva el cursor normal y no muestra hover, animacion ni otra pista visual de interactividad.
+- Los cuatro primeros clics/toques no generan feedback visible; solo el quinto activa o desactiva el modo soporte.
+- No modifica autenticacion, diagnostico de sesion, patrocinadores ni reglas de negocio.
+
+
+## V95.2.0 - identidad visual deportiva refinada
+
+- Sustituye la composición azul con grandes bandas diagonales rojo/amarillo por una identidad menos ambigua y más propia del club.
+- Formaliza la semántica de color: azul para estructura y navegación, rojo para acciones principales y amarillo para identidad/acento.
+- Incorpora el lema `De Madrid al cielo` junto a un skyline amarillo de Madrid en la cabecera pública y autenticada.
+- El login adopta una cabecera institucional azul y un fondo deportivo sobrio, manteniendo el formulario limpio y el footer global de patrocinadores.
+- Las cabeceras de sección usan azul, título blanco y eyebrow amarillo; se elimina el rojo de grandes superficies de cabecera.
+- Pestañas, navegación, enlaces estructurales, foco y progreso pasan a azul; botones de acción como Entrar, Guardar, Añadir o Confirmar permanecen rojos.
+- Se mantienen sin cambios la gestión de patrocinadores, el footer responsive, el modo soporte oculto y las reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.1 - skyline organico y ajuste de viewport del login
+
+- Sustituye el skyline geométrico incrustado en HTML por `assets/madrid-skyline-yellow.png`, un recurso PNG RGBA transparente amarillo reutilizado en login y cabecera autenticada.
+- El nuevo skyline usa trazado lineal y proporción panorámica para integrarse con `De Madrid al cielo` sin el aspecto rectangular/cuadriculado de V95.2.0.
+- Ajusta la composición vertical del login para que el footer global de patrocinadores participe en el viewport en lugar de quedar desplazado por un bloque de autenticación de 100vh.
+- En escritorios con altura suficiente se muestran cabecera, formulario y patrocinadores sin scroll; en alturas reducidas se conserva scroll vertical normal y se compacta moderadamente el formulario.
+- Mantiene sin cambios autenticación, patrocinadores, navegación, modo soporte oculto y reglas de negocio.
+- No requiere migración Supabase ni RESET del dataset.
+
+## V95.2.2 - publicación de assets en GitHub Pages
+
+- Corrige el pipeline multi-entorno para copiar el directorio `assets/` de MAIN, TEST y DEVELOP al artefacto de GitHub Pages.
+- El skyline PNG de V95.2.1 estaba correctamente versionado en Git, pero no era publicado por el workflow, que solo copiaba archivos raíz.
+- Mantiene las rutas relativas `assets/...`, válidas en `/`, `/test/` y `/develop/` una vez publicado el directorio.
+- Añade validaciones del asset del skyline cuando existe en la rama correspondiente.
+- No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.3 - identidad Madrid integrada
+
+- Sustituye el skyline y el lema renderizados por separado por un único PNG transparente reutilizable en cabecera pública y autenticada.
+- El recurso combina la bandera rectangular oficial de la Comunidad de Madrid, `De Madrid al cielo` en amarillo y el Oso y el Madroño en blanco, siguiendo la referencia visual de la equipación 2026/2027.
+- Elimina el texto HTML visible del lema para evitar duplicidad y asegurar una composición gráfica consistente.
+- Mantiene el layout de login/footer validado en V95.2.1 y la publicación de `assets/` corregida en V95.2.2.
+- No requiere migración Supabase ni RESET del dataset.
+
+
+## V95.2.4 - pulido responsive de cabecera Madrid
+
+- En escritorio, la marca grafica de Madrid gana aproximadamente un 35-40% de presencia y se desplaza ligeramente hacia el centro, sin aumentar la altura de la cabecera.
+- En tablet se aplica una escala intermedia.
+- En movil se hace deliberadamente lo contrario: la marca se reduce para no competir con el escudo, el nombre del club ni el formulario.
+- En la cabecera autenticada movil se mantiene oculta la marca completa para priorizar nombre, rol y controles; permanece visible en login de forma compacta.
+- La insignia de entorno/version se hace algo mas discreta sin alterar el activador oculto del modo soporte.
+- No requiere migracion Supabase ni RESET del dataset.
+
+
+## V95.2.5 - rediseño responsive de cabecera
+
+- Escritorio: cabecera dividida en dos zonas equilibradas para la identidad del club y la marca Madrid.
+- Móvil: cabecera en dos filas; la segunda dedica todo el ancho a bandera + “De Madrid al cielo” + Oso y Madroño.
+- La cabecera autenticada adopta el mismo principio responsive en móvil.
+- No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
+- No requiere migración Supabase ni RESET.

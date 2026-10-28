@@ -66,6 +66,10 @@ jobs:
             cp source-main/config.js site/
           fi
 
+          if [ -d source-main/assets ]; then
+            cp -R source-main/assets site/
+          fi
+
           # ============================================================
           # TEST -> /test/
           # ============================================================
@@ -79,6 +83,10 @@ jobs:
 
           if [ -f source-test/config.js ]; then
             cp source-test/config.js site/test/
+          fi
+
+          if [ -d source-test/assets ]; then
+            cp -R source-test/assets site/test/
           fi
 
           # ============================================================
@@ -96,6 +104,10 @@ jobs:
             cp source-develop/config.js site/develop/
           fi
 
+          if [ -d source-develop/assets ]; then
+            cp -R source-develop/assets site/develop/
+          fi
+
       - name: Validate MAIN
         shell: bash
         run: |
@@ -105,6 +117,14 @@ jobs:
           test -s site/app.js
           test -s site/styles.css
           test -s site/version.json
+
+          if [ -f source-main/assets/madrid-skyline-yellow.png ]; then
+            test -s site/assets/madrid-skyline-yellow.png
+          fi
+
+          if [ -f source-main/assets/madrid-motto-community.png ]; then
+            test -s site/assets/madrid-motto-community.png
+          fi
 
           echo "MAIN validation completed."
 
@@ -120,6 +140,14 @@ jobs:
           grep -q "YEBENES_CONFIG" site/test/app.js
           grep -q "config.js" site/test/index.html
           grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/test/config.js
+
+          if [ -f source-test/assets/madrid-skyline-yellow.png ]; then
+            test -s site/test/assets/madrid-skyline-yellow.png
+          fi
+
+          if [ -f source-test/assets/madrid-motto-community.png ]; then
+            test -s site/test/assets/madrid-motto-community.png
+          fi
 
           if grep -q "ypyzochuqtetddffohpv.supabase.co" site/test/app.js; then
             echo "ERROR: TEST app.js contains DEMO Supabase hardcoded."
@@ -139,6 +167,14 @@ jobs:
 
           grep -q "YEBENES_CONFIG" site/develop/app.js
           grep -q "config.js" site/develop/index.html
+
+          if [ -f source-develop/assets/madrid-skyline-yellow.png ]; then
+            test -s site/develop/assets/madrid-skyline-yellow.png
+          fi
+
+          if [ -f source-develop/assets/madrid-motto-community.png ]; then
+            test -s site/develop/assets/madrid-motto-community.png
+          fi
           grep -q "eenzhtnwnimpqurjpaok.supabase.co" site/develop/config.js
 
           if grep -q "ypyzochuqtetddffohpv.supabase.co" site/develop/app.js; then
@@ -159,24 +195,21 @@ jobs:
           echo "  /develop/ <- develop"
           echo
           echo "Deployment policy:"
-          echo "  main    -> build + deploy"
-          echo "  test    -> build only"
-          echo "  develop -> build only"
+          echo "  Every push rebuilds and publishes the complete Pages artifact."
+          echo "  / always comes from main."
+          echo "  /test/ always comes from test."
+          echo "  /develop/ always comes from develop."
 
-      # El artefacto Pages solo es necesario cuando MAIN va a desplegar.
       - name: Setup Pages
-        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
-        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
   deploy:
     name: Deploy Pages
-    if: github.ref == 'refs/heads/main'
 
     environment:
       name: github-pages

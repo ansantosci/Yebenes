@@ -73,4 +73,54 @@ jobs:
           select 'coaches',count(*) from public.entrenadores c join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='entrenadores' and e.entity_id=c.id;
           select 'tutors',count(*) from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='persona_roles' and e.entity_id in (select id from public.persona_roles where rol_id='5b569d29-62f1-40b9-bfb7-7a65f62ee8aa');
           select 'pending_notifications',count(*) from public.notificaciones_salida n join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='notificaciones_salida' and e.entity_id=n.id where n.estado='pendiente';
+          -- Functional identity contracts: every TEST-S tutor must have phone + active principal DNI.
+          do $$
+          begin
+            if exists (
+              select 1
+              from public.persona_roles pr
+              join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='persona_roles' and e.entity_id=pr.id
+              join public.personas p on p.id=pr.persona_id
+              where pr.rol_id='5b569d29-62f1-40b9-bfb7-7a65f62ee8aa'
+                and (nullif(trim(coalesce(p.telefono,'')),'') is null
+                     or not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie')))
+            ) then raise exception 'TEST-S functional identity contract failed: tutor without phone or principal DNI/NIE'; end if;
+            -- Age-aware player identity contract. At the 2026/2027 season reference date,
+            -- every player aged 14+ must have a valid principal DNI. Under 14, DNI is optional
+            -- and BASELINE must retain coverage of both variants (with and without DNI).
+            if exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' >= (p.fecha_nacimiento + interval '14 years')::date
+                and not exists (
+                  select 1 from public.documentos_identidad d
+                  where d.persona_id=p.id and d.activo and d.es_principal and d.tipo='dni'
+                    and private.documento_espanol_valido(d.tipo,d.numero)
+                )
+            ) then raise exception 'TEST-S BASELINE contract failed: player aged 14+ without valid principal DNI'; end if;
+            if not exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' < (p.fecha_nacimiento + interval '14 years')::date
+                and exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo='dni' and private.documento_espanol_valido(d.tipo,d.numero))
+            ) then raise exception 'TEST-S BASELINE coverage contract failed: no under-14 player with DNI'; end if;
+            if not exists (
+              select 1
+              from private.test_dataset_entities e
+              join public.jugadores j on j.id=e.entity_id and e.dataset_id='TEST-S' and e.table_name='jugadores'
+              join public.personas p on p.id=j.persona_id
+              where date '2026-09-01' < (p.fecha_nacimiento + interval '14 years')::date
+                and not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie'))
+            ) then raise exception 'TEST-S BASELINE coverage contract failed: no under-14 player without DNI/NIE'; end if;
+            if exists (
+              select 1 from private.test_access_identities a
+              join public.personas p on p.id=a.persona_id
+              where nullif(trim(coalesce(p.telefono,'')),'') is null
+                 or not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie'))
+            ) then raise exception 'TEST-ACCESS functional identity contract failed: identity without phone or principal DNI/NIE'; end if;
+          end $$;
           SQL
