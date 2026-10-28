@@ -1,3 +1,9 @@
+# V95.2.12 — Acciones autenticadas compactas en móvil
+
+- Solo hasta 640 px: reduce los dos controles de cambio de perfil y salida a 36 px, con menor contraste de fondo y separación más contenida.
+- Mantiene la cabecera autenticada en dos líneas: identidad del club y acciones arriba; composición Madrid centrada debajo.
+- Escritorio, tableta y la cabecera de acceso público quedan sin cambios. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.11 — Alineación de identidad en escritorio
 
 - Solo desde 1025 px: ancla la composición Madrid al margen derecho de la cabecera pública, equilibrándola con la identidad del club a la izquierda.

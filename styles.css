@@ -645,3 +645,12 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
 @media(min-width:1025px){
   .public-motto{justify-content:flex-end}
 }
+
+/* V95.2.12 - acciones autenticadas compactas en movil */
+@media(max-width:640px){
+  .topbar{grid-template-columns:46px minmax(0,1fr) 36px 36px;gap:6px;padding:6px 12px 4px;row-gap:2px}
+  .topbar .brand-mark{width:46px;height:46px}
+  .topbar .role-switch-button,
+  .topbar .icon-button{width:36px;height:36px;min-width:36px;padding:0;border-radius:9px;background:rgba(255,255,255,.11);font-size:1rem}
+  .topbar-skyline .madrid-identity-art{width:min(44vw,168px)}
+}
