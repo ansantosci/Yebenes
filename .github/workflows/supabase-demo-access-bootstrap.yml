@@ -7,10 +7,16 @@ on:
         description: Repository branch containing DEMO-ACCESS scripts
         required: true
         type: choice
-        options: [main]
-        default: main
-      demo_confirmation:
-        description: Type BOOTSTRAP_DEMO_ACCESS to create only controlled synthetic logins
+        options: [develop, test, main]
+        default: test
+      target:
+        description: Environment where controlled synthetic logins will be created
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
+      confirmation:
+        description: TEST type BOOTSTRAP_TEST_DEMO_ACCESS; DEMO type BOOTSTRAP_DEMO_ACCESS
         required: true
         type: string
 
@@ -25,17 +31,30 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate DEMO guardrail and checkout source
+      - name: Validate environment guardrail and checkout source
         shell: bash
         run: |
           set -euo pipefail
-          [ '${{ inputs.source_ref }}' = 'main' ] || { echo 'DEMO-ACCESS requires source_ref=main.' >&2; exit 1; }
-          [ '${{ inputs.demo_confirmation }}' = 'BOOTSTRAP_DEMO_ACCESS' ] || { echo 'Type BOOTSTRAP_DEMO_ACCESS to continue.' >&2; exit 1; }
+          target='${{ inputs.target }}'
+          ref='${{ inputs.source_ref }}'
+          confirm='${{ inputs.confirmation }}'
+          if [ "$target" = 'TEST' ]; then
+            case "$ref" in develop|test) ;; *) echo 'TEST rehearsal requires develop or test.' >&2; exit 1;; esac
+            [ "$confirm" = 'BOOTSTRAP_TEST_DEMO_ACCESS' ] || { echo 'Type BOOTSTRAP_TEST_DEMO_ACCESS to continue.' >&2; exit 1; }
+          else
+            [ "$ref" = 'main' ] || { echo 'DEMO-ACCESS requires source_ref=main.' >&2; exit 1; }
+            [ "$confirm" = 'BOOTSTRAP_DEMO_ACCESS' ] || { echo 'Type BOOTSTRAP_DEMO_ACCESS to continue.' >&2; exit 1; }
+          fi
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.source_ref }}
       - name: Validate files, migration and required secrets
         env:
+          TARGET: ${{ inputs.target }}
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
           DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
           SUPABASE_DEMO_PROJECT_REF: ${{ secrets.SUPABASE_DEMO_PROJECT_REF }}
           SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
@@ -43,40 +62,46 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$DEMO_DB_URL"
-          test -n "$SUPABASE_DEMO_PROJECT_REF"
-          test -n "$SUPABASE_DEMO_SERVICE_ROLE_KEY"
-          test -n "$DEMO_APP_USER_PASSWORD"
+          if [ "$TARGET" = 'TEST' ]; then
+            test -n "$TEST_DB_URL"
+            test -n "$SUPABASE_TEST_PROJECT_REF"
+            test -n "$SUPABASE_TEST_SERVICE_ROLE_KEY"
+            test -n "$TEST_APP_USER_PASSWORD"
+          else
+            test -n "$DEMO_DB_URL"
+            test -n "$SUPABASE_DEMO_PROJECT_REF"
+            test -n "$SUPABASE_DEMO_SERVICE_ROLE_KEY"
+            test -n "$DEMO_APP_USER_PASSWORD"
+          fi
           test -s supabase/seed/demo-access/00-demo-access-personas.sql
           test -s scripts/bootstrap-demo-access.mjs
-          psql --version >/dev/null 2>&1 || true
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Confirm DEMO-ACCESS registry is installed
         env:
-          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+          DB_URL: ${{ inputs.target == 'TEST' && secrets.SUPABASE_TEST_DB_URL || secrets.SUPABASE_DEMO_DB_URL }}
         shell: bash
         run: |
           set -euo pipefail
-          psql "$DEMO_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+          psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
             -c "select to_regclass('private.demo_access_identities');" | grep -qx 'private.demo_access_identities'
       - name: Create or update permanent DEMO-ACCESS Personas and roles
         env:
-          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+          DB_URL: ${{ inputs.target == 'TEST' && secrets.SUPABASE_TEST_DB_URL || secrets.SUPABASE_DEMO_DB_URL }}
         shell: bash
-        run: psql "$DEMO_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-access/00-demo-access-personas.sql
+        run: psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-access/00-demo-access-personas.sql
       - name: Create or update Auth users and link Personas
         env:
-          SUPABASE_DEMO_URL: https://${{ secrets.SUPABASE_DEMO_PROJECT_REF }}.supabase.co
-          SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
-          DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
+          SUPABASE_DEMO_URL: https://${{ inputs.target == 'TEST' && secrets.SUPABASE_TEST_PROJECT_REF || secrets.SUPABASE_DEMO_PROJECT_REF }}.supabase.co
+          SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ inputs.target == 'TEST' && secrets.SUPABASE_TEST_SERVICE_ROLE_KEY || secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
+          DEMO_APP_USER_PASSWORD: ${{ inputs.target == 'TEST' && secrets.TEST_APP_USER_PASSWORD || secrets.DEMO_APP_USER_PASSWORD }}
         run: node scripts/bootstrap-demo-access.mjs
       - name: Verify only the controlled DEMO-ACCESS set was linked
         env:
-          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+          DB_URL: ${{ inputs.target == 'TEST' && secrets.SUPABASE_TEST_DB_URL || secrets.SUPABASE_DEMO_DB_URL }}
         shell: bash
         run: |
           set -euo pipefail
-          result=$(psql "$DEMO_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) || ',' || count(p.auth_user_id) from private.demo_access_identities a join public.personas p on p.id=a.persona_id;")
+          result=$(psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) || ',' || count(p.auth_user_id) from private.demo_access_identities a join public.personas p on p.id=a.persona_id;")
           echo "access_identities,linked=$result"
           [ "$result" = '7,7' ] || { echo 'Expected 7 DEMO-ACCESS identities and 7 Auth links.' >&2; exit 1; }
