@@ -81,6 +81,7 @@ jobs:
           set -euo pipefail
           test -s supabase/seed/demo-data/01_reset_demo_s.sql
           test -s supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          test -s supabase/seed/demo-data/20_demo_access_operational_matrix.sql
           psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select to_regclass('private.demo_datasets'), to_regclass('private.demo_dataset_entities');" | grep -q 'private.demo_datasets.*private.demo_dataset_entities'
       - name: Reset and load DEMO S v1
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
@@ -91,6 +92,7 @@ jobs:
           set -euo pipefail
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/01_reset_demo_s.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql
       - name: Validate DEMO S safety and coverage
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
@@ -102,6 +104,8 @@ jobs:
           select 'dataset', id, version, scenario from private.demo_datasets where id = 'DEMO-S';
           select 'players', count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'jugadores' and e.entity_id = j.id;
           select 'families', count(*) from public.personas p join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and e.entity_id = p.id where p.nombre = 'Familia DEMO';
+          select 'demo_access_linked', count(p.auth_user_id)
+          from private.demo_access_identities a join public.personas p on p.id = a.persona_id;
           do $$
           begin
             if exists (
@@ -114,6 +118,10 @@ jobs:
             end if;
             if not exists (select 1 from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
               raise exception 'DEMO-S coverage failed: no active team exists';
+            end if;
+            if exists (select 1 from private.demo_access_identities)
+               and (select count(*) from private.demo_access_identities) <> 7 then
+              raise exception 'DEMO-ACCESS safety contract failed: incomplete identity registry';
             end if;
           end $$;
           SQL
