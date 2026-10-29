@@ -1,0 +1,82 @@
+name: Bootstrap Supabase DEMO synthetic access users
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Repository branch containing DEMO-ACCESS scripts
+        required: true
+        type: choice
+        options: [main]
+        default: main
+      demo_confirmation:
+        description: Type BOOTSTRAP_DEMO_ACCESS to create only controlled synthetic logins
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yebenes-demo-access-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate DEMO guardrail and checkout source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ '${{ inputs.source_ref }}' = 'main' ] || { echo 'DEMO-ACCESS requires source_ref=main.' >&2; exit 1; }
+          [ '${{ inputs.demo_confirmation }}' = 'BOOTSTRAP_DEMO_ACCESS' ] || { echo 'Type BOOTSTRAP_DEMO_ACCESS to continue.' >&2; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: Validate files, migration and required secrets
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+          SUPABASE_DEMO_PROJECT_REF: ${{ secrets.SUPABASE_DEMO_PROJECT_REF }}
+          SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
+          DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEMO_DB_URL"
+          test -n "$SUPABASE_DEMO_PROJECT_REF"
+          test -n "$SUPABASE_DEMO_SERVICE_ROLE_KEY"
+          test -n "$DEMO_APP_USER_PASSWORD"
+          test -s supabase/seed/demo-access/00-demo-access-personas.sql
+          test -s scripts/bootstrap-demo-access.mjs
+          psql --version >/dev/null 2>&1 || true
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Confirm DEMO-ACCESS registry is installed
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$DEMO_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select to_regclass('private.demo_access_identities');" | grep -qx 'private.demo_access_identities'
+      - name: Create or update permanent DEMO-ACCESS Personas and roles
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        shell: bash
+        run: psql "$DEMO_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-access/00-demo-access-personas.sql
+      - name: Create or update Auth users and link Personas
+        env:
+          SUPABASE_DEMO_URL: https://${{ secrets.SUPABASE_DEMO_PROJECT_REF }}.supabase.co
+          SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
+          DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
+        run: node scripts/bootstrap-demo-access.mjs
+      - name: Verify only the controlled DEMO-ACCESS set was linked
+        env:
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result=$(psql "$DEMO_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) || ',' || count(p.auth_user_id) from private.demo_access_identities a join public.personas p on p.id=a.persona_id;")
+          echo "access_identities,linked=$result"
+          [ "$result" = '7,7' ] || { echo 'Expected 7 DEMO-ACCESS identities and 7 Auth links.' >&2; exit 1; }

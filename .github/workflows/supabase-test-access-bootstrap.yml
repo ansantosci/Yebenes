@@ -44,6 +44,7 @@ jobs:
           test -s supabase/test-support/00-test-infrastructure.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s scripts/bootstrap-test-access.mjs
+          test -s scripts/bootstrap-synthetic-access.mjs
 
           echo "TEST-ACCESS validation completed."
           echo "Source branch: ${{ inputs.source_ref }}"

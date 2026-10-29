@@ -14,13 +14,26 @@ Never use name prefixes as a deletion criterion.
 
 DEMO-S is a separate, presentation-ready synthetic dataset. It is intentionally **not** part of the release pipeline and is only operated through the manual workflow `Manage Supabase DEMO dataset`.
 
-- The dataset never creates Supabase Auth users and never assigns `auth_user_id` to its Personas.
+- The core DEMO-S baseline never creates Supabase Auth users and never assigns `auth_user_id` to its generated Personas.
 - Existing DEMO identities and their data are neither selected nor updated by the seed.
 - Each generated row is registered in `private.demo_dataset_entities`; a refresh deletes only those registered rows and then rebuilds them deterministically.
 - The dataset adds two synthetic players and one synthetic family per active team, with representative data, inscription states, documents and RRMM cases suitable for a demonstration.
 - First rehearse `RESET_AND_LOAD` in TEST from `develop` or `test`. Run it in DEMO only from `main` after writing `MANAGE_DEMO_DATA` as explicit confirmation.
 
-This protects the existing DEMO identities even when the demonstration dataset is refreshed. It is not a mechanism for production data, account provisioning or anonymization.
+This protects the existing DEMO identities even when the demonstration dataset is refreshed. It is not a mechanism for production data or anonymization.
+
+## DEMO-ACCESS: permanent demo login identities
+
+DEMO-ACCESS mirrors TEST-ACCESS without changing the existing DEMO administrator, club or family accounts. It creates exactly seven controlled synthetic identities with `@demo.invalid` addresses: club, coach, coach-player, tutor, adult-player, minor-player and multiprofile. No synthetic administrator is created.
+
+- The permanent Personas, roles, documents and player/coach facets are outside `DEMO-S` and survive a refresh.
+- Their Auth users are created only by the manual **Bootstrap Supabase DEMO synthetic access users** workflow, from `main`, after typing `BOOTSTRAP_DEMO_ACCESS`.
+- The workflow uses `DEMO_APP_USER_PASSWORD`, `SUPABASE_DEMO_SERVICE_ROLE_KEY`, `SUPABASE_DEMO_PROJECT_REF` and `SUPABASE_DEMO_DB_URL`. Secret values must never enter Git, documentation or chat.
+- It refuses to overwrite an account with the same address if that account belongs to a different controlled origin.
+- When DEMO-ACCESS exists, `RESET_AND_LOAD` attaches its player-, tutor- and coach-capable identities to a deterministic operational DEMO-S matrix: four active inscriptions/team assignments, one tutor-to-minor representation and three coach season/team assignments.
+- Existing DEMO users are neither selected nor updated by this process.
+
+The first use sequence is: deploy migration `050`, run the DEMO-ACCESS bootstrap workflow, then run `Manage Supabase DEMO dataset -> RESET_AND_LOAD` from `main` with `MANAGE_DEMO_DATA`. Re-running either workflow is idempotent.
 
 ## TEST-ACCESS: permanent login identities
 TEST-ACCESS is independent from TEST-S. Its Personas, roles and Auth accounts survive RESET so the same credentials can be used after every dataset rebuild in both `/develop/` and `/test/` (both use Supabase TEST).
