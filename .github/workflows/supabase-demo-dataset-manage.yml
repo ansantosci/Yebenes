@@ -1,0 +1,119 @@
+name: Manage Supabase DEMO dataset
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Repository branch containing the DEMO dataset scripts
+        required: true
+        type: choice
+        options: [develop, test, main]
+        default: develop
+      target:
+        description: Database where the controlled DEMO dataset will be exercised
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
+      action:
+        description: Data action
+        required: true
+        type: choice
+        options: [KEEP, RESET_AND_LOAD]
+        default: KEEP
+      demo_confirmation:
+        description: For DEMO only, type MANAGE_DEMO_DATA
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yebenes-demo-dataset-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  manage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate environment guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          ref='${{ inputs.source_ref }}'
+          target='${{ inputs.target }}'
+          confirm='${{ inputs.demo_confirmation }}'
+          if [ "$target" = 'TEST' ]; then
+            case "$ref" in develop|test) ;; *) echo 'TEST dataset rehearsal requires develop or test.' >&2; exit 1;; esac
+          else
+            [ "$ref" = 'main' ] || { echo 'DEMO dataset requires source_ref=main.' >&2; exit 1; }
+            [ "$confirm" = 'MANAGE_DEMO_DATA' ] || { echo 'DEMO dataset requires MANAGE_DEMO_DATA confirmation.' >&2; exit 1; }
+          fi
+      - name: Checkout selected source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref }}
+      - name: KEEP current data
+        if: ${{ inputs.action == 'KEEP' }}
+        run: echo "KEEP selected. No database changes performed."
+      - name: Install PostgreSQL client
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Select target database
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        id: db
+        shell: bash
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          DEMO_DB_URL: ${{ secrets.SUPABASE_DEMO_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.target }}' = 'TEST' ]; then DB_URL="$TEST_DB_URL"; else DB_URL="$DEMO_DB_URL"; fi
+          [ -n "$DB_URL" ] || { echo 'Database URL secret is empty.' >&2; exit 1; }
+          echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
+      - name: Validate scripts and registry
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          test -s supabase/seed/demo-data/01_reset_demo_s.sql
+          test -s supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select to_regclass('private.demo_datasets'), to_regclass('private.demo_dataset_entities');" | grep -q 'private.demo_datasets.*private.demo_dataset_entities'
+      - name: Reset and load DEMO S v1
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/01_reset_demo_s.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+      - name: Validate DEMO S safety and coverage
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -A -F ',' -v ON_ERROR_STOP=1 <<'SQL'
+          select 'dataset', id, version, scenario from private.demo_datasets where id = 'DEMO-S';
+          select 'players', count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'jugadores' and e.entity_id = j.id;
+          select 'families', count(*) from public.personas p join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and e.entity_id = p.id where p.nombre = 'Familia DEMO';
+          do $$
+          begin
+            if exists (
+              select 1
+              from private.demo_dataset_entities e
+              join public.personas p on p.id = e.entity_id
+              where e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and p.auth_user_id is not null
+            ) then
+              raise exception 'DEMO-S safety contract failed: a synthetic Persona has an Auth identity';
+            end if;
+            if not exists (select 1 from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
+              raise exception 'DEMO-S coverage failed: no active team exists';
+            end if;
+          end $$;
+          SQL

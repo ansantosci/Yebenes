@@ -1,4 +1,4 @@
-# TEST datasets
+# Synthetic datasets for TEST and DEMO
 
 TEST-BASE contains stable non-personal masters. TEST-S is a deterministic synthetic operational dataset.
 
@@ -9,6 +9,18 @@ Deployment and data lifecycle are independent. Use the manual workflow **Manage 
 
 The existing Administrador TEST identity is not registered as a TEST-S entity and therefore survives resets.
 Never use name prefixes as a deletion criterion.
+
+## DEMO S
+
+DEMO-S is a separate, presentation-ready synthetic dataset. It is intentionally **not** part of the release pipeline and is only operated through the manual workflow `Manage Supabase DEMO dataset`.
+
+- The dataset never creates Supabase Auth users and never assigns `auth_user_id` to its Personas.
+- Existing DEMO identities and their data are neither selected nor updated by the seed.
+- Each generated row is registered in `private.demo_dataset_entities`; a refresh deletes only those registered rows and then rebuilds them deterministically.
+- The dataset adds two synthetic players and one synthetic family per active team, with representative data, inscription states, documents and RRMM cases suitable for a demonstration.
+- First rehearse `RESET_AND_LOAD` in TEST from `develop` or `test`. Run it in DEMO only from `main` after writing `MANAGE_DEMO_DATA` as explicit confirmation.
+
+This protects the existing DEMO identities even when the demonstration dataset is refreshed. It is not a mechanism for production data, account provisioning or anonymization.
 
 ## TEST-ACCESS: permanent login identities
 TEST-ACCESS is independent from TEST-S. Its Personas, roles and Auth accounts survive RESET so the same credentials can be used after every dataset rebuild in both `/develop/` and `/test/` (both use Supabase TEST).
