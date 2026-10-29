@@ -16,6 +16,23 @@ begin
   end if;
 end $$;
 
+-- The minor-player inscription is guarded by validar_tutor_menor_inscripcion,
+-- so its legal representative must be active before the inscription is loaded.
+-- This relation is operational DEMO-S data, while the tutor identity itself remains
+-- a permanent DEMO-ACCESS identity.
+insert into public.representaciones_jugador(id, jugador_id, representante_persona_id, fecha_desde, motivo_alta)
+select private.demo_uuid('access-representation:tutor'),
+       private.demo_uuid('access-player:minor_player'),
+       private.demo_access_persona_id('tutor'),
+       date '2026-07-01', 'Representacion DEMO-ACCESS'
+where exists (select 1 from private.demo_access_identities where key = 'tutor')
+on conflict (id) do update set fecha_hasta = null;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('access-representation:tutor')
+where exists (select 1 from private.demo_access_identities where key = 'tutor')
+on conflict do nothing;
+
 -- Four player-capable login profiles receive an active synthetic inscription.
 -- Teams are selected deterministically from the active season; the accounts can
 -- then exercise player, family and club flows against the same DEMO-S data model.
@@ -76,20 +93,6 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:' || key)
 from private.demo_access_identities
 where key in ('minor_player', 'adult_player', 'coach_player', 'multiprofile')
-on conflict do nothing;
-
--- Tutor access owns the minor-player case, rather than an unrelated dummy row.
-insert into public.representaciones_jugador(id, jugador_id, representante_persona_id, fecha_desde, motivo_alta)
-select private.demo_uuid('access-representation:tutor'),
-       private.demo_uuid('access-player:minor_player'),
-       private.demo_access_persona_id('tutor'),
-       date '2026-07-01', 'Representacion DEMO-ACCESS'
-where exists (select 1 from private.demo_access_identities where key = 'tutor')
-on conflict (id) do update set fecha_hasta = null;
-
-insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
-select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('access-representation:tutor')
-where exists (select 1 from private.demo_access_identities where key = 'tutor')
 on conflict do nothing;
 
 -- Coach-capable profiles receive visible, deterministic seasonal assignments.
