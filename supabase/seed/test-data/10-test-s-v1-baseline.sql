@@ -116,7 +116,7 @@ insert into private.test_dataset_entities
 select 'TEST-S','jugadores',private.test_s_player_id(e.codigo,g),now()
 from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g
 where t.estado='activa'
-  and private.test_s_player_id(e.codigo,g) not in (select private.test_uuid('access-player:'||key) from private.test_access_identities where key in ('coach_player','adult_player','minor_player','multiprofile'))
+  and private.test_s_player_id(e.codigo,g) not in (select private.test_uuid('access-player:'||key) from private.test_access_identities where key in ('coach_player','adult_player','multiprofile'))
 on conflict do nothing;
 
 -- Representation must exist before inscription: the schema trigger validates minors at inscription time.

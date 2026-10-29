@@ -3,13 +3,28 @@
 -- separate manual workflow, never by this SQL script.
 begin;
 
+-- A minor is represented by its tutor and never receives a standalone login.
+-- Keep its deterministic Persona/player as a DEMO family fixture, but remove
+-- the Auth association and the access-only role/registry entry.
+update public.personas
+set auth_user_id = null,
+    email_contacto = null,
+    activo = true
+where id = '20000000-0000-4000-8000-000000000006';
+
+update public.persona_roles
+set activo = false,
+    fecha_hasta = current_date
+where persona_id = '20000000-0000-4000-8000-000000000006';
+
+delete from private.demo_access_identities where key = 'minor_player';
+
 insert into private.demo_access_identities(key, persona_id, email, description) values
   ('club',          '20000000-0000-4000-8000-000000000001', 'club.demo@yebenes.demo.invalid',          'Club only'),
   ('coach',         '20000000-0000-4000-8000-000000000002', 'coach.demo@yebenes.demo.invalid',         'Coach only'),
   ('coach_player',  '20000000-0000-4000-8000-000000000003', 'coach-player.demo@yebenes.demo.invalid',  'Coach + adult player'),
   ('tutor',         '20000000-0000-4000-8000-000000000004', 'tutor.demo@yebenes.demo.invalid',         'Tutor / family'),
   ('adult_player',  '20000000-0000-4000-8000-000000000005', 'player-adult.demo@yebenes.demo.invalid',  'Adult player'),
-  ('minor_player',  '20000000-0000-4000-8000-000000000006', 'player-minor.demo@yebenes.demo.invalid',  'Minor player access'),
   ('multiprofile',  '20000000-0000-4000-8000-000000000007', 'multiprofile.demo@yebenes.demo.invalid',  'Club + coach + player')
 on conflict (key) do update
 set persona_id = excluded.persona_id,
@@ -24,12 +39,11 @@ select persona_id,
          when 'coach_player' then 'Entrenador Jugador DEMO'
          when 'tutor' then 'Tutor DEMO Acceso'
          when 'adult_player' then 'Jugador Adulto DEMO'
-         when 'minor_player' then 'Jugador Menor DEMO'
          else 'Multiperfil DEMO'
        end,
        'Acceso',
        null,
-       case when key = 'minor_player' then date '2012-05-15' else date '1988-05-15' end,
+       date '1988-05-15',
        email,
        '612' || lpad((row_number() over (order by key))::text, 6, '0'),
        true
@@ -38,6 +52,20 @@ on conflict (id) do update
 set email_contacto = excluded.email_contacto,
     telefono = excluded.telefono,
     activo = true;
+
+-- Deterministic minor fixture for the tutor/family demo. It deliberately does
+-- not appear in private.demo_access_identities and has no authentication user.
+insert into public.personas(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, email_contacto, telefono, activo)
+values ('20000000-0000-4000-8000-000000000006', 'Jugador Menor DEMO', 'Tutorizado', null,
+        date '2012-05-15', null, '612000006', true)
+on conflict (id) do update
+set nombre = excluded.nombre,
+    primer_apellido = excluded.primer_apellido,
+    fecha_nacimiento = excluded.fecha_nacimiento,
+    email_contacto = null,
+    telefono = excluded.telefono,
+    activo = true,
+    auth_user_id = null;
 
 -- Functional login profiles need a real, valid identity document for the
 -- same forms that are shown in a club demo.
@@ -58,6 +86,15 @@ set numero = excluded.numero,
     fecha_hasta = null,
     activo = true;
 
+insert into public.documentos_identidad(id, persona_id, tipo, numero, pais_emisor, es_principal, fecha_desde, activo)
+values (private.demo_uuid('access-document:20000000-0000-4000-8000-000000000006'),
+        '20000000-0000-4000-8000-000000000006', 'dni', '76000006W', 'ES', true, date '2026-07-01', true)
+on conflict (id) do update
+set numero = excluded.numero,
+    es_principal = true,
+    fecha_hasta = null,
+    activo = true;
+
 -- Permanent profile capabilities. They are not owned by DEMO-S.
 with mapping(key, role_code) as (values
   ('club', 'club'),
@@ -66,7 +103,6 @@ with mapping(key, role_code) as (values
   ('coach_player', 'jugador'),
   ('tutor', 'tutor'),
   ('adult_player', 'jugador'),
-  ('minor_player', 'jugador'),
   ('multiprofile', 'club'),
   ('multiprofile', 'entrenador'),
   ('multiprofile', 'jugador')
@@ -87,7 +123,11 @@ on conflict (id) do update set activo = true;
 insert into public.jugadores(id, persona_id, activo, fecha_alta)
 select private.demo_uuid('access-player:' || key), persona_id, true, date '2026-07-01'
 from private.demo_access_identities
-where key in ('coach_player', 'adult_player', 'minor_player', 'multiprofile')
+where key in ('coach_player', 'adult_player', 'multiprofile')
+on conflict (id) do update set activo = true, fecha_baja = null;
+
+insert into public.jugadores(id, persona_id, activo, fecha_alta)
+values (private.demo_uuid('access-player:minor_player'), '20000000-0000-4000-8000-000000000006', true, date '2026-07-01')
 on conflict (id) do update set activo = true, fecha_baja = null;
 
 commit;
