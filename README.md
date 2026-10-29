@@ -1,3 +1,9 @@
+# V95.2.13 — Contexto de ficha aislado por cuenta
+
+- Evita que una ficha seleccionada temporalmente se reutilice al entrar con otra cuenta o al cambiar de perfil Familia/Jugador.
+- Cada sesión conserva su propia selección temporal y, si no existe, se resuelve con la ficha autorizada de la identidad actual.
+- Actualiza los recursos públicos a V95.2.13 para que TEST descargue la corrección publicada. No requiere SQL, Edge Functions ni RESET.
+
 # V95.2.12 — Acciones autenticadas compactas en móvil
 
 - Solo hasta 640 px: reduce los dos controles de cambio de perfil y salida a 36 px, con menor contraste de fondo y separación más contenida.
