@@ -1005,7 +1005,8 @@ function renderFamilyActionBanner(){
   box.querySelectorAll('.family-action-item').forEach(b=>b.onclick=()=>focusFamilyPlayerData(b.dataset.player));
 }
 function focusFamilyPlayerData(playerId){
-  if(playerId&&playerId!==familySelectedPlayerId){familySelectedPlayerId=playerId;sessionStorage.setItem(familyContextStorageKey(),playerId);paintRemoteFamily()}
+  const contextKey=ensureFamilySelectedPlayerContext();
+  if(playerId&&playerId!==familySelectedPlayerId){familySelectedPlayerId=playerId;sessionStorage.setItem(contextKey,playerId);paintRemoteFamily()}
   const card=document.querySelector(`.player-card[data-family-player="${CSS.escape(playerId)}"]`);if(!card)return;
   const tab=card.querySelector('[data-family-card-tab="data"]');if(tab)tab.click();card.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -1091,14 +1092,23 @@ async function refreshRemoteFamilyData(){
   })();
   try{return await remoteFamilyLoadPromise}finally{remoteFamilyLoadPromise=null}
 }
-let familySelectedPlayerId='';
+let familySelectedPlayerId='',familySelectedPlayerContextKey='';
 function familyContextStorageKey(){return `yebenes-family-player:${currentUser?.id||currentUser?.personId||'anonymous'}`}
+function ensureFamilySelectedPlayerContext(){
+  const contextKey=familyContextStorageKey();
+  if(familySelectedPlayerContextKey!==contextKey){
+    familySelectedPlayerContextKey=contextKey;
+    familySelectedPlayerId='';
+  }
+  return contextKey;
+}
 function getFamilySelectedPlayer(){
   if(!remoteFamilyPlayers.length)return null;
-  const stored=sessionStorage.getItem(familyContextStorageKey())||'';
+  const contextKey=ensureFamilySelectedPlayerContext();
+  const stored=sessionStorage.getItem(contextKey)||'';
   const wanted=familySelectedPlayerId||stored;
   const player=remoteFamilyPlayers.find(p=>p.id===wanted)||remoteFamilyPlayers[0];
-  familySelectedPlayerId=player.id;sessionStorage.setItem(familyContextStorageKey(),player.id);return player;
+  familySelectedPlayerId=player.id;sessionStorage.setItem(contextKey,player.id);return player;
 }
 function familyPlayerSelectorItem(p,selected){
   const [cls,badge]=p.inscription?remoteStateMeta(p.inscription.estado):['pending','Pendiente'];
@@ -1107,7 +1117,8 @@ function familyPlayerSelectorItem(p,selected){
 function bindFamilyPlayerSelector(){
   $$('[data-family-select-player]').forEach(b=>b.onclick=()=>{
     const tabs=familyCardTabSnapshot();
-    familySelectedPlayerId=b.dataset.familySelectPlayer;sessionStorage.setItem(familyContextStorageKey(),familySelectedPlayerId);
+    const contextKey=ensureFamilySelectedPlayerContext();
+    familySelectedPlayerId=b.dataset.familySelectPlayer;sessionStorage.setItem(contextKey,familySelectedPlayerId);
     paintRemoteFamily();restoreFamilyCardTabs(tabs);
   });
 }
