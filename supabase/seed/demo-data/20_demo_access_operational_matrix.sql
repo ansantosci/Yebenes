@@ -126,7 +126,9 @@ insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, 
 select private.demo_uuid('access-coach-team:' || p.key),
        private.demo_uuid('access-coach:' || p.key),
        t.equipo_id, 'Entrenador',
-       case p.key when 'coach_player' then 'second' when 'multiprofile' then 'fitness' else 'first' end,
+       -- DEMO-S teams already have a principal. The access profiles exercise
+       -- complementary coach roles without competing with baseline data.
+       case p.key when 'coach_player' then 'fitness' when 'multiprofile' then 'second' else 'second' end,
        date '2026-09-01'
 from target_profiles p join target_teams t on t.position = p.position
 on conflict (id) do update
