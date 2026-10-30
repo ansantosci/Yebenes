@@ -49,8 +49,17 @@ on conflict(id) do update set email_contacto=excluded.email_contacto,telefono=ex
 -- Every permanent functional TEST identity has a deterministic valid Spanish DNI.
 -- This prevents login profiles from being technically valid but unusable in real forms.
 with access_docs as (
+  -- Do not derive numbers from row order: removing a retired identity would
+  -- otherwise try to reassign its already-issued document to another Persona.
   select persona_id,
-         71000000 + row_number() over(order by key)::int as dni_number
+         case key
+           when 'adult_player' then 71000001
+           when 'club' then 71000002
+           when 'coach' then 71000003
+           when 'coach_player' then 71000004
+           when 'multiprofile' then 71000006
+           when 'tutor' then 71000007
+         end as dni_number
   from private.test_access_identities
 ), docs as (
   select persona_id,

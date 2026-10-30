@@ -70,7 +70,17 @@ set nombre = excluded.nombre,
 -- Functional login profiles need a real, valid identity document for the
 -- same forms that are shown in a club demo.
 with access_docs as (
-  select persona_id, 76000000 + row_number() over (order by key)::int as dni_number
+  -- Keep identity documents stable when a retired login disappears from the
+  -- registry; positional numbering would violate the unique DNI constraint.
+  select persona_id,
+         case key
+           when 'adult_player' then 76000001
+           when 'club' then 76000002
+           when 'coach' then 76000003
+           when 'coach_player' then 76000004
+           when 'multiprofile' then 76000006
+           when 'tutor' then 76000007
+         end as dni_number
   from private.demo_access_identities
 ), docs as (
   select persona_id,
@@ -88,7 +98,7 @@ set numero = excluded.numero,
 
 insert into public.documentos_identidad(id, persona_id, tipo, numero, pais_emisor, es_principal, fecha_desde, activo)
 values (private.demo_uuid('access-document:20000000-0000-4000-8000-000000000006'),
-        '20000000-0000-4000-8000-000000000006', 'dni', '76000006W', 'ES', true, date '2026-07-01', true)
+        '20000000-0000-4000-8000-000000000006', 'dni', '76000005R', 'ES', true, date '2026-07-01', true)
 on conflict (id) do update
 set numero = excluded.numero,
     es_principal = true,
