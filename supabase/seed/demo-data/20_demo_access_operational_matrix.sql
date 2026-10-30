@@ -11,31 +11,50 @@ begin
   select count(*) into identity_count from private.demo_access_identities;
   if identity_count = 0 then
     raise notice 'DEMO-ACCESS not provisioned: skipping operational bindings.';
-  elsif identity_count <> 7 then
-    raise exception 'DEMO-ACCESS contract failed: expected 7 identities, found %', identity_count;
+  elsif identity_count <> 6 then
+    raise exception 'DEMO-ACCESS contract failed: expected 6 identities, found %', identity_count;
   end if;
 end $$;
 
--- Four player-capable login profiles receive an active synthetic inscription.
--- Teams are selected deterministically from the active season; the accounts can
--- then exercise player, family and club flows against the same DEMO-S data model.
-with target_profiles(key, position) as (values
-  ('minor_player', 1), ('adult_player', 2), ('coach_player', 3), ('multiprofile', 4)
+-- The minor-player inscription is guarded by validar_tutor_menor_inscripcion,
+-- so its legal representative must be active before the inscription is loaded.
+-- This relation is operational DEMO-S data, while the tutor identity itself remains
+-- a permanent DEMO-ACCESS identity.
+insert into public.representaciones_jugador(id, jugador_id, representante_persona_id, fecha_desde, motivo_alta)
+select private.demo_uuid('access-representation:tutor'),
+       private.demo_uuid('access-player:minor_player'),
+       private.demo_access_persona_id('tutor'),
+       date '2026-07-01', 'Representacion DEMO-ACCESS'
+where exists (select 1 from private.demo_access_identities where key = 'tutor')
+on conflict (id) do update set fecha_hasta = null;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('access-representation:tutor')
+where exists (select 1 from private.demo_access_identities where key = 'tutor')
+on conflict do nothing;
+
+-- Three player-capable login profiles and the tutor-only minor fixture receive
+-- active inscriptions. The minor has no login, but remains visible to its tutor.
+with target_profiles(key, jugador_id, category_code, team_position) as (values
+  ('minor_player', private.demo_uuid('access-player:minor_player'), 'CAD', 1),
+  ('coach_player', private.demo_uuid('access-player:coach_player'), 'SEN', 1),
+  ('multiprofile', private.demo_uuid('access-player:multiprofile'), 'SEN', 2),
+  ('adult_player', private.demo_uuid('access-player:adult_player'), 'SEN', 3)
 ), target_teams as (
-  select e.id as equipo_id, e.temporada_id, e.categoria_id,
-         row_number() over (order by e.codigo) as position
+  select e.id as equipo_id, e.temporada_id, e.categoria_id, c.codigo as category_code,
+         row_number() over (partition by c.codigo order by e.codigo) as team_position
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
+  join public.categorias c on c.id = e.categoria_id
   where t.estado = 'activa'
 ), selected as (
-  select p.key, p.position, i.persona_id, t.equipo_id, t.temporada_id, t.categoria_id
+  select p.key, p.jugador_id, t.equipo_id, t.temporada_id, t.categoria_id
   from target_profiles p
-  join private.demo_access_identities i on i.key = p.key
-  join target_teams t on t.position = p.position
+  join target_teams t on t.category_code = p.category_code and t.team_position = p.team_position
 )
 insert into public.inscripciones(id, jugador_id, temporada_id, categoria_id, fecha_solicitud, estado, observaciones)
 select private.demo_uuid('access-inscription:' || selected.key),
-       private.demo_uuid('access-player:' || selected.key),
+       selected.jugador_id,
        selected.temporada_id, selected.categoria_id, date '2026-09-01',
        case selected.key when 'minor_player' then 'pendiente_revision_inicial'
                          when 'adult_player' then 'documentacion_validada'
@@ -53,21 +72,30 @@ set jugador_id = excluded.jugador_id,
 insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'inscripciones', private.demo_uuid('access-inscription:' || key)
 from private.demo_access_identities
-where key in ('minor_player', 'adult_player', 'coach_player', 'multiprofile')
+where key in ('adult_player', 'coach_player', 'multiprofile')
+union all
+select 'DEMO-S', 'inscripciones', private.demo_uuid('access-inscription:minor_player')
 on conflict do nothing;
 
-with target_profiles(key, position) as (values
-  ('minor_player', 1), ('adult_player', 2), ('coach_player', 3), ('multiprofile', 4)
+with target_profiles(key, category_code, team_position) as (values
+  ('minor_player', 'CAD', 1),
+  ('coach_player', 'SEN', 1),
+  ('multiprofile', 'SEN', 2),
+  ('adult_player', 'SEN', 3)
 ), target_teams as (
-  select e.id as equipo_id, row_number() over (order by e.codigo) as position
-  from public.equipos e join public.temporadas t on t.id = e.temporada_id
+  select e.id as equipo_id, c.codigo as category_code,
+         row_number() over (partition by c.codigo order by e.codigo) as team_position
+  from public.equipos e
+  join public.temporadas t on t.id = e.temporada_id
+  join public.categorias c on c.id = e.categoria_id
   where t.estado = 'activa'
 )
 insert into public.asignaciones_jugador_equipo(id, inscripcion_id, equipo_id, fecha_desde, motivo_cambio)
 select private.demo_uuid('access-player-team:' || p.key),
        private.demo_uuid('access-inscription:' || p.key),
        t.equipo_id, date '2026-09-01', 'Asignacion DEMO-ACCESS'
-from target_profiles p join target_teams t on t.position = p.position
+from target_profiles p
+join target_teams t on t.category_code = p.category_code and t.team_position = p.team_position
 on conflict (id) do update
 set equipo_id = excluded.equipo_id,
     fecha_hasta = null;
@@ -75,21 +103,9 @@ set equipo_id = excluded.equipo_id,
 insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:' || key)
 from private.demo_access_identities
-where key in ('minor_player', 'adult_player', 'coach_player', 'multiprofile')
-on conflict do nothing;
-
--- Tutor access owns the minor-player case, rather than an unrelated dummy row.
-insert into public.representaciones_jugador(id, jugador_id, representante_persona_id, fecha_desde, motivo_alta)
-select private.demo_uuid('access-representation:tutor'),
-       private.demo_uuid('access-player:minor_player'),
-       private.demo_access_persona_id('tutor'),
-       date '2026-07-01', 'Representacion DEMO-ACCESS'
-where exists (select 1 from private.demo_access_identities where key = 'tutor')
-on conflict (id) do update set fecha_hasta = null;
-
-insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
-select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('access-representation:tutor')
-where exists (select 1 from private.demo_access_identities where key = 'tutor')
+where key in ('adult_player', 'coach_player', 'multiprofile')
+union all
+select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:minor_player')
 on conflict do nothing;
 
 -- Coach-capable profiles receive visible, deterministic seasonal assignments.
@@ -112,20 +128,28 @@ from private.demo_access_identities
 where key in ('coach', 'coach_player', 'multiprofile')
 on conflict do nothing;
 
-with target_profiles(key, position) as (values
-  ('coach', 1), ('coach_player', 2), ('multiprofile', 3)
+with target_profiles(key, category_code, team_position) as (values
+  ('coach', 'ALE', 1),
+  ('coach_player', 'SEN', 1),
+  ('multiprofile', 'SEN', 2)
 ), target_teams as (
-  select e.id as equipo_id, row_number() over (order by e.codigo) as position
-  from public.equipos e join public.temporadas t on t.id = e.temporada_id
+  select e.id as equipo_id, c.codigo as category_code,
+         row_number() over (partition by c.codigo order by e.codigo) as team_position
+  from public.equipos e
+  join public.temporadas t on t.id = e.temporada_id
+  join public.categorias c on c.id = e.categoria_id
   where t.estado = 'activa'
 )
 insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
 select private.demo_uuid('access-coach-team:' || p.key),
        private.demo_uuid('access-coach:' || p.key),
        t.equipo_id, 'Entrenador',
-       case p.key when 'coach_player' then 'second' when 'multiprofile' then 'fitness' else 'first' end,
+       -- DEMO-S teams already have a principal. The access profiles exercise
+       -- complementary coach roles without competing with baseline data.
+       case p.key when 'coach_player' then 'fitness' when 'multiprofile' then 'second' else 'second' end,
        date '2026-09-01'
-from target_profiles p join target_teams t on t.position = p.position
+from target_profiles p
+join target_teams t on t.category_code = p.category_code and t.team_position = p.team_position
 on conflict (id) do update
 set equipo_id = excluded.equipo_id,
     funcion = excluded.funcion,

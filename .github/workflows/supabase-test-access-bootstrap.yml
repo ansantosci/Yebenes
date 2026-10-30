@@ -96,8 +96,8 @@ jobs:
           ACCESS_COUNT="${RESULT%%,*}"
           LINKED_COUNT="${RESULT##*,}"
 
-          if [ "$ACCESS_COUNT" != "7" ] || [ "$LINKED_COUNT" != "7" ]; then
-            echo "ERROR: expected 7 TEST-ACCESS identities and 7 Auth links."
+          if [ "$ACCESS_COUNT" != "6" ] || [ "$LINKED_COUNT" != "6" ]; then
+            echo "ERROR: expected 6 TEST-ACCESS identities and 6 Auth links."
             exit 1
           fi
 

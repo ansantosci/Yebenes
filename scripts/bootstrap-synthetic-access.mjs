@@ -4,6 +4,7 @@ const password = process.env.APP_USER_PASSWORD;
 const accountOrigin = process.env.ACCESS_ACCOUNT_ORIGIN;
 const label = process.env.ACCESS_LABEL;
 const identities = JSON.parse(process.env.ACCESS_IDENTITIES_JSON ?? '[]');
+const retiredIdentities = JSON.parse(process.env.RETIRED_ACCESS_IDENTITIES_JSON ?? '[]');
 
 if (!url || !service || !password || !accountOrigin || !label || identities.length === 0) {
   throw new Error('Missing synthetic-access bootstrap configuration.');
@@ -26,6 +27,17 @@ for (let page = 1; ; page += 1) {
   const batch = (await request(`/auth/v1/admin/users?page=${page}&per_page=100`))?.users ?? [];
   users.push(...batch);
   if (batch.length < 100) break;
+}
+
+for (const { email } of retiredIdentities) {
+  const user = users.find((candidate) => String(candidate.email ?? '').toLowerCase() === email.toLowerCase());
+  if (!user) continue;
+  const existingOrigin = user.app_metadata?.account_origin;
+  if (existingOrigin !== accountOrigin) {
+    throw new Error(`Refusing to remove ${email}: it belongs to account origin ${existingOrigin ?? 'unknown'}.`);
+  }
+  await request(`/auth/v1/admin/users/${user.id}`, { method: 'DELETE' });
+  console.log(`removed retired ${email}`);
 }
 
 for (const { email, personaId, displayName } of identities) {
