@@ -11,8 +11,8 @@ begin
   select count(*) into identity_count from private.demo_access_identities;
   if identity_count = 0 then
     raise notice 'DEMO-ACCESS not provisioned: skipping operational bindings.';
-  elsif identity_count <> 7 then
-    raise exception 'DEMO-ACCESS contract failed: expected 7 identities, found %', identity_count;
+  elsif identity_count <> 6 then
+    raise exception 'DEMO-ACCESS contract failed: expected 6 identities, found %', identity_count;
   end if;
 end $$;
 
@@ -33,14 +33,13 @@ select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('access-represent
 where exists (select 1 from private.demo_access_identities where key = 'tutor')
 on conflict do nothing;
 
--- Four player-capable login profiles receive an active synthetic inscription.
--- Teams are selected deterministically from the active season; the accounts can
--- then exercise player, family and club flows against the same DEMO-S data model.
-with target_profiles(key, category_code, team_position) as (values
-  ('minor_player', 'CAD', 1),
-  ('coach_player', 'SEN', 1),
-  ('multiprofile', 'SEN', 2),
-  ('adult_player', 'SEN', 3)
+-- Three player-capable login profiles and the tutor-only minor fixture receive
+-- active inscriptions. The minor has no login, but remains visible to its tutor.
+with target_profiles(key, jugador_id, category_code, team_position) as (values
+  ('minor_player', private.demo_uuid('access-player:minor_player'), 'CAD', 1),
+  ('coach_player', private.demo_uuid('access-player:coach_player'), 'SEN', 1),
+  ('multiprofile', private.demo_uuid('access-player:multiprofile'), 'SEN', 2),
+  ('adult_player', private.demo_uuid('access-player:adult_player'), 'SEN', 3)
 ), target_teams as (
   select e.id as equipo_id, e.temporada_id, e.categoria_id, c.codigo as category_code,
          row_number() over (partition by c.codigo order by e.codigo) as team_position
@@ -49,14 +48,13 @@ with target_profiles(key, category_code, team_position) as (values
   join public.categorias c on c.id = e.categoria_id
   where t.estado = 'activa'
 ), selected as (
-  select p.key, i.persona_id, t.equipo_id, t.temporada_id, t.categoria_id
+  select p.key, p.jugador_id, t.equipo_id, t.temporada_id, t.categoria_id
   from target_profiles p
-  join private.demo_access_identities i on i.key = p.key
   join target_teams t on t.category_code = p.category_code and t.team_position = p.team_position
 )
 insert into public.inscripciones(id, jugador_id, temporada_id, categoria_id, fecha_solicitud, estado, observaciones)
 select private.demo_uuid('access-inscription:' || selected.key),
-       private.demo_uuid('access-player:' || selected.key),
+       selected.jugador_id,
        selected.temporada_id, selected.categoria_id, date '2026-09-01',
        case selected.key when 'minor_player' then 'pendiente_revision_inicial'
                          when 'adult_player' then 'documentacion_validada'
@@ -74,7 +72,9 @@ set jugador_id = excluded.jugador_id,
 insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'inscripciones', private.demo_uuid('access-inscription:' || key)
 from private.demo_access_identities
-where key in ('minor_player', 'adult_player', 'coach_player', 'multiprofile')
+where key in ('adult_player', 'coach_player', 'multiprofile')
+union all
+select 'DEMO-S', 'inscripciones', private.demo_uuid('access-inscription:minor_player')
 on conflict do nothing;
 
 with target_profiles(key, category_code, team_position) as (values
@@ -103,7 +103,9 @@ set equipo_id = excluded.equipo_id,
 insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:' || key)
 from private.demo_access_identities
-where key in ('minor_player', 'adult_player', 'coach_player', 'multiprofile')
+where key in ('adult_player', 'coach_player', 'multiprofile')
+union all
+select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:minor_player')
 on conflict do nothing;
 
 -- Coach-capable profiles receive visible, deterministic seasonal assignments.

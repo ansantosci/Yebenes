@@ -104,4 +104,4 @@ jobs:
           set -euo pipefail
           result=$(psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select count(*) || ',' || count(p.auth_user_id) from private.demo_access_identities a join public.personas p on p.id=a.persona_id;")
           echo "access_identities,linked=$result"
-          [ "$result" = '7,7' ] || { echo 'Expected 7 DEMO-ACCESS identities and 7 Auth links.' >&2; exit 1; }
+          [ "$result" = '6,6' ] || { echo 'Expected 6 DEMO-ACCESS identities and 6 Auth links.' >&2; exit 1; }
