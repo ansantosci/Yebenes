@@ -49,7 +49,8 @@ select persona_id,
        true
 from private.demo_access_identities
 on conflict (id) do update
-set email_contacto = excluded.email_contacto,
+set fecha_nacimiento = excluded.fecha_nacimiento,
+    email_contacto = excluded.email_contacto,
     telefono = excluded.telefono,
     activo = true;
 
