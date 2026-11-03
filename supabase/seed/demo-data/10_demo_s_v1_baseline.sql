@@ -339,7 +339,8 @@ from generate_series(1, 28) n
 on conflict do nothing;
 
 -- Fill principal-coach coverage only on active teams that do not already have
--- a current principal assignment outside DEMO-S. Permanent/DEMO-ACCESS data wins.
+-- a principal assignment whose period overlaps the DEMO-S 2026/2027 scenario.
+-- Permanent/DEMO-ACCESS assignments always win; never delete or shorten them.
 with free_teams as (
   select e.id,
          e.codigo,
@@ -352,8 +353,9 @@ with free_teams as (
       from public.asignaciones_entrenador_equipo a
       where a.equipo_id = e.id
         and a.funcion = 'first'
-        and a.fecha_hasta is null
         and a.cancelada_at is null
+        and a.fecha_desde <= date '2027-06-30'
+        and coalesce(a.fecha_hasta, date '9999-12-31') >= date '2026-09-01'
     )
 )
 insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
