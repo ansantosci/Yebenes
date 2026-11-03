@@ -120,7 +120,7 @@ jobs:
               raise exception 'DEMO-S coverage failed: no active team exists';
             end if;
             if exists (select 1 from private.demo_access_identities)
-               and (select count(*) from private.demo_access_identities) <> 7 then
+               and (select count(*) from private.demo_access_identities) <> 6 then
               raise exception 'DEMO-ACCESS safety contract failed: incomplete identity registry';
             end if;
           end $$;
