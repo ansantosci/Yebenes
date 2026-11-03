@@ -1,12 +1,13 @@
 -- DEMO-S v1: deterministic, presentation-ready data.
 -- It never creates Auth accounts and never assigns auth_user_id to a Persona.
--- Two synthetic players and one family are added for every active team.
+-- Five synthetic players and one family are added for every active team.
+-- DEMO-S v1.1 also adds a compact but representative coaching population.
 begin;
 
 insert into private.demo_datasets(id, version, scenario, metadata)
 values (
   'DEMO-S',
-  '1.0',
+  '1.1',
   'BASELINE',
   '{"purpose":"presentation-ready synthetic club data","identity_policy":"no Auth users; existing identities untouched"}'::jsonb
 )
@@ -75,7 +76,7 @@ join public.temporadas t on t.id = e.temporada_id
 where t.estado = 'activa'
 on conflict do nothing;
 
--- Two players per team. Ages follow the configured category rule at the season reference point.
+-- Five players per team. Ages follow the configured category rule at the season reference point.
 with teams as (
   select e.codigo,
          coalesce(r.anio_nacimiento_hasta, 2000) as birth_year
@@ -89,7 +90,7 @@ with teams as (
 ), players as (
   select teams.*, g
   from teams
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
 )
 insert into public.personas(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, email_contacto, activo)
 select private.demo_uuid('player:' || codigo || ':' || g),
@@ -109,7 +110,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'personas', private.demo_uuid('player:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -118,7 +119,7 @@ with players as (
   select e.codigo, g, p.fecha_nacimiento, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
   where t.estado = 'activa'
 ), docs as (
@@ -146,7 +147,7 @@ from (
   select e.codigo, g, p.fecha_nacimiento, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
   where t.estado = 'activa'
 ) players
@@ -161,7 +162,7 @@ select private.demo_uuid('player-facet:' || e.codigo || ':' || g),
        date '2026-07-01'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict (id) do update
 set persona_id = excluded.persona_id,
@@ -172,7 +173,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'jugadores', private.demo_uuid('player-facet:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -185,7 +186,7 @@ select private.demo_uuid('representation:' || e.codigo || ':' || g),
        'Representacion DEMO'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
 where t.estado = 'activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -195,7 +196,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('representation:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
 where t.estado = 'activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -210,7 +211,7 @@ select private.demo_uuid('inscription:' || e.codigo || ':' || g),
        'Caso DEMO v1'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict (id) do update
 set estado = excluded.estado,
@@ -220,7 +221,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'inscripciones', private.demo_uuid('inscription:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -230,7 +231,7 @@ select private.demo_uuid('player-team:' || e.codigo || ':' || g),
        e.id, date '2026-09-01', 'Asignacion DEMO'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict (id) do update
 set equipo_id = excluded.equipo_id,
@@ -240,7 +241,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('player-team:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 2) g
+cross join generate_series(1, 5) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -262,12 +263,256 @@ join public.temporadas t on t.id = e.temporada_id
 where t.estado = 'activa'
 on conflict do nothing;
 
+-- Coaching population: 28 deterministic coach-only Personas.
+-- Coaches 1-23 are the principal coach of each active team; 24-27 add secondary/specialist coverage;
+-- coach 28 remains without assignment to exercise that state. No coach receives an Auth identity.
+insert into public.personas(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, email_contacto, telefono, activo)
+select private.demo_uuid('coach-person:' || n),
+       'Entrenador DEMO',
+       lpad(n::text, 2, '0'),
+       null,
+       date '1980-01-01' + n::integer,
+       'entrenador' || lpad(n::text, 2, '0') || '@demo.invalid',
+       '620' || lpad(n::text, 6, '0'),
+       true
+from generate_series(1, 28) n
+on conflict (id) do update
+set fecha_nacimiento = excluded.fecha_nacimiento,
+    email_contacto = excluded.email_contacto,
+    telefono = excluded.telefono,
+    activo = true;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'personas', private.demo_uuid('coach-person:' || n)
+from generate_series(1, 28) n
+on conflict do nothing;
+
+insert into public.entrenadores(id, persona_id, activo, curso_delegado)
+select private.demo_uuid('coach-facet:' || n),
+       private.demo_uuid('coach-person:' || n),
+       true,
+       n in (1, 2, 5, 24)
+from generate_series(1, 28) n
+on conflict (id) do update
+set persona_id = excluded.persona_id,
+    activo = true,
+    curso_delegado = excluded.curso_delegado;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'entrenadores', private.demo_uuid('coach-facet:' || n)
+from generate_series(1, 28) n
+on conflict do nothing;
+
+insert into public.persona_roles(id, persona_id, rol_id, fecha_desde, activo)
+select private.demo_uuid('coach-role:' || n),
+       private.demo_uuid('coach-person:' || n),
+       r.id,
+       date '2026-07-01',
+       true
+from generate_series(1, 28) n
+join public.roles r on r.codigo = 'entrenador'
+on conflict (id) do update set activo = true, fecha_hasta = null;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'persona_roles', private.demo_uuid('coach-role:' || n)
+from generate_series(1, 28) n
+on conflict do nothing;
+
+with active_season as (
+  select id from public.temporadas where estado = 'activa' order by fecha_inicio desc nulls last, id limit 1
+)
+insert into public.entrenador_temporadas(id, entrenador_id, temporada_id, estado, disponibilidad_confirmada_at)
+select private.demo_uuid('coach-season:' || n),
+       private.demo_uuid('coach-facet:' || n),
+       s.id,
+       case when n = 28 then 'sin_asignacion' else 'activo' end,
+       case when n in (26, 28) then null else now() end
+from generate_series(1, 28) n
+cross join active_season s
+on conflict (id) do update
+set estado = excluded.estado,
+    disponibilidad_confirmada_at = excluded.disponibilidad_confirmada_at;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'entrenador_temporadas', private.demo_uuid('coach-season:' || n)
+from generate_series(1, 28) n
+on conflict do nothing;
+
+-- Fill principal-coach coverage only on active teams that do not already have
+-- a current principal assignment outside DEMO-S. Permanent/DEMO-ACCESS data wins.
+with free_teams as (
+  select e.id,
+         e.codigo,
+         row_number() over (order by e.codigo, e.id) as n
+  from public.equipos e
+  join public.temporadas t on t.id = e.temporada_id
+  where t.estado = 'activa'
+    and not exists (
+      select 1
+      from public.asignaciones_entrenador_equipo a
+      where a.equipo_id = e.id
+        and a.funcion = 'first'
+        and a.fecha_hasta is null
+        and a.cancelada_at is null
+    )
+)
+insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
+select private.demo_uuid('coach-team-main:' || n),
+       private.demo_uuid('coach-facet:' || n),
+       id,
+       'Entrenador principal',
+       'first',
+       date '2026-09-01'
+from free_teams
+where n <= 23
+on conflict (id) do update
+set equipo_id = excluded.equipo_id,
+    rol = excluded.rol,
+    funcion = excluded.funcion,
+    fecha_hasta = null,
+    cancelada_at = null;
+
+-- Register only assignments that actually exist. This keeps RESET_AND_LOAD
+-- idempotent when some teams are already covered by permanent principals.
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'asignaciones_entrenador_equipo', a.id
+from public.asignaciones_entrenador_equipo a
+where a.id in (
+  select private.demo_uuid('coach-team-main:' || n)
+  from generate_series(1, 23) n
+)
+on conflict do nothing;
+
+-- Secondary/specialist examples on the first four teams.
+with teams as (
+  select e.id, row_number() over (order by e.codigo) as n
+  from public.equipos e
+  join public.temporadas t on t.id = e.temporada_id
+  where t.estado = 'activa'
+)
+insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
+select private.demo_uuid('coach-team-extra:' || x.coach_n),
+       private.demo_uuid('coach-facet:' || x.coach_n),
+       t.id,
+       x.rol,
+       x.funcion,
+       date '2026-09-01'
+from (values
+  (24, 1, 'Segundo entrenador', 'second'),
+  (25, 2, 'Entrenador de porteros', 'goalkeeper'),
+  (26, 3, 'Preparador fisico', 'fitness'),
+  (27, 4, 'Segundo entrenador', 'second')
+) as x(coach_n, team_n, rol, funcion)
+join teams t on t.n = x.team_n
+on conflict (id) do update
+set equipo_id = excluded.equipo_id,
+    rol = excluded.rol,
+    funcion = excluded.funcion,
+    fecha_hasta = null,
+    cancelada_at = null;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'asignaciones_entrenador_equipo', private.demo_uuid('coach-team-extra:' || n)
+from generate_series(24, 27) n
+on conflict do nothing;
+
+-- Multi-team example: coach 24 is also second coach on team 5.
+with team5 as (
+  select e.id
+  from public.equipos e
+  join public.temporadas t on t.id = e.temporada_id
+  where t.estado = 'activa'
+  order by e.codigo
+  offset 4 limit 1
+)
+insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
+select private.demo_uuid('coach-team-extra:24b'), private.demo_uuid('coach-facet:24'), id,
+       'Segundo entrenador', 'second', date '2026-09-01'
+from team5
+on conflict (id) do update set equipo_id = excluded.equipo_id, fecha_hasta = null, cancelada_at = null;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+values ('DEMO-S', 'asignaciones_entrenador_equipo', private.demo_uuid('coach-team-extra:24b'))
+on conflict do nothing;
+
+-- Seven-day availability for assigned coaches except coach 26, which remains pending confirmation.
+-- Coach 4 deliberately has a narrow Wednesday range to exercise incompatibility messaging.
+with active_season as (
+  select id from public.temporadas where estado = 'activa' order by fecha_inicio desc nulls last, id limit 1
+)
+insert into public.entrenador_disponibilidad(id, entrenador_id, temporada_id, dia_semana, tipo, hora_desde, hora_hasta)
+select private.demo_uuid('coach-availability:' || n || ':' || d),
+       private.demo_uuid('coach-facet:' || n),
+       s.id,
+       d,
+       case when d in (6,7) then 'todo_dia' when n = 4 and d = 3 then 'franja' else 'desde' end,
+       case when d in (6,7) then null when n = 4 and d = 3 then time '21:00' else time '17:00' end,
+       case when n = 4 and d = 3 then time '22:00' else null end
+from generate_series(1, 27) n
+cross join generate_series(1, 7) d
+cross join active_season s
+where n <> 26
+on conflict (id) do update
+set tipo = excluded.tipo,
+    hora_desde = excluded.hora_desde,
+    hora_hasta = excluded.hora_hasta;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'entrenador_disponibilidad', private.demo_uuid('coach-availability:' || n || ':' || d)
+from generate_series(1, 27) n
+cross join generate_series(1, 7) d
+where n <> 26
+on conflict do nothing;
+
+-- Representative formation and RFFM-license states.
+insert into public.entrenador_formaciones(id, entrenador_id, tipo, estado, fecha_inicio, fecha_obtencion, entidad_emisora, verificacion_estado)
+values
+(private.demo_uuid('coach-training:1'), private.demo_uuid('coach-facet:1'), 'delegado', 'vigente', date '2025-09-01', date '2025-10-01', 'RFFM', 'verificada'),
+(private.demo_uuid('coach-training:5'), private.demo_uuid('coach-facet:5'), 'uefa_c', 'en_curso', date '2026-09-01', null, 'RFFM', 'pendiente'),
+(private.demo_uuid('coach-training:6'), private.demo_uuid('coach-facet:6'), 'uefa_c', 'vigente', date '2025-09-01', date '2026-06-01', 'RFFM', 'verificada')
+on conflict (id) do update set estado = excluded.estado, verificacion_estado = excluded.verificacion_estado;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'entrenador_formaciones', private.demo_uuid('coach-training:' || n)
+from unnest(array[1,5,6]) n
+on conflict do nothing;
+
+with active_season as (
+  select id from public.temporadas where estado = 'activa' order by fecha_inicio desc nulls last, id limit 1
+)
+insert into public.entrenador_licencias_rffm(id, entrenador_id, temporada_id, tipo, numero, fecha_expedicion, fecha_caducidad, estado_excepcional, verificacion_estado)
+select private.demo_uuid('coach-license:' || x.n),
+       private.demo_uuid('coach-facet:' || x.n),
+       s.id,
+       x.tipo,
+       'DEMO-' || x.tipo || '-' || lpad(x.n::text, 3, '0'),
+       date '2026-07-01',
+       x.caducidad,
+       x.estado_excepcional,
+       x.verificacion
+from (values
+  (1, 'D',  date '2027-06-30', null::text, 'verificada'),
+  (3, 'ET', date '2027-06-30', null::text, 'pendiente'),
+  (7, 'D',  date '2026-06-30', null::text, 'verificada'),
+  (8, 'D',  date '2027-06-30', 'revocada'::text, 'verificada')
+) as x(n, tipo, caducidad, estado_excepcional, verificacion)
+cross join active_season s
+on conflict (id) do update
+set fecha_caducidad = excluded.fecha_caducidad,
+    estado_excepcional = excluded.estado_excepcional,
+    verificacion_estado = excluded.verificacion_estado;
+
+insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
+select 'DEMO-S', 'entrenador_licencias_rffm', private.demo_uuid('coach-license:' || n)
+from unnest(array[1,3,7,8]) n
+on conflict do nothing;
+
 -- Health and documentation examples cover current, expiring, expired and pending states.
 with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 10
@@ -289,7 +534,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
 ) players
 where n <= 5
@@ -299,7 +544,7 @@ with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 10
@@ -321,7 +566,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
 ) players
 where n between 6 and 9
@@ -331,7 +576,7 @@ with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 6
@@ -353,7 +598,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 2) g
+  cross join generate_series(1, 5) g
   where t.estado = 'activa'
 ) players
 where n <= 6
