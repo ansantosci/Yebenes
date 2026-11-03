@@ -338,12 +338,23 @@ select 'DEMO-S', 'entrenador_temporadas', private.demo_uuid('coach-season:' || n
 from generate_series(1, 28) n
 on conflict do nothing;
 
--- One principal coach per active team.
-with teams as (
-  select e.id, e.codigo, row_number() over (order by e.codigo) as n
+-- Fill principal-coach coverage only on active teams that do not already have
+-- a current principal assignment outside DEMO-S. Permanent/DEMO-ACCESS data wins.
+with free_teams as (
+  select e.id,
+         e.codigo,
+         row_number() over (order by e.codigo, e.id) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
   where t.estado = 'activa'
+    and not exists (
+      select 1
+      from public.asignaciones_entrenador_equipo a
+      where a.equipo_id = e.id
+        and a.funcion = 'first'
+        and a.fecha_hasta is null
+        and a.cancelada_at is null
+    )
 )
 insert into public.asignaciones_entrenador_equipo(id, entrenador_id, equipo_id, rol, funcion, fecha_desde)
 select private.demo_uuid('coach-team-main:' || n),
@@ -352,7 +363,7 @@ select private.demo_uuid('coach-team-main:' || n),
        'Entrenador principal',
        'first',
        date '2026-09-01'
-from teams
+from free_teams
 where n <= 23
 on conflict (id) do update
 set equipo_id = excluded.equipo_id,
@@ -361,9 +372,15 @@ set equipo_id = excluded.equipo_id,
     fecha_hasta = null,
     cancelada_at = null;
 
+-- Register only assignments that actually exist. This keeps RESET_AND_LOAD
+-- idempotent when some teams are already covered by permanent principals.
 insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
-select 'DEMO-S', 'asignaciones_entrenador_equipo', private.demo_uuid('coach-team-main:' || n)
-from generate_series(1, 23) n
+select 'DEMO-S', 'asignaciones_entrenador_equipo', a.id
+from public.asignaciones_entrenador_equipo a
+where a.id in (
+  select private.demo_uuid('coach-team-main:' || n)
+  from generate_series(1, 23) n
+)
 on conflict do nothing;
 
 -- Secondary/specialist examples on the first four teams.

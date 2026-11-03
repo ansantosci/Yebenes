@@ -104,7 +104,7 @@ jobs:
           select 'dataset', id, version, scenario from private.demo_datasets where id = 'DEMO-S';
           select 'players', count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'jugadores' and e.entity_id = j.id;
           select 'coaches', count(*) from public.entrenadores c join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'entrenadores' and e.entity_id = c.id;
-          select 'principal_team_coverage', count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'asignaciones_entrenador_equipo' and e.entity_id = a.id where a.funcion = 'first' and a.fecha_hasta is null and a.cancelada_at is null;
+          select 'principal_team_coverage', count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join public.equipos eq on eq.id = a.equipo_id join public.temporadas t on t.id = eq.temporada_id where t.estado = 'activa' and a.funcion = 'first' and a.fecha_hasta is null and a.cancelada_at is null;
           select 'families', count(*) from public.personas p join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and e.entity_id = p.id where p.nombre = 'Familia DEMO';
           select 'demo_access_linked', count(p.auth_user_id)
           from private.demo_access_identities a join public.personas p on p.id = a.persona_id;
@@ -127,8 +127,8 @@ jobs:
             if (select count(*) from public.entrenadores c join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'entrenadores' and e.entity_id = c.id) <> 28 then
               raise exception 'DEMO-S coverage failed: expected 28 synthetic coaches';
             end if;
-            if (select count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'asignaciones_entrenador_equipo' and e.entity_id = a.id where a.funcion = 'first' and a.fecha_hasta is null and a.cancelada_at is null) <> (select count(*) from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
-              raise exception 'DEMO-S coverage failed: every active team must have one synthetic principal coach';
+            if (select count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join public.equipos eq on eq.id = a.equipo_id join public.temporadas t on t.id = eq.temporada_id where t.estado = 'activa' and a.funcion = 'first' and a.fecha_hasta is null and a.cancelada_at is null) <> (select count(*) from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
+              raise exception 'DEMO-S coverage failed: every active team must have an effective principal coach';
             end if;
             if exists (select 1 from private.demo_access_identities)
                and (select count(*) from private.demo_access_identities) <> 6 then
