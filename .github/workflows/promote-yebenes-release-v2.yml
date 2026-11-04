@@ -15,6 +15,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: yebenes-release-promotion
@@ -22,8 +24,13 @@ concurrency:
 
 jobs:
   analyze:
-    name: Analyze environments
+    name: Analyze environments and release delta
     runs-on: ubuntu-latest
+    outputs:
+      frontend_changed: ${{ steps.delta.outputs.frontend_changed }}
+      edge_changed: ${{ steps.delta.outputs.edge_changed }}
+      target: ${{ steps.delta.outputs.target }}
+      destination_ref: ${{ steps.delta.outputs.destination_ref }}
     steps:
       - name: Select orchestrator source
         id: src
@@ -42,6 +49,29 @@ jobs:
       - env:
           MODE: ${{ inputs.mode }}
         run: bash scripts/release/analyze-promotion.sh "$MODE"
+      - name: Classify release delta
+        id: delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          case '${{ inputs.mode }}' in
+            DEVELOP_TO_TEST) source=origin/develop; dest=origin/test; target=TEST; destination_ref=test ;;
+            TEST_TO_DEMO) source=origin/test; dest=origin/main; target=DEMO; destination_ref=main ;;
+            *) source=origin/develop; dest=origin/test; target=NONE; destination_ref=none ;;
+          esac
+          frontend=0; edge=0
+          if git diff --name-only "$dest" "$source" -- index.html app.js styles.css config.js sw.js version.json manifest.webmanifest assets/ | grep -q .; then frontend=1; fi
+          if git diff --name-only "$dest" "$source" -- supabase/functions/ | grep -q .; then edge=1; fi
+          echo "frontend_changed=$frontend" >> "$GITHUB_OUTPUT"
+          echo "edge_changed=$edge" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "destination_ref=$destination_ref" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Release delta'
+            echo "- Frontend changed: $frontend"
+            echo "- Edge Functions changed: $edge"
+            echo "- Backend target: $target"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   promote_test:
     name: Promote DEVELOP to TEST
@@ -60,14 +90,12 @@ jobs:
           status="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
           case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;; esac
       - run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
-      - name: Controlled merge to TEST
-        run: bash scripts/release/promote-branch.sh develop test
+      - run: bash scripts/release/promote-branch.sh develop test
       - name: Verify TEST content alignment
         run: |
           git fetch origin develop test --prune
           git diff --exit-code origin/develop origin/test
-          echo "## Requested operation" >> "$GITHUB_STEP_SUMMARY"
-          echo "✅ **DEVELOP → TEST completed. Content is aligned.**" >> "$GITHUB_STEP_SUMMARY"
+          echo '✅ Git promotion DEVELOP → TEST complete.' >> "$GITHUB_STEP_SUMMARY"
 
   promote_demo:
     name: Promote TEST to DEMO
@@ -86,11 +114,100 @@ jobs:
           status="$(bash scripts/release/analyze-promotion.sh PAIR test main)"
           case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe TEST -> DEMO relation: $status"; exit 3;; esac
       - run: bash scripts/release/validate-frontend-version.sh origin/main origin/test
-      - name: Controlled merge to MAIN
-        run: bash scripts/release/promote-branch.sh test main
+      - run: bash scripts/release/promote-branch.sh test main
       - name: Verify DEMO content alignment
         run: |
           git fetch origin test main --prune
           git diff --exit-code origin/test origin/main
-          echo "## Requested operation" >> "$GITHUB_STEP_SUMMARY"
-          echo "✅ **TEST → DEMO completed. Content is aligned.**" >> "$GITHUB_STEP_SUMMARY"
+          echo '✅ Git promotion TEST → DEMO complete.' >> "$GITHUB_STEP_SUMMARY"
+
+  architecture_test:
+    name: Architecture guardrails (TEST)
+    needs: [analyze, promote_test]
+    if: ${{ inputs.mode == 'DEVELOP_TO_TEST' }}
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: test
+
+  migrations_test:
+    name: Migrations and contracts (TEST)
+    needs: architecture_test
+    uses: ./.github/workflows/supabase-migrations-deploy.yml
+    with:
+      source_ref: test
+      target: TEST
+    secrets: inherit
+
+  edge_test:
+    name: Edge Functions (TEST)
+    needs: [analyze, migrations_test]
+    if: ${{ needs.analyze.outputs.edge_changed == '1' }}
+    uses: ./.github/workflows/supabase-test-edge-functions-deploy.yml
+    with:
+      source_ref: test
+      target: TEST
+    secrets: inherit
+
+  architecture_demo:
+    name: Architecture guardrails (DEMO)
+    needs: [analyze, promote_demo]
+    if: ${{ inputs.mode == 'TEST_TO_DEMO' }}
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: main
+
+  migrations_demo:
+    name: Migrations and contracts (DEMO)
+    needs: architecture_demo
+    uses: ./.github/workflows/supabase-migrations-deploy.yml
+    with:
+      source_ref: main
+      target: DEMO
+      demo_confirmation: DEPLOY_DEMO
+    secrets: inherit
+
+  edge_demo:
+    name: Edge Functions (DEMO)
+    needs: [analyze, migrations_demo]
+    if: ${{ needs.analyze.outputs.edge_changed == '1' }}
+    uses: ./.github/workflows/supabase-test-edge-functions-deploy.yml
+    with:
+      source_ref: main
+      target: DEMO
+    secrets: inherit
+
+  frontend:
+    name: Publish frontend (only when changed)
+    needs: [analyze, migrations_test, migrations_demo, edge_test, edge_demo]
+    if: >-
+      ${{ always() && needs.analyze.outputs.frontend_changed == '1' &&
+          ((inputs.mode == 'DEVELOP_TO_TEST' && needs.migrations_test.result == 'success' && (needs.edge_test.result == 'success' || needs.edge_test.result == 'skipped')) ||
+           (inputs.mode == 'TEST_TO_DEMO' && needs.migrations_demo.result == 'success' && (needs.edge_demo.result == 'success' || needs.edge_demo.result == 'skipped'))) }}
+    uses: ./.github/workflows/pages-multi-environment.yml
+    secrets: inherit
+
+  summary:
+    name: Promotion summary
+    needs: [analyze, promote_test, promote_demo, architecture_test, migrations_test, edge_test, architecture_demo, migrations_demo, edge_demo, frontend]
+    if: ${{ always() && inputs.mode != 'DRY_RUN' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required release jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '## Promotion V2.5 summary' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Git promotion: handled by selected operation' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Migrations/contracts: always executed idempotently' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Edge Functions: conditional on source diff' >> "$GITHUB_STEP_SUMMARY"
+          echo '- Frontend/Pages: conditional on frontend diff' >> "$GITHUB_STEP_SUMMARY"
+          if [ '${{ inputs.mode }}' = 'DEVELOP_TO_TEST' ]; then
+            [ '${{ needs.promote_test.result }}' = success ]
+            [ '${{ needs.architecture_test.result }}' = success ]
+            [ '${{ needs.migrations_test.result }}' = success ]
+          else
+            [ '${{ needs.promote_demo.result }}' = success ]
+            [ '${{ needs.architecture_demo.result }}' = success ]
+            [ '${{ needs.migrations_demo.result }}' = success ]
+          fi
+          echo '✅ Requested promotion and mandatory backend validation completed.' >> "$GITHUB_STEP_SUMMARY"
