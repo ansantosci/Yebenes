@@ -1,4 +1,4 @@
-name: Validate reproducible Supabase baseline
+name: MAINT - Validate reproducible Supabase baseline
 
 on:
   workflow_dispatch:

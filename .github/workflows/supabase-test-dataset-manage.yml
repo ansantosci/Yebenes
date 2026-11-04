@@ -1,4 +1,4 @@
-name: Manage Supabase TEST dataset
+name: 02A - Manage TEST synthetic data
 on:
   workflow_dispatch:
     inputs:

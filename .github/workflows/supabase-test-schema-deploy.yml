@@ -1,4 +1,4 @@
-name: Deploy Supabase TEST schema
+name: MAINT - Deploy TEST schema (legacy)
 
 on:
   workflow_dispatch:

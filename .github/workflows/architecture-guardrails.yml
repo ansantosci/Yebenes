@@ -1,14 +1,6 @@
 name: Validate repository architecture
 
 on:
-  workflow_dispatch:
-    inputs:
-      source_ref:
-        description: Repository branch to validate
-        required: true
-        type: choice
-        options: [develop, test, main]
-        default: develop
   workflow_call:
     inputs:
       source_ref:
