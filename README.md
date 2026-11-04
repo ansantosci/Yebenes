@@ -1,3 +1,16 @@
+# V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
+
+- Sustituye para los perfiles de gestión la antigua barra inferior por un menú lateral responsive accesible mediante `☰`; Familia/Jugador conservan su navegación contextual propia.
+- En escritorio el menú puede fijarse con `📌`; la preferencia queda guardada localmente en el navegador. En móvil/tablet funciona como drawer superpuesto y se cierra al navegar, tocar fuera, pulsar `✕` o `Esc`.
+- Aísla el menú de gestión de los estilos heredados de `bottom-nav`, garantizando una lista estrictamente vertical sin desplazamiento horizontal.
+- Integra `☰`, escudo, identidad del club, composición Madrid y acciones en la cabecera; aumenta el escudo autenticado para equilibrarlo visualmente con la identidad de Madrid.
+- Mantiene Equipaciones como futuro módulo de gestión exclusivo para Administrador/Club; familias, jugadores y entrenadores solo comunicarán sus tallas/necesidad desde sus contextos correspondientes.
+- Añade `DEVELOP_PREVIEW` al orquestador V2.5.2 para publicar DEVELOP sin promover a TEST ni DEMO.
+- Automatiza el preview de GitHub Pages ante `push` a `develop` cuando cambian archivos frontend (`index.html`, `app.js`, `styles.css`, `config.js`, `sw.js`, `version.json`, `manifest.webmanifest` o `assets/**`), con validación previa de versión y arquitectura.
+- Runtime CI/CD actualizado y validado con Node 24, `actions/checkout@v5`, Ubuntu 26.04 y Actions de Pages compatibles con Node 24.
+- Equipaciones backend queda desplegado y certificado en DEVELOP/TEST/DEMO mediante 051 (fundación), 052 (logística) y 053 (recepciones/stock y múltiples pedidos simultáneos).
+- TEST y DEMO continúan siendo promociones manuales controladas mediante `DEVELOP_TO_TEST` y `TEST_TO_DEMO`.
+
 # V95.2.13 — Contexto de ficha aislado por cuenta
 
 - Evita que una ficha seleccionada temporalmente se reutilice al entrar con otra cuenta o al cambiar de perfil Familia/Jugador.
