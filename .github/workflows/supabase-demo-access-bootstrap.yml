@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   bootstrap:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Validate environment guardrail and checkout source
         shell: bash
@@ -45,7 +45,7 @@ jobs:
             [ "$ref" = 'main' ] || { echo 'DEMO-ACCESS requires source_ref=main.' >&2; exit 1; }
             [ "$confirm" = 'BOOTSTRAP_DEMO_ACCESS' ] || { echo 'Type BOOTSTRAP_DEMO_ACCESS to continue.' >&2; exit 1; }
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.source_ref }}
       - name: Validate files, migration and required secrets

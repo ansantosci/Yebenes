@@ -18,11 +18,11 @@ permissions:
 jobs:
   bootstrap:
     name: Bootstrap TEST-ACCESS
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout selected source branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.source_ref }}
 

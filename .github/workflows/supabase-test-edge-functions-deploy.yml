@@ -41,7 +41,7 @@ concurrency:
 jobs:
   deploy-functions:
     name: Deploy Edge Functions to ${{ inputs.target }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Validate target guardrails
         shell: bash
@@ -56,7 +56,7 @@ jobs:
           fi
 
       - name: Checkout selected source branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.source_ref }}
 
