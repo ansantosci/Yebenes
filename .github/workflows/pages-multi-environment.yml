@@ -1,7 +1,8 @@
-name: Deploy multi-environment GitHub Pages
+name: INTERNAL - GitHub Pages deployment
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
