@@ -16,20 +16,6 @@ on:
         required: false
       SUPABASE_DEMO_PROJECT_REF:
         required: false
-  workflow_dispatch:
-    inputs:
-      source_ref:
-        description: Repository branch containing Edge Functions
-        required: true
-        type: choice
-        options: [develop, test, main]
-        default: develop
-      target:
-        description: Supabase target environment
-        required: true
-        type: choice
-        options: [TEST, DEMO]
-        default: TEST
 
 permissions:
   contents: read

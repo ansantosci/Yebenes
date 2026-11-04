@@ -1,4 +1,4 @@
-name: Export Supabase DEMO schema
+name: MAINT - Export DEMO schema
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Bootstrap Supabase DEMO synthetic access users
+name: MAINT - Bootstrap DEMO synthetic access
 
 on:
   workflow_dispatch:

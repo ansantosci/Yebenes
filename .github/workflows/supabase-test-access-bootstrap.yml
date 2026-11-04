@@ -1,4 +1,4 @@
-name: Bootstrap Supabase TEST access users
+name: MAINT - Bootstrap TEST synthetic access
 
 on:
   workflow_dispatch:
