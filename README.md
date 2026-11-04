@@ -1,5 +1,12 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.16 — Corrección definitiva del menú lateral
+- El menú de gestión se fuerza a disposición vertical, una opción por fila y a ancho completo.
+- Se elimina cualquier desplazamiento horizontal heredado de la antigua navegación inferior.
+- Se mantiene el drawer responsive, fijación en escritorio, persistencia y cabecera con escudo ampliado.
+- El cambio se valida primero mediante preview automático de DEVELOP antes de cualquier promoción a TEST.
+
+
 - Sustituye para los perfiles de gestión la antigua barra inferior por un menú lateral responsive accesible mediante `☰`; Familia/Jugador conservan su navegación contextual propia.
 - En escritorio el menú puede fijarse con `📌`; la preferencia queda guardada localmente en el navegador. En móvil/tablet funciona como drawer superpuesto y se cierra al navegar, tocar fuera, pulsar `✕` o `Esc`.
 - Aísla el menú de gestión de los estilos heredados de `bottom-nav`, garantizando una lista estrictamente vertical sin desplazamiento horizontal.
