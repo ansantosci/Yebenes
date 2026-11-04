@@ -276,16 +276,26 @@ window.YEBENES_APP_VERSION = '95.2.13';
     <nav class="bottom-nav" id="familyNav">
       <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
     </nav>
-    <nav class="bottom-nav club-nav hidden" id="clubNav">
-      <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button>
-      <button class="nav-item" id="medicalNavButton" data-club-view="medicalView"><span>♥</span>RRMM</button>
-      <button class="nav-item" id="coachesNavButton" data-club-view="coachesView"><span>🧑‍🏫</span>Entrenadores</button>
-      <button class="nav-item" id="structureNavButton" data-club-view="structureView"><span>▦</span>Estructura</button>
-      <button class="nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
+    <div id="clubSidebarBackdrop" class="club-sidebar-backdrop hidden"></div>
+    <aside id="clubSidebar" class="club-sidebar hidden" aria-label="Navegación de gestión">
+      <div class="club-sidebar-head">
+        <div><span class="eyebrow dark">Gestión del club</span><strong>Menú</strong></div>
+        <div class="club-sidebar-actions">
+          <button type="button" id="sidebarPinButton" class="icon-button sidebar-pin" title="Fijar menú" aria-label="Fijar menú">📌</button>
+          <button type="button" id="sidebarCloseButton" class="icon-button" aria-label="Cerrar menú">✕</button>
+        </div>
+      </div>
+      <nav class="club-nav" id="clubNav">
+      <button class="nav-item sidebar-nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button>
+      <button class="nav-item sidebar-nav-item" id="medicalNavButton" data-club-view="medicalView"><span>♥</span>RRMM</button>
+      <button class="nav-item sidebar-nav-item" id="coachesNavButton" data-club-view="coachesView"><span>🧑‍🏫</span>Entrenadores</button>
+      <button class="nav-item sidebar-nav-item" id="structureNavButton" data-club-view="structureView"><span>▦</span>Estructura</button>
+      <button class="nav-item sidebar-nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
       
-      <button class="nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span>★</span>Patrocinadores</button>
-      <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
+      <button class="nav-item sidebar-nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span>★</span>Patrocinadores</button>
+      <button class="nav-item sidebar-nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
+    </aside>
   </div>
 
   <footer id="sponsorsStrip" class="sponsors-strip global-sponsors-footer hidden" aria-label="Patrocinadores del club">
