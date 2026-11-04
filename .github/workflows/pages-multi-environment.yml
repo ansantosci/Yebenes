@@ -3,11 +3,6 @@ name: Deploy multi-environment GitHub Pages
 on:
   workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - test
-      - develop
 
 permissions:
   contents: read
