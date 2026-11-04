@@ -18,24 +18,6 @@ on:
         required: false
       SUPABASE_DEMO_DB_URL:
         required: false
-  workflow_dispatch:
-    inputs:
-      source_ref:
-        description: Repository branch containing migrations
-        required: true
-        type: choice
-        options: [develop, test, main]
-        default: develop
-      target:
-        description: Supabase target environment
-        required: true
-        type: choice
-        options: [TEST, DEMO]
-        default: TEST
-      demo_confirmation:
-        description: For DEMO only, type DEPLOY_DEMO
-        required: false
-        type: string
 
 permissions:
   contents: read

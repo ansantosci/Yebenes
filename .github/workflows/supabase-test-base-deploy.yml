@@ -1,4 +1,4 @@
-name: Deploy Supabase TEST-BASE
+name: MAINT - Rebuild TEST baseline
 
 on:
   workflow_dispatch:

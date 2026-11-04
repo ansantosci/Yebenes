@@ -1,4 +1,4 @@
-name: Compare three environment states
+name: MAINT - Compare environment states
 
 on:
   workflow_dispatch:

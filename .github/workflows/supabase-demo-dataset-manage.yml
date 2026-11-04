@@ -1,4 +1,4 @@
-name: Manage Supabase DEMO dataset
+name: 02B - Manage DEMO synthetic data
 
 on:
   workflow_dispatch:
