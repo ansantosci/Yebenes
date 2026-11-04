@@ -1,0 +1,68 @@
+name: 01 - Promote Yebenes release
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Promotion operation
+        required: true
+        type: choice
+        options: [DRY_RUN, DEVELOP_TO_TEST, TEST_TO_DEMO]
+        default: DRY_RUN
+      confirmation:
+        description: DEVELOP_TO_TEST requires PROMOTE_TO_TEST. TEST_TO_DEMO remains locked in v2.2.
+        required: false
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: yebenes-release-promotion
+  cancel-in-progress: false
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: main, fetch-depth: 0}
+      - run: git fetch origin develop test main --prune
+      - env:
+          MODE: ${{ inputs.mode }}
+        run: bash scripts/release/analyze-promotion.sh "$MODE"
+  promote_test:
+    needs: analyze
+    if: ${{ inputs.mode == 'DEVELOP_TO_TEST' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: develop, fetch-depth: 0}
+      - run: git fetch origin develop test main --prune
+      - env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRMATION" = "PROMOTE_TO_TEST" ] || { echo "::error::Type PROMOTE_TO_TEST to confirm."; exit 2; }
+          status="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
+          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;; esac
+      - run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
+      - name: Controlled merge to TEST
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B test origin/test
+          if git diff --quiet origin/test origin/develop; then
+            echo "Content already aligned; no merge required."
+          else
+            git merge --no-ff --no-edit origin/develop
+            git push origin test
+          fi
+      - name: Verify TEST content alignment
+        run: |
+          git fetch origin develop test --prune
+          git diff --exit-code origin/develop origin/test
+          echo "DEVELOP and TEST are aligned in content." >> "$GITHUB_STEP_SUMMARY"
+  locked_demo:
+    needs: analyze
+    if: ${{ inputs.mode == 'TEST_TO_DEMO' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "::error::TEST_TO_DEMO remains locked in v2.2." && exit 2
