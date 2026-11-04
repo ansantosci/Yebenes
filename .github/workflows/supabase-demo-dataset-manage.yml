@@ -46,7 +46,9 @@ jobs:
             case "$ref" in develop|test) ;; *) echo 'TEST dataset rehearsal requires develop or test.' >&2; exit 1;; esac
           else
             [ "$ref" = 'main' ] || { echo 'DEMO dataset requires source_ref=main.' >&2; exit 1; }
-            [ "$confirm" = 'MANAGE_DEMO_DATA' ] || { echo 'DEMO dataset requires MANAGE_DEMO_DATA confirmation.' >&2; exit 1; }
+            if [ '${{ inputs.action }}' = 'RESET_AND_LOAD' ]; then
+              [ "$confirm" = 'MANAGE_DEMO_DATA' ] || { echo 'DEMO RESET requires MANAGE_DEMO_DATA confirmation.' >&2; exit 1; }
+            fi
           fi
       - name: Checkout selected source branch
         uses: actions/checkout@v4
