@@ -1,59 +1,67 @@
 #!/usr/bin/env bash
 set -euo pipefail
-MODE="${1:-DRY_RUN}"
-SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
+MODE="${1:-DRY_RUN}"; PS="${2:-}"; PD="${3:-}"; SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
-classify_pair() {
-  local source="$1" destination="$2" label="$3"
-  local s="origin/$source" d="origin/$destination"
-  local source_sha dest_sha changed_count source_only dest_only relation status
-  source_sha="$(git rev-parse "$s")"; dest_sha="$(git rev-parse "$d")"
-  changed_count="$(git diff --name-only "$s" "$d" | sed '/^$/d' | wc -l | tr -d ' ')"
-  source_only="$(git rev-list --count "$d..$s")"; dest_only="$(git rev-list --count "$s..$d")"
-  if [ "$changed_count" -eq 0 ]; then
-    if [ "$source_sha" = "$dest_sha" ]; then relation="IDENTICAL"
-    elif [ "$source_only" -eq 0 ] && [ "$dest_only" -gt 0 ]; then relation="DESTINATION_AHEAD_HISTORY_ONLY"
-    elif [ "$source_only" -gt 0 ] && [ "$dest_only" -eq 0 ]; then relation="SOURCE_AHEAD_HISTORY_ONLY"
-    else relation="SYNCED_CONTENT_DIFFERENT_HISTORY"; fi
-    status="OK"
-  elif [ "$source_only" -gt 0 ] && [ "$dest_only" -eq 0 ]; then relation="SOURCE_AHEAD"; status="PROMOTION_AVAILABLE"
-  elif [ "$source_only" -eq 0 ] && [ "$dest_only" -gt 0 ]; then relation="DESTINATION_AHEAD_WITH_CHANGES"; status="BLOCKED"
-  else relation="DIVERGED"; status="BLOCKED"; fi
-  local frontend migrations edge cicd
-  frontend="$(git diff --name-only "$d" "$s" -- index.html app.js styles.css config.js sw.js version.json manifest.webmanifest assets/ | sed '/^$/d' | wc -l | tr -d ' ')"
-  migrations="$(git diff --name-only "$d" "$s" -- supabase/migrations/ | sed '/^$/d' | wc -l | tr -d ' ')"
-  edge="$(git diff --name-only "$d" "$s" -- supabase/functions/ | sed '/^$/d' | wc -l | tr -d ' ')"
-  cicd="$(git diff --name-only "$d" "$s" -- .github/workflows/ scripts/release/ | sed '/^$/d' | wc -l | tr -d ' ')"
-  {
-    echo "### $label"; echo
-    echo "| Item | Value |"; echo "|---|---|"
-    echo "| Source | \`$source\` |"; echo "| Destination | \`$destination\` |"
-    echo "| Status | **$status** |"; echo "| Git relation | \`$relation\` |"
-    echo "| Source-only commits | $source_only |"; echo "| Destination-only commits | $dest_only |"
-    echo "| Content differences | $changed_count files |"; echo "| Frontend pending | $frontend |"
-    echo "| Migrations pending | $migrations |"; echo "| Edge Functions pending | $edge |"
-    echo "| CI/CD pending | $cicd |"; echo
-  } >> "$SUMMARY"
-  if [ "$changed_count" -gt 0 ]; then
-    { echo "<details><summary>Files different</summary>"; echo; echo '```text'; git diff --name-status "$d" "$s"; echo '```'; echo "</details>"; echo; } >> "$SUMMARY"
-  fi
-  echo "$status"
+exclusive_destination_files() {
+  local source="$1" destination="$2" s="origin/$1" d="origin/$2" base
+  base="$(git merge-base "$s" "$d")"
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    local db sb
+    db="$(git rev-parse "$d:$path" 2>/dev/null || echo MISSING)"
+    sb="$(git rev-parse "$s:$path" 2>/dev/null || echo MISSING)"
+    [ "$db" != "$sb" ] && printf '%s\n' "$path"
+  done < <(git diff --name-only "$base" "$d")
 }
+
+classify() {
+  local source="$1" destination="$2" s="origin/$1" d="origin/$2"
+  local changed source_only dest_exclusive
+  changed="$(git diff --name-only "$s" "$d"|sed '/^$/d'|wc -l|tr -d ' ')"
+  source_only="$(git rev-list --count "$d..$s")"
+  dest_exclusive="$(exclusive_destination_files "$source" "$destination"|sed '/^$/d'|wc -l|tr -d ' ')"
+  if [ "$changed" -eq 0 ]; then echo OK
+  elif [ "$dest_exclusive" -eq 0 ] && [ "$source_only" -gt 0 ]; then echo PROMOTION_AVAILABLE
+  else echo BLOCKED
+  fi
+}
+if [ "$MODE" = PAIR ]; then classify "$PS" "$PD"; exit 0; fi
+
+detail() {
+ local src="$1" dst="$2" label="$3" s="origin/$1" d="origin/$2"
+ local c so do_ de st rel f m e ci
+ c="$(git diff --name-only "$s" "$d"|sed '/^$/d'|wc -l|tr -d ' ')"
+ so="$(git rev-list --count "$d..$s")"; do_="$(git rev-list --count "$s..$d")"
+ de="$(exclusive_destination_files "$src" "$dst"|sed '/^$/d'|wc -l|tr -d ' ')"; st="$(classify "$src" "$dst")"
+ if [ "$c" -eq 0 ];then
+   if [ "$so" -eq 0 ]&&[ "$do_" -eq 0 ];then rel=IDENTICAL
+   elif [ "$so" -eq 0 ];then rel=DESTINATION_AHEAD_HISTORY_ONLY
+   elif [ "$do_" -eq 0 ];then rel=SOURCE_AHEAD_HISTORY_ONLY
+   else rel=SYNCED_CONTENT_DIFFERENT_HISTORY;fi
+ elif [ "$st" = PROMOTION_AVAILABLE ];then
+   [ "$do_" -gt 0 ]&&rel=SOURCE_CHANGES_WITH_DESTINATION_HISTORY_ONLY||rel=SOURCE_AHEAD
+ elif [ "$de" -gt 0 ]&&[ "$so" -gt 0 ];then rel=DIVERGED_WITH_DESTINATION_CONTENT
+ else rel=DESTINATION_AHEAD_WITH_CHANGES;fi
+ f="$(git diff --name-only "$d" "$s" -- index.html app.js styles.css config.js sw.js version.json manifest.webmanifest assets/|sed '/^$/d'|wc -l|tr -d ' ')"
+ m="$(git diff --name-only "$d" "$s" -- supabase/migrations/|sed '/^$/d'|wc -l|tr -d ' ')"
+ e="$(git diff --name-only "$d" "$s" -- supabase/functions/|sed '/^$/d'|wc -l|tr -d ' ')"
+ ci="$(git diff --name-only "$d" "$s" -- .github/workflows/ scripts/release/|sed '/^$/d'|wc -l|tr -d ' ')"
+ { echo "### $label";echo;echo "| Item | Value |";echo "|---|---|";echo "| Status | **$st** |";echo "| Git relation | \`$rel\` |";echo "| Source-only commits | $so |";echo "| Destination-only commits | $do_ |";echo "| Destination-exclusive content | $de files |";echo "| Content differences | $c files |";echo "| Frontend pending | $f |";echo "| Migrations pending | $m |";echo "| Edge Functions pending | $e |";echo "| CI/CD pending | $ci |";echo; }>>"$SUMMARY"
+ if [ "$de" -gt 0 ];then { echo "<details><summary>Destination-exclusive files (blocking)</summary>";echo;echo '```text';exclusive_destination_files "$src" "$dst";echo '```';echo "</details>";echo; }>>"$SUMMARY";fi
+ if [ "$c" -gt 0 ];then { echo "<details><summary>All files different</summary>";echo;echo '```text';git diff --name-status "$d" "$s";echo '```';echo "</details>";echo; }>>"$SUMMARY";fi
+ echo "$st"
+}
+{ echo "# Yebenes environment alignment — orchestrator v2.4";echo;echo "**Requested mode:** \`$MODE\`";echo; }>>"$SUMMARY"
+a="$(detail develop test 'DEVELOP -> TEST')"; b="$(detail test main 'TEST -> DEMO (main)')"
 {
- echo "# Yebenes environment alignment"; echo
- echo "**Mode:** \`$MODE\`"; echo
- echo "> Diagnostic only: no branch, database or deployment is modified."; echo
-} >> "$SUMMARY"
-s1="$(classify_pair develop test 'DEVELOP -> TEST')"
-s2="$(classify_pair test main 'TEST -> DEMO (main)')"
-{
- echo "## Overall result"; echo
- if [ "$s1" = "BLOCKED" ] || [ "$s2" = "BLOCKED" ]; then
-   echo "❌ **Environment drift requires attention. Promotion remains blocked.**"
- elif [ "$s1" = "PROMOTION_AVAILABLE" ] || [ "$s2" = "PROMOTION_AVAILABLE" ]; then
-   echo "🟡 **At least one environment has changes pending promotion.**"
- else
-   echo "✅ **All three environments are aligned in content. Extra merge-history commits are accepted.**"
- fi
- echo; echo "Promotion modes remain locked in v2.1."
-} >> "$SUMMARY"
+ echo "## Environment health";echo
+ if [ "$a" = BLOCKED ]||[ "$b" = BLOCKED ];then echo "⚠️ **At least one environment requires synchronization or review.**"
+ elif [ "$a" = PROMOTION_AVAILABLE ]||[ "$b" = PROMOTION_AVAILABLE ];then echo "🟡 **Validated changes are pending promotion.**"
+ else echo "✅ **All three environments are aligned in content.**";fi
+ echo
+ case "$MODE" in
+   DEVELOP_TO_TEST) echo "**Requested operation:** DEVELOP → TEST" ;;
+   TEST_TO_DEMO) echo "**Requested operation:** TEST → DEMO" ;;
+   *) echo "**Requested operation:** diagnostic only" ;;
+ esac
+}>>"$SUMMARY"

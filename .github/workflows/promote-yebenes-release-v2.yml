@@ -9,32 +9,88 @@ on:
         options: [DRY_RUN, DEVELOP_TO_TEST, TEST_TO_DEMO]
         default: DRY_RUN
       confirmation:
-        description: Promotion modes are locked in v2.1; DRY_RUN requires no confirmation.
+        description: DEVELOP_TO_TEST requires PROMOTE_TO_TEST; TEST_TO_DEMO requires PROMOTE_TO_DEMO.
         required: false
         type: string
+
 permissions:
-  contents: read
+  contents: write
+
 concurrency:
   group: yebenes-release-promotion
   cancel-in-progress: false
+
 jobs:
   analyze:
-    name: Analyze all environments
+    name: Analyze environments
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select orchestrator source
+        id: src
+        shell: bash
+        run: |
+          case '${{ inputs.mode }}' in
+            DEVELOP_TO_TEST) echo "ref=develop" >> "$GITHUB_OUTPUT" ;;
+            TEST_TO_DEMO) echo "ref=test" >> "$GITHUB_OUTPUT" ;;
+            *) echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.src.outputs.ref }}
+          fetch-depth: 0
+      - run: git fetch origin develop test main --prune
+      - env:
+          MODE: ${{ inputs.mode }}
+        run: bash scripts/release/analyze-promotion.sh "$MODE"
+
+  promote_test:
+    name: Promote DEVELOP to TEST
+    needs: analyze
+    if: ${{ inputs.mode == 'DEVELOP_TO_TEST' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-      - name: Fetch environment branches
-        run: git fetch origin develop test main --prune
-      - name: Analyze three environment states
-        env:
-          MODE: ${{ inputs.mode }}
+        with: {ref: develop, fetch-depth: 0}
+      - run: git fetch origin develop test main --prune
+      - env:
           CONFIRMATION: ${{ inputs.confirmation }}
-        run: bash scripts/release/analyze-promotion.sh "$MODE" "$CONFIRMATION"
-      - name: Enforce bootstrap lock
-        if: ${{ inputs.mode != 'DRY_RUN' }}
         run: |
-          echo "::error::Promotion modes remain locked in orchestrator v2.1. Run DRY_RUN only."
-          exit 2
+          set -euo pipefail
+          [ "$CONFIRMATION" = "PROMOTE_TO_TEST" ] || { echo "::error::Type PROMOTE_TO_TEST to confirm."; exit 2; }
+          status="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
+          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;; esac
+      - run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
+      - name: Controlled merge to TEST
+        run: bash scripts/release/promote-branch.sh develop test
+      - name: Verify TEST content alignment
+        run: |
+          git fetch origin develop test --prune
+          git diff --exit-code origin/develop origin/test
+          echo "## Requested operation" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ **DEVELOP → TEST completed. Content is aligned.**" >> "$GITHUB_STEP_SUMMARY"
+
+  promote_demo:
+    name: Promote TEST to DEMO
+    needs: analyze
+    if: ${{ inputs.mode == 'TEST_TO_DEMO' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: test, fetch-depth: 0}
+      - run: git fetch origin develop test main --prune
+      - env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRMATION" = "PROMOTE_TO_DEMO" ] || { echo "::error::Type PROMOTE_TO_DEMO to confirm."; exit 2; }
+          status="$(bash scripts/release/analyze-promotion.sh PAIR test main)"
+          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe TEST -> DEMO relation: $status"; exit 3;; esac
+      - run: bash scripts/release/validate-frontend-version.sh origin/main origin/test
+      - name: Controlled merge to MAIN
+        run: bash scripts/release/promote-branch.sh test main
+      - name: Verify DEMO content alignment
+        run: |
+          git fetch origin test main --prune
+          git diff --exit-code origin/test origin/main
+          echo "## Requested operation" >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ **TEST → DEMO completed. Content is aligned.**" >> "$GITHUB_STEP_SUMMARY"
