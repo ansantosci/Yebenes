@@ -1,0 +1,52 @@
+name: INTERNAL - Auto DEVELOP frontend preview
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - index.html
+      - app.js
+      - styles.css
+      - config.js
+      - sw.js
+      - version.json
+      - manifest.webmanifest
+      - 'assets/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: yebenes-develop-preview
+  cancel-in-progress: true
+
+jobs:
+  validate_version:
+    name: Validate frontend version
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout DEVELOP
+        uses: actions/checkout@v5
+        with:
+          ref: develop
+          fetch-depth: 0
+      - name: Fetch TEST
+        run: git fetch origin test --prune
+      - name: Validate frontend version bump
+        run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
+
+  architecture:
+    name: Architecture guardrails
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: develop
+
+  publish:
+    name: Publish DEVELOP preview
+    needs: [validate_version, architecture]
+    if: ${{ needs.validate_version.result == 'success' && needs.architecture.result == 'success' }}
+    uses: ./.github/workflows/pages-multi-environment.yml
+    secrets: inherit
