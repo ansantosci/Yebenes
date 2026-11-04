@@ -1,25 +1,23 @@
-name: 02A - Manage TEST synthetic data
+name: INTERNAL - Manage TEST synthetic data
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       source_ref:
         description: Repository branch containing TEST dataset scripts
         required: true
-        type: choice
-        options: [develop, test]
+        type: string
         default: develop
       action:
         description: Data action
         required: true
-        type: choice
-        options: [KEEP, RESET]
+        type: string
         default: KEEP
       scenario:
         description: Scenario applied after RESET
         required: true
-        type: choice
-        options: [BASELINE, NOTIFICATIONS]
+        type: string
         default: BASELINE
+
 permissions:
   contents: read
 jobs:

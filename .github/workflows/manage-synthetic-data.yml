@@ -1,0 +1,67 @@
+name: 02 - Manage synthetic data
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Dataset environment
+        required: true
+        type: choice
+        options: [TEST, DEMO]
+        default: TEST
+      action:
+        description: Data action
+        required: true
+        type: choice
+        options: [KEEP, RESET]
+        default: KEEP
+      test_scenario:
+        description: TEST scenario (ignored for DEMO)
+        required: true
+        type: choice
+        options: [BASELINE, NOTIFICATIONS]
+        default: BASELINE
+      demo_confirmation:
+        description: For DEMO RESET, type MANAGE_DEMO_DATA
+        required: false
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: yebenes-synthetic-data-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate request
+        shell: bash
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          ACTION: ${{ inputs.action }}
+          CONFIRMATION: ${{ inputs.demo_confirmation }}
+        run: |
+          set -euo pipefail
+          if [ "$ENVIRONMENT" = "DEMO" ] && [ "$ACTION" = "RESET" ]; then
+            [ "$CONFIRMATION" = "MANAGE_DEMO_DATA" ] || { echo "::error::DEMO RESET requires MANAGE_DEMO_DATA confirmation."; exit 2; }
+          fi
+  manage_test:
+    name: Manage TEST-S
+    needs: validate
+    if: ${{ inputs.environment == 'TEST' }}
+    uses: ./.github/workflows/supabase-test-dataset-manage.yml
+    with:
+      source_ref: develop
+      action: ${{ inputs.action }}
+      scenario: ${{ inputs.test_scenario }}
+    secrets: inherit
+  manage_demo:
+    name: Manage DEMO-S
+    needs: validate
+    if: ${{ inputs.environment == 'DEMO' }}
+    uses: ./.github/workflows/supabase-demo-dataset-manage.yml
+    with:
+      source_ref: main
+      target: DEMO
+      action: ${{ inputs.action == 'RESET' && 'RESET_AND_LOAD' || 'KEEP' }}
+      demo_confirmation: ${{ inputs.demo_confirmation }}
+    secrets: inherit

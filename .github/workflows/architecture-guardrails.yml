@@ -1,4 +1,4 @@
-name: Validate repository architecture
+name: INTERNAL - Architecture guardrails
 
 on:
   workflow_call:
