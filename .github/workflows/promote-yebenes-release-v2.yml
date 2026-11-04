@@ -9,39 +9,62 @@ on:
         options: [DRY_RUN, DEVELOP_TO_TEST, TEST_TO_DEMO]
         default: DRY_RUN
       confirmation:
-        description: DEVELOP_TO_TEST requires PROMOTE_TO_TEST. TEST_TO_DEMO remains locked in v2.2.
+        description: DEVELOP_TO_TEST requires PROMOTE_TO_TEST. TEST_TO_DEMO remains locked in v2.3.
         required: false
         type: string
+
 permissions:
   contents: write
+
 concurrency:
   group: yebenes-release-promotion
   cancel-in-progress: false
+
 jobs:
   analyze:
+    name: Analyze environments
     runs-on: ubuntu-latest
     steps:
+      - name: Select orchestrator source
+        id: src
+        shell: bash
+        run: |
+          case '${{ inputs.mode }}' in
+            DEVELOP_TO_TEST) echo "ref=develop" >> "$GITHUB_OUTPUT" ;;
+            TEST_TO_DEMO) echo "ref=test" >> "$GITHUB_OUTPUT" ;;
+            *) echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT" ;;
+          esac
       - uses: actions/checkout@v4
-        with: {ref: main, fetch-depth: 0}
+        with:
+          ref: ${{ steps.src.outputs.ref }}
+          fetch-depth: 0
       - run: git fetch origin develop test main --prune
       - env:
           MODE: ${{ inputs.mode }}
         run: bash scripts/release/analyze-promotion.sh "$MODE"
+
   promote_test:
+    name: Promote DEVELOP to TEST
     needs: analyze
     if: ${{ inputs.mode == 'DEVELOP_TO_TEST' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: develop, fetch-depth: 0}
+        with:
+          ref: develop
+          fetch-depth: 0
       - run: git fetch origin develop test main --prune
-      - env:
+      - name: Validate confirmation and safe content relation
+        env:
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
           [ "$CONFIRMATION" = "PROMOTE_TO_TEST" ] || { echo "::error::Type PROMOTE_TO_TEST to confirm."; exit 2; }
           status="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
-          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;; esac
+          case "$status" in
+            OK|PROMOTION_AVAILABLE) ;;
+            *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;;
+          esac
       - run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
       - name: Controlled merge to TEST
         run: |
@@ -57,12 +80,14 @@ jobs:
           fi
       - name: Verify TEST content alignment
         run: |
+          set -euo pipefail
           git fetch origin develop test --prune
           git diff --exit-code origin/develop origin/test
           echo "DEVELOP and TEST are aligned in content." >> "$GITHUB_STEP_SUMMARY"
+
   locked_demo:
     needs: analyze
     if: ${{ inputs.mode == 'TEST_TO_DEMO' }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "::error::TEST_TO_DEMO remains locked in v2.2." && exit 2
+      - run: echo "::error::TEST_TO_DEMO remains locked in orchestrator v2.3." && exit 2
