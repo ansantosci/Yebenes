@@ -16,23 +16,23 @@ concurrency:
 jobs:
   build:
     name: Build and validate Pages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           path: source-main
 
       - name: Checkout test
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: test
           path: source-test
 
       - name: Checkout develop
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: develop
           path: source-develop
@@ -210,7 +210,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
 
     steps:

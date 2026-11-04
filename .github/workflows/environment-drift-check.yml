@@ -33,24 +33,24 @@ env:
 jobs:
   compare:
     name: Read-only three-environment drift check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout DEVELOP expected ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.develop_ref }}
           path: expected-develop
           fetch-depth: 0
 
       - name: Checkout TEST expected ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.test_ref }}
           path: expected-test
           fetch-depth: 0
 
       - name: Checkout DEMO expected ref
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.demo_ref }}
           path: expected-demo
