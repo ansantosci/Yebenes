@@ -1,4 +1,4 @@
-const APP_VERSION='95.2.13';
+const APP_VERSION='95.2.14';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2775,44 +2775,3 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
-
-
-/* V95.2.14 - responsive management sidebar */
-const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
-function sidebarDesktop(){return window.matchMedia('(min-width: 1100px)').matches}
-function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
-function syncClubSidebar(){
-  const side=$('#clubSidebar'),back=$('#clubSidebarBackdrop'),btn=$('#sidebarMenuButton'),pin=$('#sidebarPinButton');
-  if(!side||!btn)return;
-  const management=!['family','player'].includes(currentRole||'');
-  btn.classList.toggle('hidden',!management);
-  if(!management){side.classList.add('hidden');back?.classList.add('hidden');document.body.classList.remove('club-sidebar-pinned');return}
-  const pinned=sidebarPinned();
-  document.body.classList.toggle('club-sidebar-pinned',pinned);
-  if(pinned){side.classList.remove('hidden');back?.classList.add('hidden')}
-  pin?.classList.toggle('active',pinned);
-  pin?.setAttribute('aria-pressed',String(pinned));
-}
-function openClubSidebar(){
-  const side=$('#clubSidebar'),back=$('#clubSidebarBackdrop'),btn=$('#sidebarMenuButton');
-  if(!side)return;side.classList.remove('hidden');if(!sidebarPinned())back?.classList.remove('hidden');
-  btn?.setAttribute('aria-expanded','true');
-}
-function closeClubSidebar(force=false){
-  if(sidebarPinned()&&!force)return;
-  $('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');
-  $('#sidebarMenuButton')?.setAttribute('aria-expanded','false');
-}
-document.addEventListener('click',e=>{
-  if(e.target.closest('#sidebarMenuButton')){openClubSidebar();return}
-  if(e.target.closest('#sidebarCloseButton')||e.target.id==='clubSidebarBackdrop'){closeClubSidebar(true);return}
-  if(e.target.closest('#sidebarPinButton')){
-    const next=!sidebarPinned();localStorage.setItem(SIDEBAR_PIN_KEY,next?'1':'0');
-    syncClubSidebar();if(!next)closeClubSidebar(true);return
-  }
-  if(e.target.closest('#clubSidebar .nav-item')&&!sidebarPinned())closeClubSidebar(true);
-});
-window.addEventListener('resize',syncClubSidebar);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(true)});
-const _sidebarShowApp=showApp;
-showApp=function(options={}){const r=_sidebarShowApp(options);setTimeout(syncClubSidebar,0);return r};
