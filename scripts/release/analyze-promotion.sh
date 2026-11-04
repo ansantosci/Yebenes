@@ -12,6 +12,7 @@ exclusive_destination_files() {
     sb="$(git rev-parse "$s:$path" 2>/dev/null || echo MISSING)"
     [ "$db" != "$sb" ] && printf '%s\n' "$path"
   done < <(git diff --name-only "$base" "$d")
+  return 0
 }
 
 classify() {
@@ -51,7 +52,7 @@ detail() {
  if [ "$c" -gt 0 ];then { echo "<details><summary>All files different</summary>";echo;echo '```text';git diff --name-status "$d" "$s";echo '```';echo "</details>";echo; }>>"$SUMMARY";fi
  echo "$st"
 }
-{ echo "# Yebenes environment alignment — orchestrator v2.4";echo;echo "**Requested mode:** \`$MODE\`";echo; }>>"$SUMMARY"
+{ echo "# Yebenes environment alignment — orchestrator v2.5.2";echo;echo "**Requested mode:** \`$MODE\`";echo; }>>"$SUMMARY"
 a="$(detail develop test 'DEVELOP -> TEST')"; b="$(detail test main 'TEST -> DEMO (main)')"
 {
  echo "## Environment health";echo

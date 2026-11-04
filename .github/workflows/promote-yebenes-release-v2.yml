@@ -31,6 +31,8 @@ jobs:
       edge_changed: ${{ steps.delta.outputs.edge_changed }}
       target: ${{ steps.delta.outputs.target }}
       destination_ref: ${{ steps.delta.outputs.destination_ref }}
+      develop_test_status: ${{ steps.safety.outputs.develop_test_status }}
+      test_main_status: ${{ steps.safety.outputs.test_main_status }}
     steps:
       - name: Select orchestrator source
         id: src
@@ -49,6 +51,15 @@ jobs:
       - env:
           MODE: ${{ inputs.mode }}
         run: bash scripts/release/analyze-promotion.sh "$MODE"
+      - name: Export promotion safety states
+        id: safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          dt="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
+          tm="$(bash scripts/release/analyze-promotion.sh PAIR test main)"
+          echo "develop_test_status=$dt" >> "$GITHUB_OUTPUT"
+          echo "test_main_status=$tm" >> "$GITHUB_OUTPUT"
       - name: Classify release delta
         id: delta
         shell: bash
@@ -82,13 +93,14 @@ jobs:
       - uses: actions/checkout@v4
         with: {ref: develop, fetch-depth: 0}
       - run: git fetch origin develop test main --prune
-      - env:
+      - name: Validate confirmation and analyzed safety state
+        env:
           CONFIRMATION: ${{ inputs.confirmation }}
+          ANALYZED_STATUS: ${{ needs.analyze.outputs.develop_test_status }}
         run: |
           set -euo pipefail
           [ "$CONFIRMATION" = "PROMOTE_TO_TEST" ] || { echo "::error::Type PROMOTE_TO_TEST to confirm."; exit 2; }
-          status="$(bash scripts/release/analyze-promotion.sh PAIR develop test)"
-          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $status"; exit 3;; esac
+          case "$ANALYZED_STATUS" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe DEVELOP -> TEST relation: $ANALYZED_STATUS"; exit 3;; esac
       - run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
       - run: bash scripts/release/promote-branch.sh develop test
       - name: Verify TEST content alignment
@@ -106,13 +118,14 @@ jobs:
       - uses: actions/checkout@v4
         with: {ref: test, fetch-depth: 0}
       - run: git fetch origin develop test main --prune
-      - env:
+      - name: Validate confirmation and analyzed safety state
+        env:
           CONFIRMATION: ${{ inputs.confirmation }}
+          ANALYZED_STATUS: ${{ needs.analyze.outputs.test_main_status }}
         run: |
           set -euo pipefail
           [ "$CONFIRMATION" = "PROMOTE_TO_DEMO" ] || { echo "::error::Type PROMOTE_TO_DEMO to confirm."; exit 2; }
-          status="$(bash scripts/release/analyze-promotion.sh PAIR test main)"
-          case "$status" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe TEST -> DEMO relation: $status"; exit 3;; esac
+          case "$ANALYZED_STATUS" in OK|PROMOTION_AVAILABLE) ;; *) echo "::error::Unsafe TEST -> DEMO relation: $ANALYZED_STATUS"; exit 3;; esac
       - run: bash scripts/release/validate-frontend-version.sh origin/main origin/test
       - run: bash scripts/release/promote-branch.sh test main
       - name: Verify DEMO content alignment
