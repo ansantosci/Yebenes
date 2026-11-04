@@ -107,6 +107,7 @@ window.YEBENES_APP_VERSION = '95.2.14';
 
   <div class="app-shell hidden" id="appShell">
     <header class="topbar">
+      <button type="button" class="sidebar-menu-button hidden" id="sidebarMenuButton" aria-label="Abrir menú" aria-controls="clubSidebar" aria-expanded="false">☰</button>
       <div class="brand-mark"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /></div>
       <div class="brand-copy">
         <div class="club-name">C.D. Los Yébenes San Bruno</div>
@@ -276,7 +277,16 @@ window.YEBENES_APP_VERSION = '95.2.14';
     <nav class="bottom-nav" id="familyNav">
       <button class="nav-item active" data-family-tab="home"><span>⌂</span>Inicio</button><button class="nav-item" data-family-tab="profile"><span>●</span>Perfil</button>
     </nav>
-    <nav class="bottom-nav club-nav hidden" id="clubNav">
+    <div id="clubSidebarBackdrop" class="club-sidebar-backdrop hidden" aria-hidden="true"></div>
+    <aside id="clubSidebar" class="club-sidebar hidden" aria-label="Navegación de gestión">
+      <div class="club-sidebar-head">
+        <div><span class="eyebrow dark">Gestión del club</span><strong>Menú</strong></div>
+        <div class="club-sidebar-actions">
+          <button type="button" id="sidebarPinButton" class="icon-button sidebar-pin" title="Fijar menú" aria-label="Fijar menú" aria-pressed="false">📌</button>
+          <button type="button" id="sidebarCloseButton" class="icon-button" aria-label="Cerrar menú">✕</button>
+        </div>
+      </div>
+      <nav class="club-nav sidebar-club-nav" id="clubNav">
       <button class="nav-item active" data-club-view="clubView"><span>⚽</span>Fichas</button>
       <button class="nav-item" id="medicalNavButton" data-club-view="medicalView"><span>♥</span>RRMM</button>
       <button class="nav-item" id="coachesNavButton" data-club-view="coachesView"><span>🧑‍🏫</span>Entrenadores</button>
@@ -286,6 +296,7 @@ window.YEBENES_APP_VERSION = '95.2.14';
       <button class="nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span>★</span>Patrocinadores</button>
       <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
+    </aside>
   </div>
 
   <footer id="sponsorsStrip" class="sponsors-strip global-sponsors-footer hidden" aria-label="Patrocinadores del club">

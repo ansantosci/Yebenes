@@ -1604,7 +1604,7 @@ function showRoleChooser(force=false){
 function showApp(options={}){
   hideSessionRestoring();const preserveView=Boolean(options.preserveView);
   if(!currentRole||!roleAvailable(currentUser,currentRole)){currentRole=availableRoles(currentUser)[0]||null}if(!currentRole)return;
-  $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);$('#currentSeasonLabel').textContent=currentSeason()?.name||'';$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
+  $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);$('#currentSeasonLabel').textContent=currentSeason()?.name||'';$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
   const familyLike=['family','player'].includes(currentRole);
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
@@ -2773,5 +2773,36 @@ async function disableLegacyServiceWorkers(){
 disableLegacyServiceWorkers();
 
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
+
+
+/* V95.2.14 - responsive management sidebar */
+const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
+function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
+function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
+function managementRole(){return ['admin','club','coach'].includes(currentRole||'')}
+function syncClubSidebar(){
+  const side=$('#clubSidebar'),back=$('#clubSidebarBackdrop'),btn=$('#sidebarMenuButton'),pin=$('#sidebarPinButton');
+  if(!side||!btn)return;
+  const allowed=managementRole();
+  btn.classList.toggle('hidden',!allowed);
+  if(!allowed){side.classList.add('hidden');back?.classList.add('hidden');document.body.classList.remove('club-sidebar-pinned');return}
+  const pinned=sidebarPinned();
+  document.body.classList.toggle('club-sidebar-pinned',pinned);
+  if(pinned){side.classList.remove('hidden');back?.classList.add('hidden');btn.setAttribute('aria-expanded','true')}
+  else if(side.classList.contains('hidden'))btn.setAttribute('aria-expanded','false');
+  pin?.classList.toggle('active',pinned);pin?.setAttribute('aria-pressed',String(pinned));
+}
+function openClubSidebar(){if(!managementRole())return;$('#clubSidebar')?.classList.remove('hidden');if(!sidebarPinned())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true')}
+function closeClubSidebar(force=false){if(sidebarPinned()&&!force)return;$('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','false')}
+$('#sidebarMenuButton')?.addEventListener('click',openClubSidebar);
+$('#sidebarCloseButton')?.addEventListener('click',()=>closeClubSidebar(true));
+$('#clubSidebarBackdrop')?.addEventListener('click',()=>closeClubSidebar(true));
+$('#sidebarPinButton')?.addEventListener('click',()=>{
+  const next=!sidebarPinned();localStorage.setItem(SIDEBAR_PIN_KEY,next?'1':'0');syncClubSidebar();if(!next)closeClubSidebar(true);
+});
+$('#clubSidebar')?.addEventListener('click',e=>{if(e.target.closest('.nav-item')&&!sidebarPinned())closeClubSidebar(true)});
+window.addEventListener('resize',syncClubSidebar);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(true)});
+setTimeout(syncClubSidebar,0);
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
