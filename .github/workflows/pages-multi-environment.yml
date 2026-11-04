@@ -41,13 +41,34 @@ jobs:
       - name: Validate frontend version bump
         if: ${{ github.event_name == 'push' }}
         run: bash scripts/release/validate-frontend-version.sh origin/test origin/develop
-      - name: Validate repository architecture
-        if: ${{ github.event_name == 'push' }}
-        run: bash scripts/release/validate-architecture.sh develop
+
+
+  architecture_develop_push:
+    name: Architecture guardrails (automatic DEVELOP preview)
+    if: ${{ github.event_name == 'push' }}
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: develop
+
+  preview_validation_gate:
+    name: DEVELOP preview validation gate
+    needs: [validate_develop_push, architecture_develop_push]
+    if: ${{ always() }}
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Verify preview validations
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ '${{ needs.validate_develop_push.result }}' = 'success' ]
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            [ '${{ needs.architecture_develop_push.result }}' = 'success' ]
+          fi
+
 
   build:
     name: Build and validate Pages
-    needs: validate_develop_push
+    needs: preview_validation_gate
     runs-on: ubuntu-26.04
 
     steps:
