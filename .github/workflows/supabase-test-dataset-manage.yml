@@ -22,10 +22,10 @@ permissions:
   contents: read
 jobs:
   manage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout selected source branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.source_ref }}
       - name: KEEP current TEST data

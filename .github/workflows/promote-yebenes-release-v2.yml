@@ -25,7 +25,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze environments and release delta
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       frontend_changed: ${{ steps.delta.outputs.frontend_changed }}
       edge_changed: ${{ steps.delta.outputs.edge_changed }}
@@ -43,7 +43,7 @@ jobs:
             TEST_TO_DEMO) echo "ref=test" >> "$GITHUB_OUTPUT" ;;
             *) echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT" ;;
           esac
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ steps.src.outputs.ref }}
           fetch-depth: 0
@@ -88,9 +88,9 @@ jobs:
     name: Promote DEVELOP to TEST
     needs: analyze
     if: ${{ inputs.mode == 'DEVELOP_TO_TEST' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: {ref: develop, fetch-depth: 0}
       - run: git fetch origin develop test main --prune
       - name: Validate confirmation and analyzed safety state
@@ -113,9 +113,9 @@ jobs:
     name: Promote TEST to DEMO
     needs: analyze
     if: ${{ inputs.mode == 'TEST_TO_DEMO' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: {ref: test, fetch-depth: 0}
       - run: git fetch origin develop test main --prune
       - name: Validate confirmation and analyzed safety state
@@ -203,7 +203,7 @@ jobs:
     name: Promotion summary
     needs: [analyze, promote_test, promote_demo, architecture_test, migrations_test, edge_test, architecture_demo, migrations_demo, edge_demo, frontend]
     if: ${{ always() && inputs.mode != 'DRY_RUN' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Verify required release jobs
         shell: bash

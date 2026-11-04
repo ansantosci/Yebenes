@@ -9,11 +9,11 @@ permissions:
 jobs:
   deploy-test-base:
     name: Deploy TEST-BASE to Supabase TEST
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install PostgreSQL client
         run: |
