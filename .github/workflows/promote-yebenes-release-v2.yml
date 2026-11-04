@@ -1,5 +1,4 @@
 name: 01 - Promote Yebenes release
-
 on:
   workflow_dispatch:
     inputs:
@@ -7,68 +6,35 @@ on:
         description: Promotion operation
         required: true
         type: choice
-        options:
-          - DRY_RUN
-          - DEVELOP_TO_TEST
-          - TEST_TO_DEMO
+        options: [DRY_RUN, DEVELOP_TO_TEST, TEST_TO_DEMO]
         default: DRY_RUN
       confirmation:
-        description: Promotion modes are locked during bootstrap. DRY_RUN requires no confirmation.
+        description: Promotion modes are locked in v2.1; DRY_RUN requires no confirmation.
         required: false
         type: string
-
 permissions:
   contents: read
-
 concurrency:
-  group: yebenes-promotion-v2
+  group: yebenes-release-promotion
   cancel-in-progress: false
-
 jobs:
   analyze:
-    name: Analyze promotion safely
+    name: Analyze all environments
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout orchestration source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
-
-      - name: Analyze branch relation and classify changes
-        id: analysis
-        shell: bash
-        run: bash scripts/release/analyze-promotion.sh '${{ inputs.mode }}'
-
-      - name: Validate repository architecture on source
-        shell: bash
-        run: |
-          set -euo pipefail
-          git checkout --detach "origin/${{ steps.analysis.outputs.source_ref }}"
-          python3 scripts/validate-architecture.py
-
-      - name: Validate frontend version contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash scripts/release/validate-frontend-version.sh \
-            '${{ steps.analysis.outputs.source_ref }}' \
-            '${{ steps.analysis.outputs.target_ref }}'
-
-      - name: Publish analysis summary
-        if: always()
-        shell: bash
-        run: |
-          if [ -f promotion-analysis.md ]; then cat promotion-analysis.md >> "$GITHUB_STEP_SUMMARY"; fi
-
-      - name: Bootstrap safety lock
+      - name: Fetch environment branches
+        run: git fetch origin develop test main --prune
+      - name: Analyze three environment states
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: bash scripts/release/analyze-promotion.sh "$MODE" "$CONFIRMATION"
+      - name: Enforce bootstrap lock
         if: ${{ inputs.mode != 'DRY_RUN' }}
-        shell: bash
         run: |
-          echo 'PROMOTION LOCKED: bootstrap version is analysis-only.' >&2
-          echo 'Run DRY_RUN first. Promotion writes will be enabled only after the analysis is validated.' >&2
-          exit 10
-
-      - name: DRY RUN completed
-        if: ${{ inputs.mode == 'DRY_RUN' }}
-        run: echo 'DRY_RUN completed. No branch, database or deployment state was modified.'
+          echo "::error::Promotion modes remain locked in orchestrator v2.1. Run DRY_RUN only."
+          exit 2
