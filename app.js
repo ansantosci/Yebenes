@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.3';
+const APP_VERSION='95.3.4';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1598,31 +1598,49 @@ function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classLi
 
 let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[]};
 let equipmentTab='summary';
+let equipmentLoadState='idle';
+let equipmentLoadError='';
 function equipmentAllowed(){return ['admin','club'].includes(currentRole)}
 async function loadEquipmentData(){
   if(!sb||!equipmentAllowed())return;
-  const season=currentSeasonId;
-  const queries=[
-    sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
-    sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
-    sb.from('equipacion_compra_sugerida').select('*').eq('temporada_id',season),
-    sb.from('equipacion_pedidos').select('*').eq('temporada_id',season).order('fecha_pedido',{ascending:false}),
-    sb.from('equipacion_dorsales').select('*').eq('temporada_id',season),
-    sb.from('equipacion_tallas_persona').select('*').eq('temporada_id',season),
-    sb.from('equipacion_tallas_excepcion').select('*'),
-    sb.from('equipacion_packs').select('*').eq('temporada_id',season),
-    sb.from('equipacion_articulos').select('*').eq('temporada_id',season),
-    sb.from('jugadores').select('id,persona_id'),
-    sb.from('entrenadores').select('id,persona_id'),
-    sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
-    sb.from('equipos').select('id,nombre').eq('temporada_id',season)
-  ];
-  const rs=await Promise.all(queries);
-  rs.forEach(r=>{if(r.error)console.warn('Equipaciones',r.error)});
-  const d=rs.map(r=>r.data||[]);
-  equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12]};
-  renderEquipment();
+  const c=$('#equipmentContent');
+  equipmentLoadState='loading';equipmentLoadError='';
+  if(c)c.innerHTML='<div class="equipment-load-state"><span class="equipment-spinner" aria-hidden="true"></span><div><strong>Cargando equipaciones…</strong><p>Consultando los datos de la temporada.</p></div></div>';
+  try{
+    const season=currentSeasonId;
+    if(!season)throw new Error('No hay una temporada activa seleccionada.');
+    const queries=[
+      sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
+      sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
+      sb.from('equipacion_compra_sugerida').select('*').eq('temporada_id',season),
+      sb.from('equipacion_pedidos').select('*').eq('temporada_id',season).order('fecha_pedido',{ascending:false}),
+      sb.from('equipacion_dorsales').select('*').eq('temporada_id',season),
+      sb.from('equipacion_tallas_persona').select('*').eq('temporada_id',season),
+      sb.from('equipacion_tallas_excepcion').select('*'),
+      sb.from('equipacion_packs').select('*').eq('temporada_id',season),
+      sb.from('equipacion_articulos').select('*').eq('temporada_id',season),
+      sb.from('jugadores').select('id,persona_id'),
+      sb.from('entrenadores').select('id,persona_id'),
+      sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
+      sb.from('equipos').select('id,nombre').eq('temporada_id',season)
+    ];
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('La consulta está tardando demasiado.')),12000));
+    const rs=await Promise.race([Promise.all(queries),timeout]);
+    const failed=rs.find(r=>r.error);
+    if(failed)throw failed.error;
+    const d=rs.map(r=>r.data||[]);
+    equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12]};
+    equipmentLoadState='loaded';
+    equipmentTab='summary';
+    $$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x.dataset.equipmentTab==='summary'));
+    renderEquipment();
+  }catch(err){
+    console.error('Carga Equipaciones',err);
+    equipmentLoadState='error';equipmentLoadError=err?.message||String(err);
+    renderEquipment();
+  }
 }
+
 function equipmentPersonName(personaId){
   const p=equipmentRows.people.find(x=>x.id===personaId);
   return p?[p.nombre,p.primer_apellido,p.segundo_apellido].filter(Boolean).join(' '):'—';
@@ -1641,6 +1659,12 @@ function equipmentTeamName(id){return equipmentRows.teams.find(x=>x.id===id)?.no
 
 function renderEquipment(){
   const c=$('#equipmentContent');if(!c||!equipmentAllowed())return;
+  if(equipmentLoadState==='loading')return;
+  if(equipmentLoadState==='error'){
+    c.innerHTML=`<div class="equipment-load-state error"><div><strong>No se han podido cargar las equipaciones</strong><p>${esc(equipmentLoadError||'Error desconocido.')}</p><button class="primary small" id="retryEquipmentLoad" type="button">Reintentar</button></div></div>`;
+    $('#retryEquipmentLoad')?.addEventListener('click',loadEquipmentData);
+    return;
+  }
   const {needs,stock,purchase,orders,numbers}=equipmentRows;
   $('#equipmentNeedCount').textContent=needs.length;
   $('#equipmentPendingCount').textContent=needs.filter(x=>!['validada','completa'].includes(x.estado)).length;
@@ -2849,7 +2873,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.3.3 - responsive management sidebar */
+/* V95.3.4 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
@@ -2891,5 +2915,5 @@ setTimeout(syncClubSidebar,0);
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
 
-$('#equipmentNavButton')?.addEventListener('click',()=>{if(equipmentAllowed())setTimeout(loadEquipmentData,0)});
+$('#equipmentNavButton')?.addEventListener('click',()=>{if(equipmentAllowed())requestAnimationFrame(()=>loadEquipmentData())});
 $$('[data-equipment-tab]').forEach(b=>b.addEventListener('click',()=>{equipmentTab=b.dataset.equipmentTab;$$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x===b));renderEquipment()}));

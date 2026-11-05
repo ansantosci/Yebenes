@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.3.4 — Carga determinista de Equipaciones
+- La entrada al módulo inicia siempre la consulta y renderiza automáticamente `Resumen` al completarse.
+- Se diferencian estados de carga, datos vacíos y error; el módulo ya no puede quedar indefinidamente mostrando `Cargando equipaciones…`.
+- Se añade límite defensivo de espera y acción `Reintentar` cuando la consulta falla.
+- Tras una carga correcta se restablece `Resumen` como pestaña activa y se actualizan automáticamente sus indicadores.
+- No se modifica el modelo de datos ni el backend.
+
+
 ### V95.3.3 — Equipaciones: necesidades y datos legibles
 - La versión global se alinea por delante de las migraciones internas 95.3.0/95.3.1/95.3.2.
 - `Necesidades y tallas` pasa de placeholder a tabla real con persona, faceta, modalidad/pack, talla general, excepciones y estado.
