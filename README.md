@@ -1,5 +1,14 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.3.0 — Equipaciones: primera interfaz de gestión
+- Se incorpora **Equipaciones** al menú exclusivamente para perfiles Administrador y Club.
+- Primera pantalla conectada al backend 051–053 con indicadores de necesidades, pendientes, stock disponible y compra sugerida.
+- Navegación interna preparada para Necesidades y tallas, Stock, Pedidos, Reparto/entregas y Dorsales.
+- Stock, pedidos y dorsales disponen de primeras vistas de lectura sobre datos reales.
+- La estética se mantiene provisionalmente sobre la línea actual mientras el club decide entre las propuestas visuales presentadas.
+- La ficha deportiva de jugador/entrenador queda planificada para reutilizar la fotografía documental existente en Supabase, con avatar genérico cuando no exista, y dorsal destacado tras su asignación/entrega.
+
+
 ### V95.2.24 — Área de trabajo adaptable en escritorio
 - El drawer flotante deja un margen superior visible para que sus cuatro esquinas redondeadas se perciban claramente.
 - El área principal deja de conservar el ancho estrecho histórico y aprovecha el espacio horizontal disponible en monitores de escritorio.

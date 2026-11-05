@@ -1,4 +1,4 @@
-const APP_VERSION='95.2.24';
+const APP_VERSION='95.3.0';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1595,7 +1595,51 @@ async function restoreSupabaseSession(){
 function setConfirmationContext(email='',message=''){const box=$('#confirmationContext'),input=$('#loginForm')?.elements?.email,text=$('#confirmationContextText');if(!box)return;const value=String(email||input?.value||'').trim().toLowerCase();if(value&&input&&!input.value)input.value=value;if(text)text.textContent=message||`Revisa el correo que enviamos a ${value||'tu dirección'} al registrarte.`;box.classList.remove('hidden')}
 function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
 function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
-function setView(id){['clubView','medicalView','coachesView','structureView','usersView','personsView','sponsorsView'].forEach(v=>$('#'+v)?.classList.toggle('active',v===id));$$('.club-nav .nav-item').forEach(x=>x.classList.toggle('active',x.dataset.clubView===id))}
+
+let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[]};
+let equipmentTab='summary';
+function equipmentAllowed(){return ['admin','club'].includes(currentRole)}
+async function loadEquipmentData(){
+  if(!sb||!equipmentAllowed())return;
+  const season=currentSeasonId;
+  const queries=[
+    sb.from('equipacion_necesidades').select('id,persona_id,temporada_id,faceta,jugador_id,entrenador_id,estado,pack_id').eq('temporada_id',season),
+    sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
+    sb.from('equipacion_compra_sugerida').select('*').eq('temporada_id',season),
+    sb.from('equipacion_pedidos').select('id,temporada_id,proveedor_id,fecha_pedido,estado,observaciones').eq('temporada_id',season).order('fecha_pedido',{ascending:false}),
+    sb.from('equipacion_dorsales').select('id,temporada_id,equipo_id,jugador_id,dorsal,es_portero').eq('temporada_id',season)
+  ];
+  const [needs,stock,purchase,orders,numbers]=await Promise.all(queries);
+  [needs,stock,purchase,orders,numbers].forEach(r=>{if(r.error)console.warn('Equipaciones',r.error)});
+  equipmentRows={needs:needs.data||[],stock:stock.data||[],purchase:purchase.data||[],orders:orders.data||[],numbers:numbers.data||[]};
+  renderEquipment();
+}
+function renderEquipment(){
+  const c=$('#equipmentContent');if(!c||!equipmentAllowed())return;
+  const needs=equipmentRows.needs,stock=equipmentRows.stock,purchase=equipmentRows.purchase,orders=equipmentRows.orders,numbers=equipmentRows.numbers;
+  $('#equipmentNeedCount').textContent=needs.length;
+  $('#equipmentPendingCount').textContent=needs.filter(x=>!['validada','completa'].includes(x.estado)).length;
+  $('#equipmentStockCount').textContent=stock.reduce((a,x)=>a+Number(x.cantidad_disponible||0),0);
+  $('#equipmentPurchaseCount').textContent=purchase.reduce((a,x)=>a+Number(x.falta_comprar||0),0);
+  if(equipmentTab==='summary'){
+    c.innerHTML=`<div class="equipment-summary-grid">
+      <article class="info-card"><strong>Demanda y tallas</strong><p>${needs.length} necesidades registradas para ${esc(currentSeason()?.name||'la temporada')}.</p></article>
+      <article class="info-card"><strong>Stock</strong><p>${stock.reduce((a,x)=>a+Number(x.cantidad_disponible||0),0)} unidades disponibles actualmente.</p></article>
+      <article class="info-card"><strong>Pedidos</strong><p>${orders.filter(x=>['pedido','parcialmente_recibido'].includes(x.estado)).length} pedidos en curso.</p></article>
+      <article class="info-card"><strong>Dorsales</strong><p>${numbers.length} dorsales asignados.</p></article>
+    </div>`;
+  }else if(equipmentTab==='stock'){
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Físico</th><th>Reservado</th><th>Disponible</th></tr></thead><tbody>${stock.map(x=>`<tr><td>${esc(x.articulo_id||'—')}</td><td>${esc(x.talla||'—')}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td><strong>${x.cantidad_disponible||0}</strong></td></tr>`).join('')||'<tr><td colspan="5">Sin stock registrado.</td></tr>'}</tbody></table></div>`;
+  }else if(equipmentTab==='orders'){
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Estado</th><th>Proveedor</th><th>Observaciones</th></tr></thead><tbody>${orders.map(x=>`<tr><td>${esc(x.fecha_pedido||'—')}</td><td>${esc(x.estado||'—')}</td><td>${esc(x.proveedor_id||'—')}</td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="4">Sin pedidos registrados.</td></tr>'}</tbody></table></div>`;
+  }else if(equipmentTab==='numbers'){
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Jugador</th><th>Dorsal</th><th>Portero</th></tr></thead><tbody>${numbers.map(x=>`<tr><td>${esc(teamName(x.equipo_id))}</td><td>${esc(x.jugador_id)}</td><td><span class="equipment-number">${x.dorsal}</span></td><td>${x.es_portero?'Sí':'No'}</td></tr>`).join('')||'<tr><td colspan="4">Sin dorsales asignados.</td></tr>'}</tbody></table></div>`;
+  }else{
+    c.innerHTML=`<div class="info-card"><strong>${equipmentTab==='needs'?'Necesidades y tallas':'Reparto y entregas'}</strong><p>Vista preparada para conectar las operaciones de 051–053 en la siguiente iteración de V95.3.x.</p></div>`;
+  }
+}
+
+function setView(id){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.toggle('active',v===id));$$('.club-nav .nav-item').forEach(x=>x.classList.toggle('active',x.dataset.clubView===id))}
 function showRoleChooser(force=false){
   if(!currentUser)return;const roles=availableRoles(currentUser);if(!roles.length){alert('Tu cuenta todavía no tiene ningún perfil activo.');return}if(roles.length<=1&&!force){currentRole=roles[0]||'family';localStorage.setItem(K.sessionRole,currentRole);showApp();return}
   $('#roleChooserList').innerHTML=roles.map(r=>`<button type="button" class="role-choice" data-role="${esc(r)}"><strong>${esc(roleLabel(r))}</strong><span>${r==='family'?'Gestionar menores a tu cargo':r==='player'?'Gestionar tu propia ficha':r==='coach'?'Acceder a los jugadores de tus equipos':r==='club'?'Gestión deportiva del club':'Administración completa del sistema'}</span></button>`).join('');
@@ -1607,8 +1651,8 @@ function showApp(options={}){
   $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);$('#currentSeasonLabel').textContent=currentSeason()?.name||'';$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
   const familyLike=['family','player'].includes(currentRole);
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
-  if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
-  $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';
+  if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
+  $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';$('#equipmentNavButton')?.classList.toggle('hidden',!equipmentAllowed());
   const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),sponsorsNavButton=$('#sponsorsNavButton'),openCoachModal=$('#openCoachModal');
   if(medicalNavButton)medicalNavButton.style.display=isCoach?'none':'flex';
   if(coachesNavButton)coachesNavButton.style.display=isCoach?'none':'flex';
@@ -2506,7 +2550,7 @@ async function expireLocalSession(reason='inactivity'){
   return sessionExpiryPromise;
 }
 async function localSessionLogout(message){authDiag('LOCAL_SESSION_LOGOUT',{message:message||null,storage:authStorageSummary()});try{if(sb)await tracedSignOut('local_session_logout',{scope:'local'})}catch{}clearAppSessionPolicy();currentUser=null;currentRole=null;localStorage.removeItem(K.sessionRole);showAuth('login');if(message)alert(message);return false;}
-function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView','sponsorsView'].find(v=>$('#'+v)?.classList.contains('active'))||null}
+function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].find(v=>$('#'+v)?.classList.contains('active'))||null}
 function navigationSnapshot(remoteVersion=''){
   if(!currentUser||!currentRole)return null;
   return {createdAt:Date.now(),targetVersion:remoteVersion||'',role:currentRole,view:activeClubViewId(),accountOpen:Boolean($('#accountProfileModal')?.open),accountTab:activeAccountTab(),coachOpen:Boolean($('#coachModal')?.open),coachId:editingCoachId||null,coachTab:activeCoachAdminTab()};
@@ -2775,7 +2819,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.2.24 - responsive management sidebar */
+/* V95.3.0 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
@@ -2816,3 +2860,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(tru
 setTimeout(syncClubSidebar,0);
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
+
+$('#equipmentNavButton')?.addEventListener('click',()=>{if(equipmentAllowed())setTimeout(loadEquipmentData,0)});
+$$('[data-equipment-tab]').forEach(b=>b.addEventListener('click',()=>{equipmentTab=b.dataset.equipmentTab;$$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x===b));renderEquipment()}));

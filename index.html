@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-window.YEBENES_APP_VERSION = '95.2.24';
+window.YEBENES_APP_VERSION = '95.3.0';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@ window.YEBENES_APP_VERSION = '95.2.24';
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=95.2.24" />
+<link rel="stylesheet" href="styles.css?v=95.3.0" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -45,7 +45,7 @@ window.YEBENES_APP_VERSION = '95.2.24';
     </div>
   </div>
   <div id="authScreen" class="auth-screen hidden">
-<div class="public-masthead" aria-label="C.D. Los Yébenes San Bruno"><div class="public-brand"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span class="public-season-label">2026/2027</span></span></div></div><div class="public-motto"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.2.24" alt="De Madrid al cielo · Comunidad de Madrid" /></div></div>
+<div class="public-masthead" aria-label="C.D. Los Yébenes San Bruno"><div class="public-brand"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span class="public-season-label">2026/2027</span></span></div></div><div class="public-motto"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.3.0" alt="De Madrid al cielo · Comunidad de Madrid" /></div></div>
     <div class="auth-card">
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
@@ -114,7 +114,7 @@ window.YEBENES_APP_VERSION = '95.2.24';
         <div class="club-motto-row" aria-hidden="true"><span id="clubMotto">De Madrid al cielo</span></div>
         <div class="season">Temporada <span id="currentSeasonLabel">2026/2027</span> · <span id="currentRoleLabel"></span></div>
       </div>
-<div class="topbar-skyline"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.2.24" alt="De Madrid al cielo · Comunidad de Madrid" /></div><button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
+<div class="topbar-skyline"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=95.3.0" alt="De Madrid al cielo · Comunidad de Madrid" /></div><button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
     </header>
 
     <main>
@@ -172,6 +172,31 @@ window.YEBENES_APP_VERSION = '95.2.24';
             <div class="filters"><input id="searchInput" type="search" placeholder="Buscar jugador..." /><select id="clubCategoryFilter"><option value="all">Todas las categorías</option></select><select id="clubActiveFilter"><option value="active">Solo activos</option><option value="inactive">Solo inactivos</option><option value="all">Activos e inactivos</option></select><select id="statusFilter"><option value="all">Todos los estados</option><option value="complete">Completos</option><option value="pending">Pendientes</option></select></div>
           </div>
           <div id="clubQuickFilterChip" class="quick-filter-chip hidden"></div><div id="clubPaginationTop" class="list-pagination list-pagination-top" aria-label="Paginación superior de fichas"></div><div class="table-wrap players-table-wrap"><table class="players-table"><thead><tr><th>Jugador</th><th>Familia</th><th>Categoría</th><th>Equipo</th><th>Estado</th><th>RRMM</th><th>Datos</th><th>Docs.</th><th id="paymentTableHead">Pago</th><th>Federación</th></tr></thead><tbody id="adminTable"></tbody></table></div><div id="clubPagination" class="list-pagination" aria-label="Paginación de fichas"></div>
+        </section>
+      </section>
+
+      <section id="equipmentView" class="view">
+        <div class="hero-card admin-hero equipment-hero">
+          <span class="eyebrow">Operaciones del club</span>
+          <h1>Equipaciones</h1>
+          <p>Necesidades, tallas, stock, pedidos, recepciones, entregas y dorsales de la temporada.</p>
+        </div>
+        <section class="equipment-stats stats-grid">
+          <article class="stat"><strong id="equipmentNeedCount">—</strong><span>Necesidades</span></article>
+          <article class="stat"><strong id="equipmentPendingCount">—</strong><span>Pendientes</span></article>
+          <article class="stat"><strong id="equipmentStockCount">—</strong><span>Stock disponible</span></article>
+          <article class="stat"><strong id="equipmentPurchaseCount">—</strong><span>Falta comprar</span></article>
+        </section>
+        <section class="section equipment-workspace">
+          <nav class="equipment-tabs" aria-label="Secciones de equipaciones">
+            <button class="active" data-equipment-tab="summary">Resumen</button>
+            <button data-equipment-tab="needs">Necesidades y tallas</button>
+            <button data-equipment-tab="stock">Stock</button>
+            <button data-equipment-tab="orders">Pedidos</button>
+            <button data-equipment-tab="deliveries">Reparto y entregas</button>
+            <button data-equipment-tab="numbers">Dorsales</button>
+          </nav>
+          <div id="equipmentContent" class="equipment-content"><div class="info-card">Cargando equipaciones…</div></div>
         </section>
       </section>
 
@@ -293,6 +318,7 @@ window.YEBENES_APP_VERSION = '95.2.24';
       <button class="nav-item" id="structureNavButton" data-club-view="structureView"><span class='nav-icon'><svg viewBox='0 0 24 24' aria-hidden='true'><rect x='4' y='4' width='6' height='5' rx='1'/><rect x='14' y='15' width='6' height='5' rx='1'/><rect x='4' y='15' width='6' height='5' rx='1'/><path d='M7 9v3h10v3M7 12v3'/></svg></span>Estructura</button>
       <button class="nav-item" id="personsNavButton" data-club-view="personsView"><span>◉</span>Personas</button>
       
+      <button class="nav-item" id="equipmentNavButton" data-club-view="equipmentView"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4 4 6l2 5 2-1v10h8V10l2 1 2-5-4-2-2 3h-4L8 4Z"/><path d="M10 7h4"/></svg></span>Equipaciones</button>
       <button class="nav-item" id="sponsorsNavButton" data-club-view="sponsorsView"><span class='nav-icon'><svg viewBox='0 0 24 24' aria-hidden='true'><path d='m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z'/></svg></span>Patrocinadores</button>
       <button class="nav-item" id="clubProfileButton"><span>●</span>Perfil</button>
     </nav>
@@ -406,7 +432,7 @@ window.YEBENES_APP_VERSION = '95.2.24';
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=95.2.24"></script>
-<script src="app.js?v=95.2.24"></script>
+<script src="config.js?v=95.3.0"></script>
+<script src="app.js?v=95.3.0"></script>
 </body>
 </html>
