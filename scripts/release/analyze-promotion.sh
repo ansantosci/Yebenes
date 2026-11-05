@@ -52,7 +52,7 @@ detail() {
  if [ "$c" -gt 0 ];then { echo "<details><summary>All files different</summary>";echo;echo '```text';git diff --name-status "$d" "$s";echo '```';echo "</details>";echo; }>>"$SUMMARY";fi
  echo "$st"
 }
-{ echo "# Yebenes environment alignment — orchestrator v2.5.2";echo;echo "**Requested mode:** \`$MODE\`";echo; }>>"$SUMMARY"
+{ echo "# Yebenes environment alignment — orchestrator v2.6.0";echo;echo "**Requested mode:** \`$MODE\`";echo; }>>"$SUMMARY"
 a="$(detail develop test 'DEVELOP -> TEST')"; b="$(detail test main 'TEST -> DEMO (main)')"
 {
  echo "## Environment health";echo
@@ -61,6 +61,7 @@ a="$(detail develop test 'DEVELOP -> TEST')"; b="$(detail test main 'TEST -> DEM
  else echo "✅ **All three environments are aligned in content.**";fi
  echo
  case "$MODE" in
+   DEVELOP_BACKEND_PREVIEW) echo "**Requested operation:** DEVELOP backend preview → shared TEST backend (no Git promotion)" ;;
    DEVELOP_TO_TEST) echo "**Requested operation:** DEVELOP → TEST" ;;
    TEST_TO_DEMO) echo "**Requested operation:** TEST → DEMO" ;;
    *) echo "**Requested operation:** diagnostic only" ;;
