@@ -13,6 +13,18 @@ where exists (
     and e.entity_id=x.entrenador_id
 );
 
+-- Repair-safe cleanup: older/interrupted TEST-S runs may leave identity documents
+-- whose registry row no longer exists. Remove any document owned by a TEST-S person
+-- before the generic registry-driven deletion so BASELINE can recreate principal IDs.
+delete from public.documentos_identidad d
+where exists (
+  select 1
+  from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='personas'
+    and e.entity_id=d.persona_id
+);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
