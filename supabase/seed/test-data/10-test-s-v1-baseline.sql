@@ -77,6 +77,17 @@ with players as (
   where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
      or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
 )
+-- Repair-safe: an interrupted/legacy TEST-S run may leave a different active principal
+-- identity document for a synthetic player. Deactivate it before recreating the
+-- deterministic TEST-S document, otherwise documentos_identidad_principal_uq blocks RESET.
+update public.documentos_identidad d
+set es_principal=false, activo=false, fecha_hasta=coalesce(fecha_hasta,date '2026-06-30')
+where d.es_principal=true and d.activo=true
+  and exists (
+    select 1 from docs
+    where private.test_s_player_person_id(docs.codigo,docs.g)=d.persona_id
+      and d.id<>private.test_uuid('doc:player:'||docs.codigo||':'||docs.g)
+  );
 insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo)
 select private.test_uuid('doc:player:'||codigo||':'||g),private.test_s_player_person_id(codigo,g),'dni',
        lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
