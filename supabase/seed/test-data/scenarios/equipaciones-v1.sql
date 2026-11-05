@@ -62,8 +62,23 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 select 'TEST-S','equipacion_tallas_persona',private.test_uuid('equip:size:'||j.id::text) from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6 on conflict do nothing;
 
 with p as (select j.id,j.persona_id,row_number() over(order by j.id) n from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6)
+do $$
+begin
+  if not exists (
+    select 1 from public.equipacion_tallas_persona
+    where persona_id='equipacion_tallas_excepcion'::uuid and temporada_id='equip:exception'::uuid
+  ) then
+    raise exception 'EQUIPACIONES fixture: talla_persona parent missing';
+  end if;
+end $$;
+
 insert into public.equipacion_tallas_excepcion(id,talla_persona_id,articulo_id,talla)
-select private.test_uuid('equip:exception'),private.test_uuid('equip:size:'||id::text),private.test_uuid('equip:art:cam-par'),'S' from p where n=2
+select private.test_uuid('equip:exception'),
+  (select tp.id from public.equipacion_tallas_persona tp
+    where tp.persona_id='equipacion_tallas_excepcion'::uuid and tp.temporada_id='equip:exception'::uuid
+    limit 1),
+  private.test_uuid('equip:art:cam-par'),
+  'S' from p where n=2
 on conflict(talla_persona_id,articulo_id) do update set talla='S';
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_tallas_excepcion',private.test_uuid('equip:exception')) on conflict do nothing;
 
