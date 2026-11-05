@@ -1,4 +1,4 @@
-const APP_VERSION='95.2.17';
+const APP_VERSION='95.2.18';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2775,7 +2775,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.2.17 - responsive management sidebar */
+/* V95.2.18 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
@@ -2788,12 +2788,13 @@ function syncClubSidebar(){
   if(!allowed){side.classList.add('hidden');back?.classList.add('hidden');document.body.classList.remove('club-sidebar-pinned');return}
   const pinned=sidebarPinned();
   document.body.classList.toggle('club-sidebar-pinned',pinned);
+  document.body.classList.toggle('club-sidebar-open',pinned || (sidebarDesktop() && !side.classList.contains('hidden')));
   if(pinned){side.classList.remove('hidden');back?.classList.add('hidden');btn.setAttribute('aria-expanded','true')}
   else if(side.classList.contains('hidden'))btn.setAttribute('aria-expanded','false');
   pin?.classList.toggle('active',pinned);pin?.setAttribute('aria-pressed',String(pinned));
 }
-function openClubSidebar(){if(!managementRole())return;$('#clubSidebar')?.classList.remove('hidden');if(!sidebarPinned())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true')}
-function closeClubSidebar(force=false){if(sidebarPinned()&&!force)return;$('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','false')}
+function openClubSidebar(){if(!managementRole())return;$('#clubSidebar')?.classList.remove('hidden');if(sidebarDesktop())document.body.classList.add('club-sidebar-open');if(!sidebarPinned()&&!sidebarDesktop())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true')}
+function closeClubSidebar(force=false){if(sidebarPinned()&&!force)return;$('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');document.body.classList.remove('club-sidebar-open');$('#sidebarMenuButton')?.setAttribute('aria-expanded','false')}
 $('#sidebarMenuButton')?.addEventListener('click',openClubSidebar);
 $('#sidebarCloseButton')?.addEventListener('click',()=>{
   if(sidebarPinned()) localStorage.setItem(SIDEBAR_PIN_KEY,'0');

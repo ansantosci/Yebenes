@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.18 — Pulido visual y realineación del menú
+- Cabecera del drawer rediseñada con identidad visual del club y controles centrados.
+- Iconos del menú sustituidos por SVG lineales coherentes.
+- Azul, rojo y amarillo del club aplicados a cabecera, selección y estados.
+- Escudo ampliado en escritorio.
+- En escritorio, abrir el drawer realinea cabecera, contenido y pie; en móvil continúa como overlay.
+
+
 ### V95.2.17 — Cierre y fijación del menú lateral
 - La cabecera del drawer se simplifica a **Menú principal**.
 - Al cerrar con `✕` un menú fijado, se elimina primero la fijación y reaparece inmediatamente el botón `☰`.

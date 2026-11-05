@@ -1,1 +1,1 @@
-const CACHE_NAME='los-yebenes-v95.2.17';
+const CACHE_NAME='los-yebenes-v95.2.18';
