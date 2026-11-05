@@ -76,7 +76,8 @@ with players as (
   from players
   where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
      or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
-), repaired as (
+), repaired_rows as (
+
   -- Repair-safe: an interrupted/legacy TEST-S run may leave a different active principal
   -- identity document for a synthetic player. Deactivate it before recreating the
   -- deterministic TEST-S document, otherwise documentos_identidad_principal_uq blocks RESET.
@@ -89,14 +90,19 @@ with players as (
       select 1 from docs
       where private.test_s_player_person_id(docs.codigo,docs.g)=d.persona_id
         and d.id<>private.test_uuid('doc:player:'||docs.codigo||':'||docs.g)
+  returning 1 as repaired_marker
     )
   returning d.id
+
+),
+repaired as (
+  select count(*) as repaired_count from repaired_rows
 )
 insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo)
 select private.test_uuid('doc:player:'||codigo||':'||g),private.test_s_player_person_id(codigo,g),'dni',
        lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
        'ES',true,date '2026-07-01',true
-from docs
+from docs cross join repaired
 where not exists (
   select 1 from private.test_access_identities a
   where a.persona_id=private.test_s_player_person_id(docs.codigo,docs.g)
