@@ -1,4 +1,4 @@
-const APP_VERSION='95.2.16';
+const APP_VERSION='95.2.17';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2775,7 +2775,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.2.16 - responsive management sidebar */
+/* V95.2.17 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
@@ -2795,7 +2795,12 @@ function syncClubSidebar(){
 function openClubSidebar(){if(!managementRole())return;$('#clubSidebar')?.classList.remove('hidden');if(!sidebarPinned())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true')}
 function closeClubSidebar(force=false){if(sidebarPinned()&&!force)return;$('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','false')}
 $('#sidebarMenuButton')?.addEventListener('click',openClubSidebar);
-$('#sidebarCloseButton')?.addEventListener('click',()=>closeClubSidebar(true));
+$('#sidebarCloseButton')?.addEventListener('click',()=>{
+  if(sidebarPinned()) localStorage.setItem(SIDEBAR_PIN_KEY,'0');
+  document.body.classList.remove('club-sidebar-pinned');
+  closeClubSidebar(true);
+  syncClubSidebar();
+});
 $('#clubSidebarBackdrop')?.addEventListener('click',()=>closeClubSidebar(true));
 $('#sidebarPinButton')?.addEventListener('click',()=>{
   const next=!sidebarPinned();localStorage.setItem(SIDEBAR_PIN_KEY,next?'1':'0');syncClubSidebar();if(!next)closeClubSidebar(true);

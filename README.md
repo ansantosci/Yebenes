@@ -1,5 +1,12 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.17 — Cierre y fijación del menú lateral
+- La cabecera del drawer se simplifica a **Menú principal**.
+- Al cerrar con `✕` un menú fijado, se elimina primero la fijación y reaparece inmediatamente el botón `☰`.
+- Se conserva la persistencia al recargar cuando el usuario mantiene el menú fijado.
+- En móvil el cierre continúa funcionando sin opción de fijación.
+
+
 ### V95.2.16 — Corrección definitiva del menú lateral
 - El menú de gestión se fuerza a disposición vertical, una opción por fila y a ancho completo.
 - Se elimina cualquier desplazamiento horizontal heredado de la antigua navegación inferior.
