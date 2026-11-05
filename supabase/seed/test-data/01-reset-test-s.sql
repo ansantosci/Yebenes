@@ -25,10 +25,25 @@ where exists (
     and e.entity_id=d.persona_id
 );
 
+-- Equipaciones 053 creates stock movements automatically through triggers.
+-- They must be removed before reception lines/assignments because both FKs are RESTRICT.
+delete from public.equipacion_movimientos_stock m
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and (
+      (e.table_name='equipacion_recepcion_lineas' and e.entity_id=m.recepcion_linea_id)
+      or
+      (e.table_name='equipacion_asignaciones' and e.entity_id=m.asignacion_id)
+      or
+      (e.table_name='equipacion_movimientos_stock' and e.entity_id=m.id)
+    )
+);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
-    'equipacion_entregas','equipacion_asignaciones','equipacion_recepcion_lineas','equipacion_recepciones',
+    'equipacion_movimientos_stock','equipacion_entregas','equipacion_asignaciones','equipacion_recepcion_lineas','equipacion_recepciones',
     'equipacion_pedido_lineas','equipacion_pedidos','equipacion_dorsales','equipacion_necesidades',
     'equipacion_tallas_excepcion','equipacion_tallas_persona','equipacion_stock','equipacion_pack_articulos',
     'equipacion_packs','equipacion_config_temporada','equipacion_articulos',

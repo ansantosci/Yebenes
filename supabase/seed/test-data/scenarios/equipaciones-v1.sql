@@ -155,6 +155,11 @@ insert into public.equipacion_recepcion_lineas(id,recepcion_id,pedido_linea_id,c
 (private.test_uuid('equip:rl:2'),private.test_uuid('equip:recv:1'),private.test_uuid('equip:ol:2'),2,2,'Aceptadas')
 on conflict(recepcion_id,pedido_linea_id) do update set cantidad_recibida=excluded.cantidad_recibida,cantidad_aceptada=excluded.cantidad_aceptada;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_recepcion_lineas',private.test_uuid('equip:rl:1')),('TEST-S','equipacion_recepcion_lineas',private.test_uuid('equip:rl:2')) on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_movimientos_stock',m.id
+from public.equipacion_movimientos_stock m
+where m.recepcion_linea_id in (private.test_uuid('equip:rl:1'),private.test_uuid('equip:rl:2'))
+on conflict do nothing;
 
 -- Dorsals for six players, including goalkeeper conventions 1 and 13.
 with p as (
@@ -180,6 +185,11 @@ insert into public.equipacion_entregas(id,asignacion_id,cantidad,entregada_at,ob
 values(private.test_uuid('equip:delivery:1'),private.test_uuid('equip:assign:1'),1,now()-interval '1 day','Entrega sintética')
 on conflict(asignacion_id) do update set cantidad=1,observaciones='Entrega sintética';
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_entregas',private.test_uuid('equip:delivery:1')) on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_movimientos_stock',m.id
+from public.equipacion_movimientos_stock m
+where m.asignacion_id=private.test_uuid('equip:assign:1')
+on conflict do nothing;
 
 
 -- Scenario preflight: validate all key synthetic relationships before commit.
@@ -191,7 +201,7 @@ begin
   from private.test_dataset_entities de
   where de.dataset_id='TEST-S'
     and de.table_name in (
-      'equipacion_config_temporada','equipacion_articulos','equipacion_packs','equipacion_pack_articulos',
+      'equipacion_config_temporada','equipacion_articulos','equipacion_packs','equipacion_pack_articulos','equipacion_movimientos_stock',
       'equipacion_tallas_persona','equipacion_tallas_excepcion','equipacion_necesidades','equipacion_stock',
       'equipacion_pedidos','equipacion_pedido_lineas','equipacion_recepciones','equipacion_recepcion_lineas',
       'equipacion_dorsales','equipacion_asignaciones','equipacion_entregas'
@@ -207,6 +217,9 @@ begin
   end if;
   if (select count(*) from public.equipacion_recepcion_lineas where recepcion_id=private.test_uuid('equip:recv:1')) <> 2 then
     raise exception 'EQUIPACIONES fixture: expected two partial reception lines';
+  end if;
+  if (select count(*) from public.equipacion_movimientos_stock where recepcion_linea_id in (private.test_uuid('equip:rl:1'),private.test_uuid('equip:rl:2'))) <> 2 then
+    raise exception 'EQUIPACIONES fixture: expected two reception stock movements';
   end if;
   if (select count(*) from public.equipacion_dorsales where id in (
       select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_dorsales'
