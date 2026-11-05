@@ -1,8 +1,9 @@
-### V95.3.9 — Actualización frontend coherente y sin bucles
-- **V95.3.9**: Equipaciones carga `equipacion_articulos` como catálogo maestro activo, sin filtrar por `temporada_id` (columna inexistente); se mantienen los filtros de temporada en las tablas operativas.
-- **V95.3.9**: restaura automáticamente Equipaciones y su pestaña tras recarga/cambio de versión; Reparto y entregas muestra asignaciones y entregas reales del backend.
+### V95.3.10 — Actualización frontend coherente y sin bucles
+- **V95.3.10**: Equipaciones carga `equipacion_articulos` como catálogo maestro activo, sin filtrar por `temporada_id` (columna inexistente); se mantienen los filtros de temporada en las tablas operativas.
+- **V95.3.10**: la subpestaña de Equipaciones se persiste de forma independiente y se restaura tras actualización/recarga; listados de necesidades, stock, pedidos y dorsales usan orden estable.
+- **V95.3.10**: restaura automáticamente Equipaciones y su pestaña tras recarga/cambio de versión; Reparto y entregas muestra asignaciones y entregas reales del backend.
 - Corrige la publicación incompleta de V95.3.6: `version.json` avanzó, pero `APP_VERSION` e `index.html` seguían en V95.3.5.
-- Alinea `APP_VERSION`, `YEBENES_APP_VERSION`, recursos versionados de `index.html`, `sw.js` y `version.json` en V95.3.9.
+- Alinea `APP_VERSION`, `YEBENES_APP_VERSION`, recursos versionados de `index.html`, `sw.js` y `version.json` en V95.3.10.
 - Mantiene la corrección de Equipaciones de V95.3.6: uso del UUID real de la temporada activa de Supabase.
 - Refuerza `validate-frontend-version.sh` para bloquear futuras publicaciones con versiones internas incoherentes.
 
