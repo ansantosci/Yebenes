@@ -1,5 +1,12 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.21 — Estabilización estructural de la navegación
+- El drawer usa un contenedor interior único para borde, sombra, fondo y cuatro esquinas redondeadas.
+- El scroll vertical queda aislado en la lista de navegación.
+- Los eventos del menú se registran de forma idempotente al estar disponible el DOM, sin depender de la carga de datos.
+- El botón de menú debe responder al primer clic desde que está visible.
+
+
 ### V95.2.20 — Cierre técnico del drawer
 - El panel de escritorio queda separado del borde superior y recortado como un rectángulo flotante con las cuatro esquinas redondeadas.
 - El scroll se limita al contenido de navegación para no interferir con el radio superior de la cabecera.
