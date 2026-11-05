@@ -1,10 +1,11 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
-### V95.2.21 — Estabilización estructural de la navegación
-- El drawer usa un contenedor interior único para borde, sombra, fondo y cuatro esquinas redondeadas.
-- El scroll vertical queda aislado en la lista de navegación.
-- Los eventos del menú se registran de forma idempotente al estar disponible el DOM, sin depender de la carga de datos.
-- El botón de menú debe responder al primer clic desde que está visible.
+### V95.2.22 — Recuperación estable del drawer
+- Se parte de V95.2.20, última versión verificada con recuperación de sesión correcta.
+- La estructura redondeada del drawer se implementa únicamente mediante HTML/CSS.
+- `app.js` conserva intacta la lógica funcional de V95.2.20, salvo el identificador de versión; no se modifica autenticación, recuperación de sesión ni registro de eventos.
+- El contenedor interior controla fondo, borde, sombra y las cuatro esquinas; la lista de navegación controla su propio scroll.
+- V95.2.21 queda descartada por regresión durante la recuperación de sesión.
 
 
 ### V95.2.20 — Cierre técnico del drawer
