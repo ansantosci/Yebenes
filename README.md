@@ -1,11 +1,10 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
-### Orquestador v2.6.0 — preview backend de DEVELOP
-- Nuevo modo `DEVELOP_BACKEND_PREVIEW`: valida `develop` y aplica migraciones/contratos al backend TEST compartido sin promover Git ni publicar frontend TEST/DEMO.
-- Requiere confirmación explícita `DEPLOY_DEVELOP_BACKEND`.
-- Si existen cambios en Edge Functions, los despliega a TEST después de migraciones correctas.
-- Flujo permanente de frontend: ZIP incremental -> GitHub Desktop (`develop`) -> commit propuesto -> Push -> auto-preview DEVELOP -> validación -> promoción posterior.
-- `DEVELOP_PREVIEW` sigue siendo exclusivamente preview/publicación frontend de DEVELOP; no aplica migraciones.
+### V95.3.6 — Equipaciones usa la temporada activa real de Supabase
+- La carga del módulo **Equipaciones** deja de utilizar el identificador legacy `s-2026` y resuelve la temporada mediante `dbActiveSeason().id`.
+- Todas las consultas del módulo (Resumen, Necesidades y tallas, Stock, Pedidos, Reparto y entregas y Dorsales) reciben así el UUID real de `temporadas.id`.
+- Corrige el error `invalid input syntax for type uuid: "s-2026"` detectado al validar el escenario sintético EQUIPACIONES en DEVELOP.
+- No modifica el modelo de datos ni los workflows; es una corrección exclusivamente frontend.
 
 ### V95.3.5 — Inicialización de Equipaciones desde la navegación
 - La carga de Equipaciones deja de depender de un listener secundario del botón del menú.

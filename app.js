@@ -1607,8 +1607,9 @@ async function loadEquipmentData(){
   equipmentLoadState='loading';equipmentLoadError='';
   if(c)c.innerHTML='<div class="equipment-load-state"><span class="equipment-spinner" aria-hidden="true"></span><div><strong>Cargando equipaciones…</strong><p>Consultando los datos de la temporada.</p></div></div>';
   try{
-    const season=currentSeasonId;
-    if(!season)throw new Error('No hay una temporada activa seleccionada.');
+    const activeSeason=dbActiveSeason();
+    const season=activeSeason?.id;
+    if(!season)throw new Error('No hay una temporada activa disponible en Supabase.');
     const queries=[
       sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
       sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
