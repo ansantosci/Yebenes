@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.10';
+const APP_VERSION='95.3.11';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1598,9 +1598,9 @@ function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classLi
 
 let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[],assignments:[],deliveries:[]};
 const EQUIPMENT_TAB_KEY='yebenes:equipment:tab';
-const EQUIPMENT_TABS=new Set(['summary','needs','stock','orders','delivery','numbers']);
+const EQUIPMENT_TABS=new Set(['summary','needs','stock','orders','deliveries']);
 function storedEquipmentTab(){
-  try{const v=localStorage.getItem(EQUIPMENT_TAB_KEY);return EQUIPMENT_TABS.has(v)?v:'summary'}catch{return 'summary'}
+  try{const v=localStorage.getItem(EQUIPMENT_TAB_KEY);if(v==='numbers'){localStorage.setItem(EQUIPMENT_TAB_KEY,'deliveries');return 'deliveries'}return EQUIPMENT_TABS.has(v)?v:'summary'}catch{return 'summary'}
 }
 function setEquipmentTab(tab,{persist=true}={}){
   equipmentTab=EQUIPMENT_TABS.has(tab)?tab:'summary';
@@ -1633,20 +1633,31 @@ async function loadEquipmentData(options={}){
       sb.from('jugadores').select('id,persona_id'),
       sb.from('entrenadores').select('id,persona_id'),
       sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
-      sb.from('equipos').select('id,nombre').eq('temporada_id',season),
-      sb.from('equipacion_asignaciones').select('*'),
-      sb.from('equipacion_entregas').select('*')
+      sb.from('equipos').select('id,nombre').eq('temporada_id',season)
     ];
     const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('La consulta está tardando demasiado.')),12000));
     const rs=await Promise.race([Promise.all(queries),timeout]);
     const failed=rs.find(r=>r.error);
     if(failed)throw failed.error;
     const d=rs.map(r=>r.data||[]);
+    const needIds=d[0].map(x=>x.id);
+    let assignmentRows=[],deliveryRows=[];
+    if(needIds.length){
+      const ar=await sb.from('equipacion_asignaciones').select('*').in('necesidad_id',needIds);
+      if(ar.error)throw ar.error;
+      assignmentRows=ar.data||[];
+      const assignmentIds=assignmentRows.map(x=>x.id);
+      if(assignmentIds.length){
+        const dr=await sb.from('equipacion_entregas').select('*').in('asignacion_id',assignmentIds);
+        if(dr.error)throw dr.error;
+        deliveryRows=dr.data||[];
+      }
+    }
     d[0].sort((a,b)=>equipmentPersonNameFromRows(a.persona_id,d[11]).localeCompare(equipmentPersonNameFromRows(b.persona_id,d[11]),'es'));
     d[1].sort((a,b)=>(equipmentArticleNameFromRows(a.articulo_id,d[8]).localeCompare(equipmentArticleNameFromRows(b.articulo_id,d[8]),'es')||String(a.talla||'').localeCompare(String(b.talla||''),'es')));
     d[3].sort((a,b)=>String(b.fecha_pedido||'').localeCompare(String(a.fecha_pedido||'')));
     d[4].sort((a,b)=>(equipmentTeamNameFromRows(a.equipo_id,d[12]).localeCompare(equipmentTeamNameFromRows(b.equipo_id,d[12]),'es')||Number(a.dorsal||0)-Number(b.dorsal||0)));
-    equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12],assignments:d[13],deliveries:d[14]};
+    equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12],assignments:assignmentRows,deliveries:deliveryRows};
     equipmentLoadState='loaded';
     const requestedTab=options.tab||equipmentTab||storedEquipmentTab();
     setEquipmentTab(requestedTab,{persist:true});
@@ -1679,6 +1690,19 @@ function equipmentTeamName(id){return equipmentRows.teams.find(x=>x.id===id)?.no
 function equipmentNeed(id){return equipmentRows.needs.find(x=>x.id===id)}
 function equipmentAssignmentPerson(a){const n=equipmentNeed(a.necesidad_id);return n?equipmentPersonName(n.persona_id):'—'}
 function equipmentDeliveryForAssignment(id){return equipmentRows.deliveries.find(x=>x.asignacion_id===id)}
+function equipmentNumberForNeed(need){
+  if(!need?.jugador_id)return null;
+  return equipmentRows.numbers.find(x=>x.jugador_id===need.jugador_id)||null;
+}
+function equipmentAssignmentDorsal(a){
+  const n=equipmentNeed(a.necesidad_id),d=equipmentNumberForNeed(n);
+  return d?.dorsal??null;
+}
+function equipmentAssignmentTeam(a){
+  const n=equipmentNeed(a.necesidad_id),d=equipmentNumberForNeed(n);
+  return d?equipmentTeamName(d.equipo_id):'—';
+}
+
 
 
 function renderEquipment(){
@@ -1699,7 +1723,7 @@ function renderEquipment(){
       <article class="info-card"><strong>Demanda y tallas</strong><p>${needs.length} necesidades registradas para ${esc(currentSeason()?.name||'la temporada')}.</p></article>
       <article class="info-card"><strong>Stock</strong><p>${stock.reduce((a,x)=>a+Number(x.cantidad_disponible||0),0)} unidades disponibles actualmente.</p></article>
       <article class="info-card"><strong>Pedidos</strong><p>${orders.filter(x=>['pedido','parcialmente_recibido'].includes(x.estado)).length} pedidos en curso.</p></article>
-      <article class="info-card"><strong>Dorsales</strong><p>${numbers.length} dorsales asignados.</p></article>
+      <article class="info-card"><strong>Dorsales de partido</strong><p>${numbers.length} asignados; se consultan en plantilla y durante el reparto.</p></article>
     </div>`;
   }else if(equipmentTab==='needs'){
     c.innerHTML=`<div class="equipment-toolbar"><div><strong>Necesidades comunicadas</strong><span>${needs.length} registros</span></div></div>
@@ -1710,13 +1734,11 @@ function renderEquipment(){
     c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Físico</th><th>Reservado</th><th>Disponible</th><th>Falta comprar</th></tr></thead><tbody>${stock.map(x=>{const buy=purchase.find(p=>p.articulo_id===x.articulo_id&&p.talla===x.talla);return `<tr><td><strong>${esc(equipmentArticleName(x.articulo_id))}</strong></td><td>${esc(x.talla||'—')}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td><strong>${x.cantidad_disponible||0}</strong></td><td>${buy?.falta_comprar||0}</td></tr>`}).join('')||'<tr><td colspan="6">Sin stock registrado.</td></tr>'}</tbody></table></div>`;
   }else if(equipmentTab==='orders'){
     c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Número</th><th>Proveedor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>${orders.map(x=>`<tr><td>${esc(x.fecha_pedido||'—')}</td><td>${esc(x.numero||'—')}</td><td>${esc(x.proveedor_nombre||'—')}</td><td><span class="equipment-status">${esc(x.estado||'—')}</span></td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="5">Sin pedidos registrados.</td></tr>'}</tbody></table></div>`;
-  }else if(equipmentTab==='numbers'){
-    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Jugador</th><th>Dorsal</th><th>Portero</th></tr></thead><tbody>${numbers.map(x=>`<tr><td>${esc(equipmentTeamName(x.equipo_id))}</td><td><strong>${esc(equipmentPlayerName(x.jugador_id))}</strong></td><td><span class="equipment-number">${x.dorsal}</span></td><td>${x.es_portero?'Sí':'No'}</td></tr>`).join('')||'<tr><td colspan="4">Sin dorsales asignados.</td></tr>'}</tbody></table></div>`;
   }else{
     const rows=equipmentRows.assignments||[];
     c.innerHTML=`<div class="equipment-toolbar"><div><strong>Asignaciones y entregas</strong><span>${rows.length} asignaciones · ${(equipmentRows.deliveries||[]).length} entregas realizadas</span></div></div>
-    <div class="table-wrap"><table><thead><tr><th>Persona</th><th>Artículo</th><th>Talla</th><th>Cantidad</th><th>Estado</th><th>Entrega</th></tr></thead><tbody>
-    ${rows.map(a=>{const d=equipmentDeliveryForAssignment(a.id);return `<tr><td><strong>${esc(equipmentAssignmentPerson(a))}</strong></td><td>${esc(equipmentArticleName(a.articulo_id))}</td><td>${esc(a.talla||'—')}</td><td>${a.cantidad||0}</td><td><span class="equipment-status">${esc(a.estado||'—')}</span></td><td>${d?`${esc(String(d.cantidad))} · ${esc(String(d.entregada_at||'').slice(0,10))}`:'Pendiente'}</td></tr>`}).join('')||'<tr><td colspan="6">Sin asignaciones registradas.</td></tr>'}
+    <div class="table-wrap"><table><thead><tr><th>Persona</th><th>Equipo</th><th>Artículo</th><th>Talla</th><th>Dorsal</th><th>Cantidad</th><th>Estado</th><th>Entrega</th></tr></thead><tbody>
+    ${rows.map(a=>{const d=equipmentDeliveryForAssignment(a.id),dorsal=equipmentAssignmentDorsal(a);return `<tr><td><strong>${esc(equipmentAssignmentPerson(a))}</strong></td><td>${esc(equipmentAssignmentTeam(a))}</td><td>${esc(equipmentArticleName(a.articulo_id))}</td><td>${esc(a.talla||'—')}</td><td>${dorsal!==null?`<span class="equipment-number">${dorsal}</span>`:'—'}</td><td>${a.cantidad||0}</td><td><span class="equipment-status">${esc(a.estado||'—')}</span></td><td>${d?`${esc(String(d.cantidad))} · ${esc(String(d.entregada_at||'').slice(0,10))}`:'Pendiente'}</td></tr>`}).join('')||'<tr><td colspan="8">Sin asignaciones registradas para las necesidades de esta temporada.</td></tr>'}
     </tbody></table></div>`;
   }
 }
