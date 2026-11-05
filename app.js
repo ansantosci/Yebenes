@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.0';
+const APP_VERSION='95.3.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1596,27 +1596,52 @@ function setConfirmationContext(email='',message=''){const box=$('#confirmationC
 function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
 function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
 
-let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[]};
+let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[]};
 let equipmentTab='summary';
 function equipmentAllowed(){return ['admin','club'].includes(currentRole)}
 async function loadEquipmentData(){
   if(!sb||!equipmentAllowed())return;
   const season=currentSeasonId;
   const queries=[
-    sb.from('equipacion_necesidades').select('id,persona_id,temporada_id,faceta,jugador_id,entrenador_id,estado,pack_id').eq('temporada_id',season),
+    sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
     sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
     sb.from('equipacion_compra_sugerida').select('*').eq('temporada_id',season),
-    sb.from('equipacion_pedidos').select('id,temporada_id,proveedor_id,fecha_pedido,estado,observaciones').eq('temporada_id',season).order('fecha_pedido',{ascending:false}),
-    sb.from('equipacion_dorsales').select('id,temporada_id,equipo_id,jugador_id,dorsal,es_portero').eq('temporada_id',season)
+    sb.from('equipacion_pedidos').select('*').eq('temporada_id',season).order('fecha_pedido',{ascending:false}),
+    sb.from('equipacion_dorsales').select('*').eq('temporada_id',season),
+    sb.from('equipacion_tallas_persona').select('*').eq('temporada_id',season),
+    sb.from('equipacion_tallas_excepcion').select('*'),
+    sb.from('equipacion_packs').select('*').eq('temporada_id',season),
+    sb.from('equipacion_articulos').select('*').eq('temporada_id',season),
+    sb.from('jugadores').select('id,persona_id'),
+    sb.from('entrenadores').select('id,persona_id'),
+    sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
+    sb.from('equipos').select('id,nombre').eq('temporada_id',season)
   ];
-  const [needs,stock,purchase,orders,numbers]=await Promise.all(queries);
-  [needs,stock,purchase,orders,numbers].forEach(r=>{if(r.error)console.warn('Equipaciones',r.error)});
-  equipmentRows={needs:needs.data||[],stock:stock.data||[],purchase:purchase.data||[],orders:orders.data||[],numbers:numbers.data||[]};
+  const rs=await Promise.all(queries);
+  rs.forEach(r=>{if(r.error)console.warn('Equipaciones',r.error)});
+  const d=rs.map(r=>r.data||[]);
+  equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12]};
   renderEquipment();
 }
+function equipmentPersonName(personaId){
+  const p=equipmentRows.people.find(x=>x.id===personaId);
+  return p?[p.nombre,p.primer_apellido,p.segundo_apellido].filter(Boolean).join(' '):'—';
+}
+function equipmentArticleName(id){const a=equipmentRows.articles.find(x=>x.id===id);return a?.nombre||a?.codigo||'Artículo'}
+function equipmentPackName(id){const p=equipmentRows.packs.find(x=>x.id===id);return p?.nombre||'Sin pack'}
+function equipmentGeneralSize(personaId){return equipmentRows.sizes.find(x=>x.persona_id===personaId)?.talla_general||'Pendiente'}
+function equipmentExceptionCount(personaId){
+  const sizeIds=equipmentRows.sizes.filter(x=>x.persona_id===personaId).map(x=>x.id);
+  return equipmentRows.exceptions.filter(x=>sizeIds.includes(x.talla_persona_id)).length;
+}
+function equipmentPlayerName(id){
+  const j=equipmentRows.players.find(x=>x.id===id);return j?equipmentPersonName(j.persona_id):'—';
+}
+function equipmentTeamName(id){return equipmentRows.teams.find(x=>x.id===id)?.nombre||'—'}
+
 function renderEquipment(){
   const c=$('#equipmentContent');if(!c||!equipmentAllowed())return;
-  const needs=equipmentRows.needs,stock=equipmentRows.stock,purchase=equipmentRows.purchase,orders=equipmentRows.orders,numbers=equipmentRows.numbers;
+  const {needs,stock,purchase,orders,numbers}=equipmentRows;
   $('#equipmentNeedCount').textContent=needs.length;
   $('#equipmentPendingCount').textContent=needs.filter(x=>!['validada','completa'].includes(x.estado)).length;
   $('#equipmentStockCount').textContent=stock.reduce((a,x)=>a+Number(x.cantidad_disponible||0),0);
@@ -1628,14 +1653,19 @@ function renderEquipment(){
       <article class="info-card"><strong>Pedidos</strong><p>${orders.filter(x=>['pedido','parcialmente_recibido'].includes(x.estado)).length} pedidos en curso.</p></article>
       <article class="info-card"><strong>Dorsales</strong><p>${numbers.length} dorsales asignados.</p></article>
     </div>`;
+  }else if(equipmentTab==='needs'){
+    c.innerHTML=`<div class="equipment-toolbar"><div><strong>Necesidades comunicadas</strong><span>${needs.length} registros</span></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Persona</th><th>Perfil</th><th>Modalidad</th><th>Talla general</th><th>Excepciones</th><th>Estado</th></tr></thead><tbody>
+    ${needs.map(n=>`<tr><td><strong>${esc(equipmentPersonName(n.persona_id))}</strong></td><td>${esc(n.faceta||'—')}</td><td>${esc(equipmentPackName(n.pack_id))}</td><td><span class="size-chip ${equipmentGeneralSize(n.persona_id)==='Pendiente'?'pending':''}">${esc(equipmentGeneralSize(n.persona_id))}</span></td><td>${equipmentExceptionCount(n.persona_id)||'—'}</td><td><span class="equipment-status">${esc(n.estado||'pendiente')}</span></td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay necesidades comunicadas para esta temporada.</td></tr>'}
+    </tbody></table></div>`;
   }else if(equipmentTab==='stock'){
-    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Físico</th><th>Reservado</th><th>Disponible</th></tr></thead><tbody>${stock.map(x=>`<tr><td>${esc(x.articulo_id||'—')}</td><td>${esc(x.talla||'—')}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td><strong>${x.cantidad_disponible||0}</strong></td></tr>`).join('')||'<tr><td colspan="5">Sin stock registrado.</td></tr>'}</tbody></table></div>`;
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Físico</th><th>Reservado</th><th>Disponible</th><th>Falta comprar</th></tr></thead><tbody>${stock.map(x=>{const buy=purchase.find(p=>p.articulo_id===x.articulo_id&&p.talla===x.talla);return `<tr><td><strong>${esc(equipmentArticleName(x.articulo_id))}</strong></td><td>${esc(x.talla||'—')}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td><strong>${x.cantidad_disponible||0}</strong></td><td>${buy?.falta_comprar||0}</td></tr>`}).join('')||'<tr><td colspan="6">Sin stock registrado.</td></tr>'}</tbody></table></div>`;
   }else if(equipmentTab==='orders'){
-    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Estado</th><th>Proveedor</th><th>Observaciones</th></tr></thead><tbody>${orders.map(x=>`<tr><td>${esc(x.fecha_pedido||'—')}</td><td>${esc(x.estado||'—')}</td><td>${esc(x.proveedor_id||'—')}</td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="4">Sin pedidos registrados.</td></tr>'}</tbody></table></div>`;
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Número</th><th>Proveedor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>${orders.map(x=>`<tr><td>${esc(x.fecha_pedido||'—')}</td><td>${esc(x.numero||'—')}</td><td>${esc(x.proveedor_nombre||'—')}</td><td><span class="equipment-status">${esc(x.estado||'—')}</span></td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="5">Sin pedidos registrados.</td></tr>'}</tbody></table></div>`;
   }else if(equipmentTab==='numbers'){
-    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Jugador</th><th>Dorsal</th><th>Portero</th></tr></thead><tbody>${numbers.map(x=>`<tr><td>${esc(teamName(x.equipo_id))}</td><td>${esc(x.jugador_id)}</td><td><span class="equipment-number">${x.dorsal}</span></td><td>${x.es_portero?'Sí':'No'}</td></tr>`).join('')||'<tr><td colspan="4">Sin dorsales asignados.</td></tr>'}</tbody></table></div>`;
+    c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Jugador</th><th>Dorsal</th><th>Portero</th></tr></thead><tbody>${numbers.map(x=>`<tr><td>${esc(equipmentTeamName(x.equipo_id))}</td><td><strong>${esc(equipmentPlayerName(x.jugador_id))}</strong></td><td><span class="equipment-number">${x.dorsal}</span></td><td>${x.es_portero?'Sí':'No'}</td></tr>`).join('')||'<tr><td colspan="4">Sin dorsales asignados.</td></tr>'}</tbody></table></div>`;
   }else{
-    c.innerHTML=`<div class="info-card"><strong>${equipmentTab==='needs'?'Necesidades y tallas':'Reparto y entregas'}</strong><p>Vista preparada para conectar las operaciones de 051–053 en la siguiente iteración de V95.3.x.</p></div>`;
+    c.innerHTML=`<div class="info-card"><strong>Reparto y entregas</strong><p>La operativa de reservas, entregas y recepciones parciales se conectará sobre las funciones ya disponibles en 052–053.</p></div>`;
   }
 }
 
@@ -2819,7 +2849,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.3.0 - responsive management sidebar */
+/* V95.3.3 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}

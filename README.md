@@ -1,5 +1,14 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.3.3 — Equipaciones: necesidades y datos legibles
+- La versión global se alinea por delante de las migraciones internas 95.3.0/95.3.1/95.3.2.
+- `Necesidades y tallas` pasa de placeholder a tabla real con persona, faceta, modalidad/pack, talla general, excepciones y estado.
+- Stock cruza artículos y compra sugerida para mostrar nombres y falta por comprar.
+- Dorsales resuelve equipo y jugador y mantiene el dorsal como elemento visual destacado.
+- Pedidos amplía la información operativa disponible sin asumir un único pedido activo.
+- No se modifica backend en esta iteración.
+
+
 ### V95.3.0 — Equipaciones: primera interfaz de gestión
 - Se incorpora **Equipaciones** al menú exclusivamente para perfiles Administrador y Club.
 - Primera pantalla conectada al backend 051–053 con indicadores de necesidades, pendientes, stock disponible y compra sugerida.
