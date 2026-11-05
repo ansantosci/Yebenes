@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.19 — Cierre visual de la navegación
+- En escritorio el menú lateral se muestra como panel flotante separado de los bordes y con las cuatro esquinas redondeadas.
+- Se mantienen sombra, borde y colores de identidad del club.
+- El botón `☰` se oculta mientras el panel está abierto y reaparece al cerrarlo.
+- Cabecera, contenido y pie continúan realineándose para no quedar ocultos.
+- En móvil se mantiene el comportamiento overlay con las esquinas derechas redondeadas.
+
+
 ### V95.2.18 — Pulido visual y realineación del menú
 - Cabecera del drawer rediseñada con identidad visual del club y controles centrados.
 - Iconos del menú sustituidos por SVG lineales coherentes.

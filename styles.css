@@ -656,7 +656,7 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
 }
 
 
-/* V95.2.18 - responsive management sidebar */
+/* V95.2.19 - responsive management sidebar */
 .sidebar-menu-button{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:#fff;width:42px;height:42px;border-radius:11px;font-size:1.35rem;font-weight:900;cursor:pointer;flex:0 0 42px;margin-left:10px}
 .club-sidebar{position:fixed!important;z-index:60!important;left:0!important;top:0!important;bottom:0!important;width:min(330px,88vw)!important;background:#fff!important;box-shadow:12px 0 35px rgba(15,23,42,.22)!important;padding:16px 12px calc(16px + env(safe-area-inset-bottom))!important;overflow:auto!important}
 .club-sidebar.hidden{display:none!important}.club-sidebar:not(.hidden){display:block!important}
@@ -669,7 +669,7 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
 @media(max-width:1099px){#sidebarPinButton{display:none!important}}
 
 
-/* V95.2.18 - pulido definitivo de navegación lateral y cabecera de gestión */
+/* V95.2.19 - pulido definitivo de navegación lateral y cabecera de gestión */
 /* Escritorio: menu, escudo, identidad, Madrid y acciones comparten una sola fila. */
 @media(min-width:901px){
   .topbar{grid-template-columns:42px 72px minmax(0,1fr) minmax(180px,340px) 38px 38px;gap:12px}
@@ -701,7 +701,7 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
 #clubSidebar .sidebar-club-nav .nav-item span{grid-column:1!important;width:28px!important}
 
 
-/* V95.2.18 - definitive vertical management drawer */
+/* V95.2.19 - definitive vertical management drawer */
 html body #clubSidebar {
   overflow-x: hidden !important;
 }
@@ -747,7 +747,7 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 }
 
 
-/* V95.2.18 - drawer close/unpin polish */
+/* V95.2.19 - drawer close/unpin polish */
 .club-sidebar-head > div:first-child > strong {
   font-size: 1.08rem;
   line-height: 1.2;
@@ -760,7 +760,7 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
   }
 }
 
-/* V95.2.18 - club-branded navigation polish */
+/* V95.2.19 - club-branded navigation polish */
 .club-sidebar{border-right:3px solid #e5b91e!important}
 .club-sidebar-head{margin:-16px -12px 10px!important;padding:16px 14px 14px!important;min-height:74px;background:linear-gradient(135deg,#06466f,#0b6f9f)!important;border-bottom:3px solid #e5b91e!important;color:#fff!important}
 .club-sidebar-title{display:flex;flex-direction:column;justify-content:center}.club-sidebar-kicker{font-size:.66rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:#f3cf42;margin-bottom:4px}.club-sidebar-head strong{font-size:1.14rem!important;color:#fff}
@@ -769,3 +769,14 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 #clubSidebar #clubNav .nav-item{min-height:46px!important;border-left:3px solid transparent!important;transition:.16s ease!important}#clubSidebar #clubNav .nav-item:hover{background:#eef6fa!important;border-left-color:#e5b91e!important}#clubSidebar #clubNav .nav-item.active{background:#fff0f3!important;color:#c90028!important;border-left-color:#e3062c!important}
 #clubSidebar .nav-icon{width:27px!important;height:27px!important;display:inline-flex!important;align-items:center;justify-content:center!important;flex:0 0 27px!important;color:#07557f}#clubSidebar .nav-item.active .nav-icon{color:#d5002b}#clubSidebar .nav-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 @media(min-width:1100px){.topbar .brand-mark img{width:84px!important;height:84px!important;max-width:84px!important;object-fit:contain}.topbar,main,.global-sponsors-footer{transition:.2s ease}body.club-sidebar-open .topbar{padding-left:304px!important}body.club-sidebar-open #appShell main{margin-left:286px!important}body.club-sidebar-open .global-sponsors-footer{left:286px!important}body.club-sidebar-open #clubSidebarBackdrop{display:none!important}}
+
+/* V95.2.19 - floating rounded desktop drawer */
+@media(min-width:1100px){
+ .club-sidebar{top:12px!important;left:12px!important;bottom:12px!important;width:286px!important;border:1px solid rgba(229,185,30,.9)!important;border-radius:18px!important;overflow:hidden auto!important;box-shadow:0 16px 42px rgba(15,43,64,.22)!important}
+ .club-sidebar-head{border-radius:17px 17px 0 0!important}
+ .sidebar-menu-button.drawer-visible{display:none!important}
+ body.club-sidebar-open .topbar{padding-left:316px!important}
+ body.club-sidebar-open #appShell main{margin-left:298px!important}
+ body.club-sidebar-open .global-sponsors-footer{left:298px!important}
+}
+@media(max-width:1099px){.club-sidebar{top:0!important;left:0!important;bottom:0!important;border-radius:0 18px 18px 0!important}}
