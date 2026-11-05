@@ -16,6 +16,10 @@ where exists (
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
+    'equipacion_entregas','equipacion_asignaciones','equipacion_recepcion_lineas','equipacion_recepciones',
+    'equipacion_pedido_lineas','equipacion_pedidos','equipacion_dorsales','equipacion_necesidades',
+    'equipacion_tallas_excepcion','equipacion_tallas_persona','equipacion_stock','equipacion_pack_articulos',
+    'equipacion_packs','equipacion_config_temporada','equipacion_articulos',
     'notificaciones_salida','historico_citas_rrmm','citas_reconocimiento_medico','reconocimientos_medicos',
     'documentos_federativos','requisitos_federativos_inscripcion','pagos_inscripcion','situacion_economica_inscripcion',
     'historico_estados_inscripcion','asignaciones_jugador_equipo','inscripciones','representaciones_jugador',
