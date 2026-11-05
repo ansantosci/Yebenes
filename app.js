@@ -1,4 +1,4 @@
-const APP_VERSION='95.2.22';
+const APP_VERSION='95.2.23';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2775,7 +2775,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.2.22 - responsive management sidebar */
+/* V95.2.23 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
@@ -2806,7 +2806,11 @@ $('#clubSidebarBackdrop')?.addEventListener('click',()=>closeClubSidebar(true));
 $('#sidebarPinButton')?.addEventListener('click',()=>{
   const next=!sidebarPinned();localStorage.setItem(SIDEBAR_PIN_KEY,next?'1':'0');syncClubSidebar();if(!next)closeClubSidebar(true);
 });
-$('#clubSidebar')?.addEventListener('click',e=>{if(e.target.closest('.nav-item')&&!sidebarPinned())closeClubSidebar(true)});
+$('#clubSidebar')?.addEventListener('click',e=>{
+  if(!e.target.closest('.nav-item'))return;
+  requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}));
+  if(!sidebarDesktop())closeClubSidebar(true);
+});
 window.addEventListener('resize',syncClubSidebar);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(true)});
 setTimeout(syncClubSidebar,0);

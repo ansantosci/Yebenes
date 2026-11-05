@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.23 — Navegación contextual del menú
+- Al entrar en una sección desde el menú principal, la vista se posiciona en la parte superior de la pantalla para mostrar su cabecera completa.
+- La paginación y los controles internos de los listados mantienen su comportamiento de scroll orientado al listado.
+- En escritorio, seleccionar una opción mantiene abierto el menú para facilitar navegación consecutiva entre módulos.
+- En móvil/tablet, seleccionar una opción sigue cerrando el drawer para recuperar el espacio de pantalla.
+- La chincheta continúa controlando la persistencia del menú abierto entre recargas.
+
+
 ### V95.2.22 — Recuperación estable del drawer
 - Se parte de V95.2.20, última versión verificada con recuperación de sesión correcta.
 - La estructura redondeada del drawer se implementa únicamente mediante HTML/CSS.
