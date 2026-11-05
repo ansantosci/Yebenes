@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.4';
+const APP_VERSION='95.3.5';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2873,7 +2873,7 @@ disableLegacyServiceWorkers();
 $('#closeDocumentModal')?.addEventListener('click',()=>$('#documentModal').close());
 
 
-/* V95.3.4 - responsive management sidebar */
+/* V95.3.5 - responsive management sidebar */
 const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}

@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.3.5 — Inicialización de Equipaciones desde la navegación
+- La carga de Equipaciones deja de depender de un listener secundario del botón del menú.
+- `setView('equipmentView')` inicia directamente `loadEquipmentData()`, de modo que cualquier entrada real a la pantalla dispara la consulta.
+- Se conserva el control de estados de V95.3.4: cargando, cargado, vacío, error y reintento.
+- El placeholder HTML deja de afirmar que existe una carga en curso antes de que JavaScript haya iniciado la consulta.
+- No se modifica backend ni el modelo de datos.
+
+
 ### V95.3.4 — Carga determinista de Equipaciones
 - La entrada al módulo inicia siempre la consulta y renderiza automáticamente `Resumen` al completarse.
 - Se diferencian estados de carga, datos vacíos y error; el módulo ya no puede quedar indefinidamente mostrando `Cargando equipaciones…`.
