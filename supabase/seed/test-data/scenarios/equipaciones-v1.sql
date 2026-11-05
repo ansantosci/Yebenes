@@ -62,16 +62,6 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 select 'TEST-S','equipacion_tallas_persona',private.test_uuid('equip:size:'||j.id::text) from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6 on conflict do nothing;
 
 with p as (select j.id,j.persona_id,row_number() over(order by j.id) n from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6)
-do $$
-begin
-  if not exists (
-    select 1 from public.equipacion_tallas_persona
-    where persona_id='equipacion_tallas_excepcion'::uuid and temporada_id='equip:exception'::uuid
-  ) then
-    raise exception 'EQUIPACIONES fixture: talla_persona parent missing';
-  end if;
-end $$;
-
 insert into public.equipacion_tallas_excepcion(id,talla_persona_id,articulo_id,talla)
 select private.test_uuid('equip:exception'),
   (select tp.id from public.equipacion_tallas_persona tp
