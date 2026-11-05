@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.8';
+const APP_VERSION='95.3.9';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1596,12 +1596,12 @@ function setConfirmationContext(email='',message=''){const box=$('#confirmationC
 function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
 function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
 
-let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[]};
+let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[],assignments:[],deliveries:[]};
 let equipmentTab='summary';
 let equipmentLoadState='idle';
 let equipmentLoadError='';
 function equipmentAllowed(){return ['admin','club'].includes(currentRole)}
-async function loadEquipmentData(){
+async function loadEquipmentData(options={}){
   if(!sb||!equipmentAllowed())return;
   const c=$('#equipmentContent');
   equipmentLoadState='loading';equipmentLoadError='';
@@ -1623,17 +1623,19 @@ async function loadEquipmentData(){
       sb.from('jugadores').select('id,persona_id'),
       sb.from('entrenadores').select('id,persona_id'),
       sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
-      sb.from('equipos').select('id,nombre').eq('temporada_id',season)
+      sb.from('equipos').select('id,nombre').eq('temporada_id',season),
+      sb.from('equipacion_asignaciones').select('*'),
+      sb.from('equipacion_entregas').select('*')
     ];
     const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('La consulta está tardando demasiado.')),12000));
     const rs=await Promise.race([Promise.all(queries),timeout]);
     const failed=rs.find(r=>r.error);
     if(failed)throw failed.error;
     const d=rs.map(r=>r.data||[]);
-    equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12]};
+    equipmentRows={needs:d[0],stock:d[1],purchase:d[2],orders:d[3],numbers:d[4],sizes:d[5],exceptions:d[6],packs:d[7],articles:d[8],players:d[9],coaches:d[10],people:d[11],teams:d[12],assignments:d[13],deliveries:d[14]};
     equipmentLoadState='loaded';
-    equipmentTab='summary';
-    $$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x.dataset.equipmentTab==='summary'));
+    if(!options.preserveTab)equipmentTab=equipmentTab||'summary';
+    $$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x.dataset.equipmentTab===equipmentTab));
     renderEquipment();
   }catch(err){
     console.error('Carga Equipaciones',err);
@@ -1657,6 +1659,10 @@ function equipmentPlayerName(id){
   const j=equipmentRows.players.find(x=>x.id===id);return j?equipmentPersonName(j.persona_id):'—';
 }
 function equipmentTeamName(id){return equipmentRows.teams.find(x=>x.id===id)?.nombre||'—'}
+function equipmentNeed(id){return equipmentRows.needs.find(x=>x.id===id)}
+function equipmentAssignmentPerson(a){const n=equipmentNeed(a.necesidad_id);return n?equipmentPersonName(n.persona_id):'—'}
+function equipmentDeliveryForAssignment(id){return equipmentRows.deliveries.find(x=>x.asignacion_id===id)}
+
 
 function renderEquipment(){
   const c=$('#equipmentContent');if(!c||!equipmentAllowed())return;
@@ -1690,7 +1696,11 @@ function renderEquipment(){
   }else if(equipmentTab==='numbers'){
     c.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Jugador</th><th>Dorsal</th><th>Portero</th></tr></thead><tbody>${numbers.map(x=>`<tr><td>${esc(equipmentTeamName(x.equipo_id))}</td><td><strong>${esc(equipmentPlayerName(x.jugador_id))}</strong></td><td><span class="equipment-number">${x.dorsal}</span></td><td>${x.es_portero?'Sí':'No'}</td></tr>`).join('')||'<tr><td colspan="4">Sin dorsales asignados.</td></tr>'}</tbody></table></div>`;
   }else{
-    c.innerHTML=`<div class="info-card"><strong>Reparto y entregas</strong><p>La operativa de reservas, entregas y recepciones parciales se conectará sobre las funciones ya disponibles en 052–053.</p></div>`;
+    const rows=equipmentRows.assignments||[];
+    c.innerHTML=`<div class="equipment-toolbar"><div><strong>Asignaciones y entregas</strong><span>${rows.length} asignaciones · ${(equipmentRows.deliveries||[]).length} entregas realizadas</span></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Persona</th><th>Artículo</th><th>Talla</th><th>Cantidad</th><th>Estado</th><th>Entrega</th></tr></thead><tbody>
+    ${rows.map(a=>{const d=equipmentDeliveryForAssignment(a.id);return `<tr><td><strong>${esc(equipmentAssignmentPerson(a))}</strong></td><td>${esc(equipmentArticleName(a.articulo_id))}</td><td>${esc(a.talla||'—')}</td><td>${a.cantidad||0}</td><td><span class="equipment-status">${esc(a.estado||'—')}</span></td><td>${d?`${esc(String(d.cantidad))} · ${esc(String(d.entregada_at||'').slice(0,10))}`:'Pendiente'}</td></tr>`}).join('')||'<tr><td colspan="6">Sin asignaciones registradas.</td></tr>'}
+    </tbody></table></div>`;
   }
 }
 
@@ -2608,7 +2618,7 @@ async function localSessionLogout(message){authDiag('LOCAL_SESSION_LOGOUT',{mess
 function activeClubViewId(){return ['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].find(v=>$('#'+v)?.classList.contains('active'))||null}
 function navigationSnapshot(remoteVersion=''){
   if(!currentUser||!currentRole)return null;
-  return {createdAt:Date.now(),targetVersion:remoteVersion||'',role:currentRole,view:activeClubViewId(),accountOpen:Boolean($('#accountProfileModal')?.open),accountTab:activeAccountTab(),coachOpen:Boolean($('#coachModal')?.open),coachId:editingCoachId||null,coachTab:activeCoachAdminTab()};
+  return {createdAt:Date.now(),targetVersion:remoteVersion||'',role:currentRole,view:activeClubViewId(),accountOpen:Boolean($('#accountProfileModal')?.open),accountTab:activeAccountTab(),coachOpen:Boolean($('#coachModal')?.open),coachId:editingCoachId||null,coachTab:activeCoachAdminTab(),equipmentTab:equipmentTab||'summary'};
 }
 function saveNavigationSnapshot(remoteVersion=''){
   try{const snap=navigationSnapshot(remoteVersion);if(!snap)return;localStorage.setItem(remoteVersion?K.navResume:K.navLive,JSON.stringify(snap));}catch{}
@@ -2621,7 +2631,7 @@ async function restoreNavigationSnapshot(allowLive=false){
   const maxAge=source==='version'?5*60*1000:24*60*60*1000;
   if(Date.now()-Number(snap.createdAt||0)>maxAge||snap.targetVersion&&snap.targetVersion!==APP_VERSION||snap.role!==currentRole)return false;
   try{
-    if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')renderCoaches();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&currentRole==='admin'){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&currentRole==='admin')renderClubUsers();else if(snap.view==='sponsorsView'&&['admin','club'].includes(currentRole))await loadSponsorAdmin();}
+    if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')renderCoaches();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&currentRole==='admin'){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&currentRole==='admin')renderClubUsers();else if(snap.view==='sponsorsView'&&['admin','club'].includes(currentRole))await loadSponsorAdmin();else if(snap.view==='equipmentView'&&equipmentAllowed()){equipmentTab=snap.equipmentTab||'summary';await loadEquipmentData({preserveTab:true});}}
     if(snap.accountOpen){openAccountProfile();if(snap.accountTab)setSimpleTabs('#accountProfileModal',snap.accountTab);}
     if(snap.coachOpen&&snap.coachId&&coaches.some(c=>c.id===snap.coachId)){openCoachForEdit(snap.coachId);if(snap.coachTab)await coachAdminTab(snap.coachTab);}
     authDiag('NAVIGATION_RESTORED',{source,view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
@@ -2917,4 +2927,4 @@ setTimeout(syncClubSidebar,0);
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
 
 $('#equipmentNavButton')?.addEventListener('click',()=>{if(equipmentAllowed())requestAnimationFrame(()=>loadEquipmentData())});
-$$('[data-equipment-tab]').forEach(b=>b.addEventListener('click',()=>{equipmentTab=b.dataset.equipmentTab;$$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x===b));renderEquipment()}));
+$$('[data-equipment-tab]').forEach(b=>b.addEventListener('click',()=>{equipmentTab=b.dataset.equipmentTab;$$('[data-equipment-tab]').forEach(x=>x.classList.toggle('active',x===b));saveNavigationSnapshot();renderEquipment()}));
