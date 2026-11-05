@@ -82,6 +82,10 @@ set es_principal=false,
     activo=false,
     fecha_hasta=greatest(d.fecha_desde,coalesce(d.fecha_hasta,date '2026-06-30'))
 where d.es_principal=true and d.activo=true
+  and not exists (
+    select 1 from private.test_access_identities a
+    where a.persona_id=d.persona_id
+  )
   and exists (
     select 1 from docs
     where private.test_s_player_person_id(docs.codigo,docs.g)=d.persona_id
