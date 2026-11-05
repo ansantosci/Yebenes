@@ -1,5 +1,13 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.24 — Área de trabajo adaptable en escritorio
+- El drawer flotante deja un margen superior visible para que sus cuatro esquinas redondeadas se perciban claramente.
+- El área principal deja de conservar el ancho estrecho histórico y aprovecha el espacio horizontal disponible en monitores de escritorio.
+- Con el menú abierto o fijado, el contenido se recalcula sobre el ancho restante en lugar de dejar una gran zona vacía a la derecha.
+- Se mantienen límites máximos para evitar una expansión excesiva en pantallas ultrapanorámicas.
+- El cambio prepara una superficie de trabajo más adecuada para tablas, filtros y el futuro módulo de Equipaciones sin modificar el comportamiento de navegación validado en V95.2.23.
+
+
 ### V95.2.23 — Navegación contextual del menú
 - Al entrar en una sección desde el menú principal, la vista se posiciona en la parte superior de la pantalla para mostrar su cabecera completa.
 - La paginación y los controles internos de los listados mantienen su comportamiento de scroll orientado al listado.
