@@ -81,7 +81,7 @@ with players as (
 -- identity document for a synthetic player. Deactivate it before recreating the
 -- deterministic TEST-S document, otherwise documentos_identidad_principal_uq blocks RESET.
 update public.documentos_identidad d
-set es_principal=false, activo=false, fecha_hasta=coalesce(fecha_hasta,date '2026-06-30')
+set es_principal=false, activo=false, fecha_hasta=greatest(fecha_desde,coalesce(fecha_hasta,date '2026-06-30'))
 where d.es_principal=true and d.activo=true
   and exists (
     select 1 from docs
