@@ -59,18 +59,35 @@ insert into public.equipacion_tallas_persona(id,persona_id,temporada_id,talla_ge
 select private.test_uuid('equip:size:'||p.jugador_id::text),p.persona_id,s.temporada_id,(array['3XS','2XS','XS','S','M','L'])[p.n],p.n<>2,now() from p cross join s
 on conflict(persona_id,temporada_id) do update set talla_general=excluded.talla_general,aplica_todas=excluded.aplica_todas,confirmada_at=now();
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-select 'TEST-S','equipacion_tallas_persona',private.test_uuid('equip:size:'||j.id::text) from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6 on conflict do nothing;
+select 'TEST-S','equipacion_tallas_persona',tp.id
+from public.jugadores j
+join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+join public.equipacion_tallas_persona tp on tp.persona_id=j.persona_id
+join public.temporadas t on t.id=tp.temporada_id and t.estado='activa'
+order by j.id limit 6 on conflict do nothing;
 
-with p as (select j.id,j.persona_id,row_number() over(order by j.id) n from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6)
+with p as (
+ select j.id,j.persona_id,row_number() over(order by j.id) n
+ from public.jugadores j
+ join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+ order by j.id limit 6
+), s as (select id temporada_id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_tallas_excepcion(id,talla_persona_id,articulo_id,talla)
 select private.test_uuid('equip:exception'),
-  (select tp.id from public.equipacion_tallas_persona tp
-    where tp.persona_id='equipacion_tallas_excepcion'::uuid and tp.temporada_id='equip:exception'::uuid
-    limit 1),
-  private.test_uuid('equip:art:cam-par'),
-  'S' from p where n=2
+       tp.id,
+       private.test_uuid('equip:art:cam-par'),
+       'S'
+from p
+cross join s
+join public.equipacion_tallas_persona tp on tp.persona_id=p.persona_id and tp.temporada_id=s.temporada_id
+where p.n=2
 on conflict(talla_persona_id,articulo_id) do update set talla='S';
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_tallas_excepcion',private.test_uuid('equip:exception')) on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_tallas_excepcion',te.id
+from public.equipacion_tallas_excepcion te
+where te.articulo_id=private.test_uuid('equip:art:cam-par')
+  and te.id=private.test_uuid('equip:exception')
+on conflict do nothing;
 
 -- Needs: 4 full pack, 2 reuse training / match-only. Different workflow states.
 with p as (
@@ -90,7 +107,13 @@ select 'TEST-S','equipacion_necesidades',private.test_uuid('equip:need:'||j.id::
 with c as (select e.id entrenador_id,e.persona_id from public.entrenadores e join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='entrenadores' and de.entity_id=e.id order by e.id limit 1), s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_tallas_persona(id,persona_id,temporada_id,talla_general,aplica_todas,confirmada_at)
 select private.test_uuid('equip:size:coach'),c.persona_id,s.temporada_id,'L',true,now() from c cross join s on conflict(persona_id,temporada_id) do update set talla_general='L',confirmada_at=now();
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_tallas_persona',private.test_uuid('equip:size:coach')) on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_tallas_persona',tp.id
+from public.entrenadores e
+join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='entrenadores' and de.entity_id=e.id
+join public.equipacion_tallas_persona tp on tp.persona_id=e.persona_id
+join public.temporadas t on t.id=tp.temporada_id and t.estado='activa'
+order by e.id limit 1 on conflict do nothing;
 with c as (select e.id entrenador_id,e.persona_id from public.entrenadores e join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='entrenadores' and de.entity_id=e.id order by e.id limit 1), s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,entrenador_id,pack_id,reutiliza_tecnico,estado,origen,comunicada_at)
 select private.test_uuid('equip:need:coach'),c.persona_id,s.temporada_id,'entrenador',c.entrenador_id,private.test_uuid('equip:pack:tecnico'),false,'validada','temporada',now() from c cross join s
@@ -157,5 +180,39 @@ insert into public.equipacion_entregas(id,asignacion_id,cantidad,entregada_at,ob
 values(private.test_uuid('equip:delivery:1'),private.test_uuid('equip:assign:1'),1,now()-interval '1 day','Entrega sintética')
 on conflict(asignacion_id) do update set cantidad=1,observaciones='Entrega sintética';
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_entregas',private.test_uuid('equip:delivery:1')) on conflict do nothing;
+
+
+-- Scenario preflight: validate all key synthetic relationships before commit.
+do $$
+declare
+  v_missing integer;
+begin
+  select count(*) into v_missing
+  from private.test_dataset_entities de
+  where de.dataset_id='TEST-S'
+    and de.table_name in (
+      'equipacion_config_temporada','equipacion_articulos','equipacion_packs','equipacion_pack_articulos',
+      'equipacion_tallas_persona','equipacion_tallas_excepcion','equipacion_necesidades','equipacion_stock',
+      'equipacion_pedidos','equipacion_pedido_lineas','equipacion_recepciones','equipacion_recepcion_lineas',
+      'equipacion_dorsales','equipacion_asignaciones','equipacion_entregas'
+    )
+    and de.entity_id is null;
+  if v_missing > 0 then raise exception 'EQUIPACIONES fixture: % null registered entity ids',v_missing; end if;
+
+  if not exists (select 1 from public.equipacion_tallas_excepcion where id=private.test_uuid('equip:exception')) then
+    raise exception 'EQUIPACIONES fixture: size exception missing';
+  end if;
+  if (select count(*) from public.equipacion_pedidos where id in (private.test_uuid('equip:order:1'),private.test_uuid('equip:order:2'))) <> 2 then
+    raise exception 'EQUIPACIONES fixture: expected two simultaneous orders';
+  end if;
+  if (select count(*) from public.equipacion_recepcion_lineas where recepcion_id=private.test_uuid('equip:recv:1')) <> 2 then
+    raise exception 'EQUIPACIONES fixture: expected two partial reception lines';
+  end if;
+  if (select count(*) from public.equipacion_dorsales where id in (
+      select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_dorsales'
+    )) < 1 then
+    raise exception 'EQUIPACIONES fixture: dorsals missing';
+  end if;
+end $$;
 
 commit;
