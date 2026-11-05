@@ -76,33 +76,36 @@ with players as (
   from players
   where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
      or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
-), repaired_rows as (
+)
+update public.documentos_identidad d
+set es_principal=false,
+    activo=false,
+    fecha_hasta=greatest(d.fecha_desde,coalesce(d.fecha_hasta,date '2026-06-30'))
+where d.es_principal=true and d.activo=true
+  and exists (
+    select 1 from docs
+    where private.test_s_player_person_id(docs.codigo,docs.g)=d.persona_id
+      and d.id<>private.test_uuid('doc:player:'||docs.codigo||':'||docs.g)
+  );
 
-  -- Repair-safe: an interrupted/legacy TEST-S run may leave a different active principal
-  -- identity document for a synthetic player. Deactivate it before recreating the
-  -- deterministic TEST-S document, otherwise documentos_identidad_principal_uq blocks RESET.
-  update public.documentos_identidad d
-  set es_principal=false,
-      activo=false,
-      fecha_hasta=greatest(fecha_desde,coalesce(fecha_hasta,date '2026-06-30'))
-  where d.es_principal=true and d.activo=true
-    and exists (
-      select 1 from docs
-      where private.test_s_player_person_id(docs.codigo,docs.g)=d.persona_id
-        and d.id<>private.test_uuid('doc:player:'||docs.codigo||':'||docs.g)
-  returning 1 as repaired_marker
-    )
-  returning d.id
-
-),
-repaired as (
-  select count(*) as repaired_count from repaired_rows
+with players as (
+  select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2) g
+  join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
+  where t.estado='activa'
+), docs as (
+  select codigo,g,73000000+n::int dni_number
+  from players
+  where date '2026-09-01' >= (fecha_nacimiento + interval '14 years')::date
+     or (date '2026-09-01' < (fecha_nacimiento + interval '14 years')::date and n % 2 = 0)
 )
 insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo)
 select private.test_uuid('doc:player:'||codigo||':'||g),private.test_s_player_person_id(codigo,g),'dni',
        lpad(dni_number::text,8,'0')||substring('TRWAGMYFPDXBNJZSQVHLCKE' from (dni_number%23)+1 for 1),
        'ES',true,date '2026-07-01',true
-from docs cross join repaired
+from docs
 where not exists (
   select 1 from private.test_access_identities a
   where a.persona_id=private.test_s_player_person_id(docs.codigo,docs.g)
