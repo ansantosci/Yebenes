@@ -1,5 +1,12 @@
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
+### V95.2.20 — Cierre técnico del drawer
+- El panel de escritorio queda separado del borde superior y recortado como un rectángulo flotante con las cuatro esquinas redondeadas.
+- El scroll se limita al contenido de navegación para no interferir con el radio superior de la cabecera.
+- El botón `☰` queda oculto siempre que el drawer está abierto en escritorio y reaparece al cerrarlo.
+- Se mantienen sin cambios la iconografía, colores, escudo ampliado y realineación de cabecera/contenido/pie.
+
+
 ### V95.2.19 — Cierre visual de la navegación
 - En escritorio el menú lateral se muestra como panel flotante separado de los bordes y con las cuatro esquinas redondeadas.
 - Se mantienen sombra, borde y colores de identidad del club.
