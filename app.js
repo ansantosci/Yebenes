@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.7';
+const APP_VERSION='95.3.8';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1619,7 +1619,7 @@ async function loadEquipmentData(){
       sb.from('equipacion_tallas_persona').select('*').eq('temporada_id',season),
       sb.from('equipacion_tallas_excepcion').select('*'),
       sb.from('equipacion_packs').select('*').eq('temporada_id',season),
-      sb.from('equipacion_articulos').select('*').eq('temporada_id',season),
+      sb.from('equipacion_articulos').select('*').eq('activo',true).order('nombre',{ascending:true}),
       sb.from('jugadores').select('id,persona_id'),
       sb.from('entrenadores').select('id,persona_id'),
       sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
