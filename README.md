@@ -1,3 +1,9 @@
+### V95.3.7 — Actualización frontend coherente y sin bucles
+- Corrige la publicación incompleta de V95.3.6: `version.json` avanzó, pero `APP_VERSION` e `index.html` seguían en V95.3.5.
+- Alinea `APP_VERSION`, `YEBENES_APP_VERSION`, recursos versionados de `index.html`, `sw.js` y `version.json` en V95.3.7.
+- Mantiene la corrección de Equipaciones de V95.3.6: uso del UUID real de la temporada activa de Supabase.
+- Refuerza `validate-frontend-version.sh` para bloquear futuras publicaciones con versiones internas incoherentes.
+
 # V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
 
 ### V95.3.6 — Equipaciones usa la temporada activa real de Supabase
