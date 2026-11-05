@@ -25,6 +25,10 @@ where exists (
     and e.entity_id=d.persona_id
 );
 
+-- TEST-S cleanup needs to remove immutable reception lines created by 053.
+-- ALTER TRIGGER is transactional: any RESET failure rolls this change back safely.
+alter table public.equipacion_recepcion_lineas disable trigger equipacion_recepcion_lineas_no_delete;
+
 -- Equipaciones 053 creates stock movements automatically through triggers.
 -- They must be removed before reception lines/assignments because both FKs are RESTRICT.
 delete from public.equipacion_movimientos_stock m
@@ -59,4 +63,6 @@ DO $$ declare t text; begin
 end $$;
 delete from private.test_dataset_entities where dataset_id='TEST-S';
 delete from private.test_datasets where id='TEST-S';
+alter table public.equipacion_recepcion_lineas enable trigger equipacion_recepcion_lineas_no_delete;
+
 commit;
