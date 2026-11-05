@@ -25,29 +25,13 @@ where exists (
     and e.entity_id=d.persona_id
 );
 
--- TEST-S cleanup needs to remove immutable reception lines created by 053.
--- ALTER TRIGGER is transactional: any RESET failure rolls this change back safely.
-alter table public.equipacion_recepcion_lineas disable trigger equipacion_recepcion_lineas_no_delete;
-
--- Equipaciones 053 creates stock movements automatically through triggers.
--- They must be removed before reception lines/assignments because both FKs are RESTRICT.
-delete from public.equipacion_movimientos_stock m
-where exists (
-  select 1 from private.test_dataset_entities e
-  where e.dataset_id='TEST-S'
-    and (
-      (e.table_name='equipacion_recepcion_lineas' and e.entity_id=m.recepcion_linea_id)
-      or
-      (e.table_name='equipacion_asignaciones' and e.entity_id=m.asignacion_id)
-      or
-      (e.table_name='equipacion_movimientos_stock' and e.entity_id=m.id)
-    )
-);
+-- Backend-owned cleanup of immutable/trigger-generated Equipaciones TEST-S logistics.
+select private.test_s_cleanup_equipaciones_logistica();
 
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
-    'equipacion_movimientos_stock','equipacion_entregas','equipacion_asignaciones','equipacion_recepcion_lineas','equipacion_recepciones',
+    'equipacion_movimientos_stock','equipacion_entregas','equipacion_asignaciones','equipacion_recepciones',
     'equipacion_pedido_lineas','equipacion_pedidos','equipacion_dorsales','equipacion_necesidades',
     'equipacion_tallas_excepcion','equipacion_tallas_persona','equipacion_stock','equipacion_pack_articulos',
     'equipacion_packs','equipacion_config_temporada','equipacion_articulos',
@@ -63,6 +47,4 @@ DO $$ declare t text; begin
 end $$;
 delete from private.test_dataset_entities where dataset_id='TEST-S';
 delete from private.test_datasets where id='TEST-S';
-alter table public.equipacion_recepcion_lineas enable trigger equipacion_recepcion_lineas_no_delete;
-
 commit;
