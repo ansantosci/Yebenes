@@ -23,10 +23,28 @@ where exists (
   where e.dataset_id='TEST-S'
     and e.table_name='personas'
     and e.entity_id=d.persona_id
+    and not exists (
+      select 1 from private.test_access_identities a
+      where a.persona_id=d.persona_id
+    )
 );
 
 -- Backend-owned cleanup of immutable/trigger-generated Equipaciones TEST-S logistics.
 select private.test_s_cleanup_equipaciones_logistica();
+
+-- Registered TEST-S document rows are deleted explicitly, but permanent TEST-ACCESS
+-- identity documents are never owned by RESET even if a stale TEST-S registry row exists.
+delete from public.documentos_identidad d
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='documentos_identidad'
+    and e.entity_id=d.id
+)
+and not exists (
+  select 1 from private.test_access_identities a
+  where a.persona_id=d.persona_id
+);
 
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
@@ -40,7 +58,7 @@ DO $$ declare t text; begin
     'historico_estados_inscripcion','asignaciones_jugador_equipo','inscripciones','representaciones_jugador',
 'entrenador_licencias_rffm','entrenador_formaciones','entrenador_disponibilidad',
     'entrenador_temporadas','asignaciones_entrenador_equipo','autorizaciones_menor',
-    'entrenadores','jugadores','persona_roles','documentos_identidad','horarios_equipo','configuracion_economica_equipo','personas'
+    'entrenadores','jugadores','persona_roles','horarios_equipo','configuracion_economica_equipo','personas'
   ] loop
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;

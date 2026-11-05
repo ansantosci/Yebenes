@@ -75,6 +75,15 @@ jobs:
           select 'coaches',count(*) from public.entrenadores c join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='entrenadores' and e.entity_id=c.id;
           select 'tutors',count(*) from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='persona_roles' and e.entity_id in (select id from public.persona_roles where rol_id='5b569d29-62f1-40b9-bfb7-7a65f62ee8aa');
           select 'pending_notifications',count(*) from public.notificaciones_salida n join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='notificaciones_salida' and e.entity_id=n.id where n.estado='pendiente';
+          select 'test_access_identity_invalid',a.key,p.id,p.telefono
+          from private.test_access_identities a
+          join public.personas p on p.id=a.persona_id
+          where nullif(trim(coalesce(p.telefono,'')),'') is null
+             or not exists (
+               select 1 from public.documentos_identidad d
+               where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie')
+                 and private.documento_espanol_valido(d.tipo,d.numero)
+             );
           -- Functional identity contracts: every TEST-S tutor must have phone + active principal DNI.
           do $$
           begin
@@ -122,7 +131,11 @@ jobs:
               select 1 from private.test_access_identities a
               join public.personas p on p.id=a.persona_id
               where nullif(trim(coalesce(p.telefono,'')),'') is null
-                 or not exists (select 1 from public.documentos_identidad d where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie'))
+                 or not exists (
+                    select 1 from public.documentos_identidad d
+                    where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie')
+                      and private.documento_espanol_valido(d.tipo,d.numero)
+                  )
             ) then raise exception 'TEST-ACCESS functional identity contract failed: identity without phone or principal DNI/NIE'; end if;
           end $$;
           SQL
