@@ -43,16 +43,21 @@ begin
   end;
 end $$;
 
--- Transactional smoke: stock -> reserve -> deliver, fully rolled back.
+-- Transactional smoke: isolated fixture -> stock -> reserve -> deliver, fully rolled back.
+-- Never reuses an existing equipacion_asignacion or equipacion_entrega.
 begin;
 do $$
 declare
-  tid uuid; aid uuid; nid uuid; asid uuid; sid uuid; before_count integer; after_count integer;
+  tid uuid;
+  aid uuid;
+  packid uuid;
+  personid uuid;
+  playerid uuid;
+  nid uuid := '05200000-0000-4000-8000-000000000001'::uuid;
+  asid uuid := '05200000-0000-4000-8000-000000000002'::uuid;
   test_auth_uid uuid;
 begin
-  -- The production functions correctly authorize through auth.uid()+persona_roles.
-  -- psql contract runners have no JWT, so explicitly simulate an existing admin/club
-  -- identity only inside this transaction. No production permission is weakened.
+  -- Simulate an existing authenticated administrator/club only inside this transaction.
   select p.auth_user_id into test_auth_uid
   from public.personas p
   join public.persona_roles pr on pr.persona_id=p.id and pr.activo
@@ -62,27 +67,79 @@ begin
   order by (r.codigo='administrador') desc
   limit 1;
   if test_auth_uid is null then
-    raise exception '052 contract setup failed: no authenticated admin/club identity available for authorized smoke';
+    raise exception '052 contract setup failed: no authenticated admin/club identity available';
   end if;
   perform set_config('request.jwt.claim.sub',test_auth_uid::text,true);
   perform set_config('request.jwt.claim.role','authenticated',true);
 
-  select n.temporada_id,n.id into tid,nid from public.equipacion_necesidades n where n.estado<>'cancelada' limit 1;
-  if nid is null then return; end if;
-  select pa.articulo_id into aid from public.equipacion_necesidades n join public.equipacion_pack_articulos pa on pa.pack_id=n.pack_id where n.id=nid limit 1;
-  if aid is null then return; end if;
-  insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica) values(tid,aid,'3XS',2)
-    on conflict(temporada_id,articulo_id,talla) do update set cantidad_fisica=greatest(public.equipacion_stock.cantidad_fisica,2),cantidad_reservada=0;
-  insert into public.equipacion_asignaciones(necesidad_id,articulo_id,talla,cantidad,estado,origen) values(nid,aid,'3XS',1,'propuesta','manual')
-    on conflict(necesidad_id,articulo_id,talla) do update set estado='propuesta',cantidad=1
-    returning id into asid;
-  -- The selected need may belong to a populated synthetic scenario. Remove any prior
-  -- delivery only inside this transaction so the smoke remains repeatable; ROLLBACK restores it.
+  -- Reuse only stable master/context rows; create all logistics rows with contract-owned UUIDs.
+  select n.temporada_id,n.persona_id,n.jugador_id,n.pack_id
+    into tid,personid,playerid,packid
+  from public.equipacion_necesidades n
+  where n.estado<>'cancelada' and n.jugador_id is not null
+  limit 1;
+  if tid is null then
+    raise exception '052 contract setup failed: no season/player context';
+  end if;
+
+  select pa.articulo_id into aid
+  from public.equipacion_pack_articulos pa
+  where pa.pack_id=packid
+  order by pa.articulo_id
+  limit 1;
+  if aid is null then
+    raise exception '052 contract setup failed: pack has no article';
+  end if;
+
+  -- Defensive cleanup is transaction-local and only targets contract-owned IDs.
   delete from public.equipacion_entregas where asignacion_id=asid;
+  delete from public.equipacion_asignaciones where id=asid;
+  delete from public.equipacion_necesidades where id=nid;
+
+  insert into public.equipacion_necesidades
+    (id,temporada_id,persona_id,faceta,jugador_id,pack_id,modalidad,estado,comunicada_at)
+  values
+    (nid,tid,personid,'jugador',playerid,packid,'pack_completo','confirmada',now());
+
+  insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica,cantidad_reservada)
+  values(tid,aid,'3XS',2,0)
+  on conflict(temporada_id,articulo_id,talla)
+  do update set cantidad_fisica=greatest(public.equipacion_stock.cantidad_fisica,2),
+                cantidad_reservada=0;
+
+  insert into public.equipacion_asignaciones
+    (id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+  values
+    (asid,nid,aid,'3XS',1,'propuesta','manual');
+
   perform private.equipacion_reservar_asignacion(asid);
-  if not exists(select 1 from public.equipacion_stock where temporada_id=tid and articulo_id=aid and talla='3XS' and cantidad_reservada=1) then raise exception '052 smoke failed: reserve'; end if;
+
+  if not exists(
+    select 1 from public.equipacion_asignaciones
+    where id=asid and estado='reservada'
+  ) then
+    raise exception '052 smoke failed: assignment was not reserved';
+  end if;
+
+  if not exists(
+    select 1 from public.equipacion_stock
+    where temporada_id=tid and articulo_id=aid and talla='3XS' and cantidad_reservada=1
+  ) then
+    raise exception '052 smoke failed: stock reservation';
+  end if;
+
   perform private.equipacion_confirmar_entrega(asid,null);
-  if not exists(select 1 from public.equipacion_asignaciones where id=asid and estado='entregada') then raise exception '052 smoke failed: delivery'; end if;
+
+  if not exists(
+    select 1 from public.equipacion_asignaciones
+    where id=asid and estado='entregada'
+  ) then
+    raise exception '052 smoke failed: delivery state';
+  end if;
+
+  if (select count(*) from public.equipacion_entregas where asignacion_id=asid) <> 1 then
+    raise exception '052 smoke failed: expected exactly one delivery';
+  end if;
 end $$;
 rollback;
 
