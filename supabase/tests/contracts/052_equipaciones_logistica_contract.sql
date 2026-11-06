@@ -76,6 +76,9 @@ begin
   insert into public.equipacion_asignaciones(necesidad_id,articulo_id,talla,cantidad,estado,origen) values(nid,aid,'3XS',1,'propuesta','manual')
     on conflict(necesidad_id,articulo_id,talla) do update set estado='propuesta',cantidad=1
     returning id into asid;
+  -- The selected need may belong to a populated synthetic scenario. Remove any prior
+  -- delivery only inside this transaction so the smoke remains repeatable; ROLLBACK restores it.
+  delete from public.equipacion_entregas where asignacion_id=asid;
   perform private.equipacion_reservar_asignacion(asid);
   if not exists(select 1 from public.equipacion_stock where temporada_id=tid and articulo_id=aid and talla='3XS' and cantidad_reservada=1) then raise exception '052 smoke failed: reserve'; end if;
   perform private.equipacion_confirmar_entrega(asid,null);

@@ -187,6 +187,68 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) value
 
 
 -- Scenario preflight: validate all key synthetic relationships before commit.
+-- Rich cases for the refined Equipaciones model (056-058).
+with p as (
+ select j.id jugador_id,j.persona_id,row_number() over(order by j.id) n
+ from public.jugadores j join private.test_dataset_entities de
+ on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+ order by j.id limit 6
+), t as (select id from public.temporadas where estado='activa' limit 1)
+insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado,validada_at)
+select private.test_uuid('equip:season-person:'||p.n),p.persona_id,t.id,'jugador',p.jugador_id,
+ case when p.n=6 then 'pendiente_validacion' else 'validada' end,
+ case when p.n=6 then null else now()-interval '10 days' end
+from p,t
+on conflict(temporada_id,faceta,jugador_id) do update set estado=excluded.estado,validada_at=excluded.validada_at;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_personas_temporada',id from public.equipacion_personas_temporada
+where id in (select private.test_uuid('equip:season-person:'||g) from generate_series(1,6) g)
+on conflict do nothing;
+
+update public.equipacion_necesidades n
+set persona_temporada_id=pt.id,confirmada_at=coalesce(n.confirmada_at,now()-interval '7 days')
+from public.equipacion_personas_temporada pt
+where pt.persona_id=n.persona_id and pt.temporada_id=n.temporada_id and pt.estado='validada'
+and n.id in (select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_necesidades');
+
+-- Three traceable stock lots: current, historical reusable, historical rejected.
+with t as (select id from public.temporadas where estado='activa' limit 1),
+a as (select id from public.equipacion_articulos where codigo='CAM-ENT' limit 1)
+insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+select private.test_uuid('equip:lot:current'),a.id,'3XS',t.id,'Patrick','CURRENT-3XS',5,1 from t,a
+on conflict(id) do update set cantidad_fisica=5,cantidad_reservada=1;
+
+with t as (select id from public.temporadas where estado='activa' limit 1),
+a as (select id from public.equipacion_articulos where codigo='CAM-ENT' limit 1)
+insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+select private.test_uuid('equip:lot:historic-valid'),a.id,'3XS',t.id,'Patrick','PREV-VALID',3,0 from t,a
+on conflict(id) do update set cantidad_fisica=3,cantidad_reservada=0;
+
+with t as (select id from public.temporadas where estado='activa' limit 1),
+a as (select id from public.equipacion_articulos where codigo='CAM-PAR' limit 1)
+insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+select private.test_uuid('equip:lot:historic-invalid'),a.id,'3XS',t.id,'Proveedor anterior','OLD-KIT',2,0 from t,a
+on conflict(id) do update set cantidad_fisica=2,cantidad_reservada=0;
+
+with t as (select id from public.temporadas where estado='activa' limit 1)
+insert into public.equipacion_stock_lote_vigencia(id,lote_id,temporada_id,estado,decidido_at,observaciones)
+values
+(private.test_uuid('equip:lot-validity:current'),private.test_uuid('equip:lot:current'),(select id from t),'valido',now(),'Stock actual'),
+(private.test_uuid('equip:lot-validity:historic-valid'),private.test_uuid('equip:lot:historic-valid'),(select id from t),'valido',now(),'Stock anterior reutilizable'),
+(private.test_uuid('equip:lot-validity:historic-invalid'),private.test_uuid('equip:lot:historic-invalid'),(select id from t),'no_valido',now(),'Equipación anterior incompatible')
+on conflict(lote_id,temporada_id) do update set estado=excluded.estado,decidido_at=excluded.decidido_at,observaciones=excluded.observaciones;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_stock_lotes',x from (values
+(private.test_uuid('equip:lot:current')),(private.test_uuid('equip:lot:historic-valid')),(private.test_uuid('equip:lot:historic-invalid'))) v(x)
+on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_stock_lote_vigencia',x from (values
+(private.test_uuid('equip:lot-validity:current')),(private.test_uuid('equip:lot-validity:historic-valid')),(private.test_uuid('equip:lot-validity:historic-invalid'))) v(x)
+on conflict do nothing;
+
+
 do $$
 declare
   v_missing integer;
