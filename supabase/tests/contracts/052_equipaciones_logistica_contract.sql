@@ -27,12 +27,46 @@ begin
   end if;
 end $$;
 
+-- Authorization smoke: the API must remain closed without an authenticated club/admin context.
+do $$
+declare sample_id uuid;
+begin
+  select id into sample_id from public.equipacion_asignaciones limit 1;
+  if sample_id is null then return; end if;
+  perform set_config('request.jwt.claim.sub','',true);
+  begin
+    perform private.equipacion_reservar_asignacion(sample_id);
+    raise exception '052 authorization smoke failed: unauthenticated reserve was allowed';
+  exception when others then
+    if sqlerrm='052 authorization smoke failed: unauthenticated reserve was allowed' then raise; end if;
+    if sqlerrm<>'Not authorized' then raise exception '052 authorization smoke failed: unexpected rejection: %',sqlerrm; end if;
+  end;
+end $$;
+
 -- Transactional smoke: stock -> reserve -> deliver, fully rolled back.
 begin;
 do $$
 declare
   tid uuid; aid uuid; nid uuid; asid uuid; sid uuid; before_count integer; after_count integer;
+  test_auth_uid uuid;
 begin
+  -- The production functions correctly authorize through auth.uid()+persona_roles.
+  -- psql contract runners have no JWT, so explicitly simulate an existing admin/club
+  -- identity only inside this transaction. No production permission is weakened.
+  select p.auth_user_id into test_auth_uid
+  from public.personas p
+  join public.persona_roles pr on pr.persona_id=p.id and pr.activo
+    and pr.fecha_desde<=current_date and (pr.fecha_hasta is null or pr.fecha_hasta>=current_date)
+  join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
+  where p.activo and p.auth_user_id is not null
+  order by (r.codigo='administrador') desc
+  limit 1;
+  if test_auth_uid is null then
+    raise exception '052 contract setup failed: no authenticated admin/club identity available for authorized smoke';
+  end if;
+  perform set_config('request.jwt.claim.sub',test_auth_uid::text,true);
+  perform set_config('request.jwt.claim.role','authenticated',true);
+
   select n.temporada_id,n.id into tid,nid from public.equipacion_necesidades n where n.estado<>'cancelada' limit 1;
   if nid is null then return; end if;
   select pa.articulo_id into aid from public.equipacion_necesidades n join public.equipacion_pack_articulos pa on pa.pack_id=n.pack_id where n.id=nid limit 1;
