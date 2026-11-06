@@ -55,6 +55,8 @@ declare
   playerid uuid;
   nid uuid := '05200000-0000-4000-8000-000000000001'::uuid;
   asid uuid := '05200000-0000-4000-8000-000000000002'::uuid;
+  ptid uuid := '05200000-0000-4000-8000-000000000003'::uuid;
+  sizeid uuid := '05200000-0000-4000-8000-000000000004'::uuid;
   test_auth_uid uuid;
 begin
   -- Simulate an existing authenticated administrator/club only inside this transaction.
@@ -91,15 +93,29 @@ begin
     raise exception '052 contract setup failed: pack has no article';
   end if;
 
-  -- Defensive cleanup is transaction-local and only targets contract-owned IDs.
+  -- Contract-owned prerequisites for the refined 056 flow.
   delete from public.equipacion_entregas where asignacion_id=asid;
   delete from public.equipacion_asignaciones where id=asid;
   delete from public.equipacion_necesidades where id=nid;
+  delete from public.equipacion_tallas_persona where id=sizeid;
+  delete from public.equipacion_personas_temporada where id=ptid;
+
+  insert into public.equipacion_personas_temporada
+    (id,persona_id,temporada_id,faceta,jugador_id,estado,validada_at)
+  values
+    (ptid,personid,tid,'jugador',playerid,'validada',now());
+
+  insert into public.equipacion_tallas_persona
+    (id,temporada_id,persona_id,talla_general,confirmada_at)
+  values
+    (sizeid,tid,personid,'3XS',now());
+
+  -- Defensive cleanup is transaction-local and only targets contract-owned IDs.
 
   insert into public.equipacion_necesidades
-    (id,temporada_id,persona_id,faceta,jugador_id,pack_id,modalidad,estado,comunicada_at)
+    (id,temporada_id,persona_id,faceta,jugador_id,pack_id,estado,comunicada_at,confirmada_at,persona_temporada_id)
   values
-    (nid,tid,personid,'jugador',playerid,packid,'pack_completo','confirmada',now());
+    (nid,tid,personid,'jugador',playerid,packid,'confirmada',now(),now(),ptid);
 
   insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica,cantidad_reservada)
   values(tid,aid,'3XS',2,0)
