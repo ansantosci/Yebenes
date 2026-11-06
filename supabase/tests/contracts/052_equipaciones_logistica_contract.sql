@@ -115,7 +115,7 @@ begin
   insert into public.equipacion_necesidades
     (id,temporada_id,persona_id,faceta,jugador_id,pack_id,estado,comunicada_at,confirmada_at,persona_temporada_id)
   values
-    (nid,tid,personid,'jugador',playerid,packid,'confirmada',now(),now(),ptid);
+    (nid,tid,personid,'jugador',playerid,packid,'comunicada',now(),now(),ptid);
 
   insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica,cantidad_reservada)
   values(tid,aid,'3XS',2,0)
