@@ -31,6 +31,20 @@ where exists (
 -- fails later, the transaction rollback restores the trigger state automatically.
 alter table public.equipacion_recepcion_lineas disable trigger equipacion_recepcion_lineas_no_delete;
 
+-- Trigger-generated stock movements are children of TEST-S logistics rows but may not
+-- have their own registry entry. Delete them transitively before the generic teardown.
+delete from public.equipacion_movimientos_stock m
+where (m.recepcion_linea_id is not null and exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S' and e.table_name='equipacion_recepcion_lineas'
+    and e.entity_id=m.recepcion_linea_id
+))
+or (m.asignacion_id is not null and exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S' and e.table_name='equipacion_asignaciones'
+    and e.entity_id=m.asignacion_id
+));
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
