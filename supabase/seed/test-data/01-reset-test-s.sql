@@ -25,6 +25,12 @@ where exists (
     and e.entity_id=d.persona_id
 );
 
+-- TEST-S reset is an administrative teardown, not a business deletion.
+-- Reception lines are immutable in normal operation; suspend only the DELETE guard
+-- inside this transaction so registered synthetic rows can be removed. If anything
+-- fails later, the transaction rollback restores the trigger state automatically.
+alter table public.equipacion_recepcion_lineas disable trigger equipacion_recepcion_lineas_no_delete;
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
@@ -45,6 +51,8 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+alter table public.equipacion_recepcion_lineas enable trigger equipacion_recepcion_lineas_no_delete;
+
 delete from private.test_dataset_entities where dataset_id='TEST-S';
 delete from private.test_datasets where id='TEST-S';
 commit;
