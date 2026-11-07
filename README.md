@@ -1,3 +1,10 @@
+### V95.3.12 — Equipaciones alineada con el patrón visual y el modelo operativo
+- **V95.3.12**: Equipaciones reutiliza el componente común `entity-tabs/entity-tab`, con la misma navegación, activo corporativo y scroll responsive que Personas y Entrenadores.
+- **V95.3.12**: `Equipación y tallas` separa validación de temporada, pendiente de tallas y necesidad confirmada; una persona no genera demanda hasta confirmar tallas/equipación.
+- **V95.3.12**: `Stock` muestra lotes con proveedor, origen y vigencia para distinguir stock actual, histórico reutilizable y no válido.
+- **V95.3.12**: `Reparto y entregas` se agrupa por persona/pack y muestra entregas completas o parciales por prenda, manteniendo dorsal como dato de partido y no como pestaña independiente.
+- **V95.3.12**: Resumen e indicadores adoptan la nueva semántica de personas por confirmar, demanda confirmada, packs parciales y stock histórico válido.
+
 ### V95.3.11 — Actualización frontend coherente y sin bucles
 - **V95.3.11**: Equipaciones carga `equipacion_articulos` como catálogo maestro activo, sin filtrar por `temporada_id` (columna inexistente); se mantienen los filtros de temporada en las tablas operativas.
 - **V95.3.11**: elimina Dorsales como pestaña independiente e integra el dorsal en Reparto y entregas; las asignaciones/entregas se cargan acotadas a las necesidades de la temporada activa.

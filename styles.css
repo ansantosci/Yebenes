@@ -954,12 +954,9 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 
 /* V95.3.5 - Equipaciones management foundation */
 .equipment-hero{background:linear-gradient(135deg,#07557f,#0b719f 62%,#06466f)}
-.equipment-tabs{display:flex;gap:7px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
-.equipment-tabs button{border:1px solid #dbe4ec;background:#fff;border-radius:999px;padding:9px 13px;font-weight:800;color:#385064;cursor:pointer}
-.equipment-tabs button.active{background:#07557f;color:#fff;border-color:#07557f}
 .equipment-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .equipment-number{display:inline-flex;min-width:42px;height:42px;border-radius:50%;align-items:center;justify-content:center;background:#07557f;color:#fff;font-weight:950;font-size:1.1rem}
-@media(max-width:900px){.equipment-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.equipment-tabs{overflow-x:auto;flex-wrap:nowrap;padding-bottom:10px}.equipment-tabs button{white-space:nowrap}}
+@media(max-width:900px){.equipment-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.equipment-tabs{overflow-x:auto;flex-wrap:nowrap}.equipment-tabs .entity-tab{flex:0 0 auto}}
 @media(max-width:560px){.equipment-summary-grid{grid-template-columns:1fr}}
 
 /* V95.3.5 - readable Equipaciones operational views */
@@ -973,3 +970,11 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 .equipment-load-state.error{border-color:#fecaca;background:#fff7f7}.equipment-load-state.error strong{color:#b42318}
 .equipment-spinner{width:24px;height:24px;border:3px solid #dbe7ee;border-top-color:#07557f;border-radius:50%;animation:equipmentSpin .8s linear infinite;flex:0 0 auto}
 @keyframes equipmentSpin{to{transform:rotate(360deg)}}
+
+/* V95.3.12: Equipaciones aligned with shared tabbed-screen language. */
+.equipment-workspace .equipment-tabs{position:relative;top:auto;background:transparent;margin-bottom:14px;border-bottom:1px solid #eef0f3;padding:4px 0 12px}
+.equipment-panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:2px 0 14px}.equipment-panel-head h2{margin:3px 0 2px}.equipment-panel-head p{margin:0}
+.equipment-secondary-block{margin-top:18px;padding-top:16px;border-top:1px solid #eef0f3}
+.equipment-delivery-list{display:grid;gap:14px}.equipment-delivery-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.equipment-delivery-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #eef0f3}.equipment-delivery-head>div:first-child{display:flex;flex-direction:column;gap:3px}.equipment-delivery-head span{color:#64748b;font-size:.86rem}.equipment-delivery-state .equipment-status{font-size:.8rem}.compact-table{border-radius:0;border:0}.compact-table table{margin:0}.compact-table th{background:#fafbfc}.equipment-number.small{min-width:32px;height:32px;font-size:.9rem}
+.equipment-status.complete{background:#e9f7ef;color:#17663a}.equipment-status.warning{background:#fff3cd;color:#8a5a00}.equipment-status.pending{background:#fff0f2;color:#a3122d}.equipment-status.info{background:#eaf4f8;color:#07557f}.equipment-status.muted{background:#eef0f3;color:#6b7280}
+@media(max-width:720px){.equipment-panel-head,.equipment-delivery-head{align-items:flex-start;flex-direction:column}.equipment-delivery-state{width:100%}.equipment-workspace .equipment-tabs{margin-left:0;margin-right:0}.equipment-delivery-card{border-radius:14px}}
