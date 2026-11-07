@@ -29,7 +29,7 @@ where exists (
 -- Reception lines are immutable in normal operation; suspend only the DELETE guard
 -- inside this transaction so registered synthetic rows can be removed. If anything
 -- fails later, the transaction rollback restores the trigger state automatically.
-alter table public.equipacion_recepcion_lineas disable trigger equipacion_recepcion_lineas_no_delete;
+select private.test_set_reception_delete_guard(false);
 
 -- Trigger-generated stock movements are children of TEST-S logistics rows but may not
 -- have their own registry entry. Delete them transitively before the generic teardown.
@@ -66,7 +66,7 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
-alter table public.equipacion_recepcion_lineas enable trigger equipacion_recepcion_lineas_no_delete;
+select private.test_set_reception_delete_guard(true);
 
 delete from private.test_dataset_entities where dataset_id='TEST-S';
 delete from private.test_datasets where id='TEST-S';
