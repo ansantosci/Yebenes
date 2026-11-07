@@ -36,6 +36,7 @@ DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
     'equipacion_stock_lote_vigencia','equipacion_stock_lotes',
+    'equipacion_movimientos_stock',
     'equipacion_entregas','equipacion_asignaciones','equipacion_recepcion_lineas','equipacion_recepciones',
     'equipacion_pedido_lineas','equipacion_pedidos','equipacion_dorsales','equipacion_necesidades',
     'equipacion_tallas_excepcion','equipacion_tallas_persona','equipacion_personas_temporada',
