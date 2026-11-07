@@ -235,23 +235,48 @@ where pt.persona_id=n.persona_id and pt.temporada_id=n.temporada_id and pt.estad
 and n.id in (select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_necesidades');
 
 -- Three traceable stock lots: current, historical reusable, historical rejected.
+-- Fail close if the synthetic article master changed unexpectedly.
+do $$
+begin
+  if not exists(select 1 from public.equipacion_articulos where codigo='TEST-EQ-CAM-ENT') then
+    raise exception 'EQUIPACIONES fixture: TEST-EQ-CAM-ENT article missing';
+  end if;
+  if not exists(select 1 from public.equipacion_articulos where codigo='TEST-EQ-CAM-PAR') then
+    raise exception 'EQUIPACIONES fixture: TEST-EQ-CAM-PAR article missing';
+  end if;
+end $$;
+
 with t as (select id from public.temporadas where estado='activa' limit 1),
-a as (select id from public.equipacion_articulos where codigo='CAM-ENT' limit 1)
+a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-ENT' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
 select private.test_uuid('equip:lot:current'),a.id,'3XS',t.id,'Patrick','CURRENT-3XS',5,1 from t,a
 on conflict(id) do update set cantidad_fisica=5,cantidad_reservada=1;
 
 with t as (select id from public.temporadas where estado='activa' limit 1),
-a as (select id from public.equipacion_articulos where codigo='CAM-ENT' limit 1)
+a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-ENT' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
 select private.test_uuid('equip:lot:historic-valid'),a.id,'3XS',t.id,'Patrick','PREV-VALID',3,0 from t,a
 on conflict(id) do update set cantidad_fisica=3,cantidad_reservada=0;
 
 with t as (select id from public.temporadas where estado='activa' limit 1),
-a as (select id from public.equipacion_articulos where codigo='CAM-PAR' limit 1)
+a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-PAR' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
 select private.test_uuid('equip:lot:historic-invalid'),a.id,'3XS',t.id,'Proveedor anterior','OLD-KIT',2,0 from t,a
 on conflict(id) do update set cantidad_fisica=2,cantidad_reservada=0;
+
+do $$
+declare n integer;
+begin
+  select count(*) into n from public.equipacion_stock_lotes
+  where id in (
+    private.test_uuid('equip:lot:current'),
+    private.test_uuid('equip:lot:historic-valid'),
+    private.test_uuid('equip:lot:historic-invalid')
+  );
+  if n<>3 then
+    raise exception 'EQUIPACIONES fixture: expected 3 traceable stock lots, found %',n;
+  end if;
+end $$;
 
 with t as (select id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_stock_lote_vigencia(id,lote_id,temporada_id,estado,decidido_at,observaciones)
