@@ -296,6 +296,81 @@ select 'TEST-S','equipacion_stock_lote_vigencia',x from (values
 on conflict do nothing;
 
 
+-- Functional state matrix for UI validation.
+-- Person 5: club validated, sizing still pending => no logistical need should be created.
+update public.equipacion_personas_temporada
+set estado='validada',validada_at=coalesce(validada_at,now()-interval '2 days')
+where id=private.test_uuid('equip:season-person:5');
+
+delete from public.equipacion_necesidades
+where persona_id=(select persona_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:5'))
+  and temporada_id=(select temporada_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:5'));
+
+delete from public.equipacion_tallas_persona
+where persona_id=(select persona_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:5'))
+  and temporada_id=(select temporada_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:5'));
+
+-- Person 6 remains pending club validation and therefore has neither confirmed sizes nor need.
+delete from public.equipacion_necesidades
+where persona_id=(select persona_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:6'))
+  and temporada_id=(select temporada_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:6'));
+delete from public.equipacion_tallas_persona
+where persona_id=(select persona_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:6'))
+  and temporada_id=(select temporada_id from public.equipacion_personas_temporada where id=private.test_uuid('equip:season-person:6'));
+
+-- Mark one confirmed player as reusing training equipment; match shirt remains required.
+update public.equipacion_necesidades
+set reutiliza_entrenamiento=true,tipo_partido='campo'
+where persona_temporada_id=private.test_uuid('equip:season-person:2');
+
+-- Preserve an explicit per-garment size exception for a confirmed player.
+with target as (
+ select persona_id,temporada_id from public.equipacion_personas_temporada
+ where id=private.test_uuid('equip:season-person:3')
+), art as (
+ select id from public.equipacion_articulos where codigo='TEST-EQ-PAN-ENT'
+)
+insert into public.equipacion_tallas_excepcion(id,talla_persona_id,articulo_id,talla)
+select private.test_uuid('equip:size-exception:matrix'),
+       tp.id,art.id,'2XS'
+from target t
+join public.equipacion_tallas_persona tp on tp.persona_id=t.persona_id and tp.temporada_id=t.temporada_id
+cross join art
+on conflict(talla_persona_id,articulo_id) do update set talla=excluded.talla;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','equipacion_tallas_excepcion',private.test_uuid('equip:size-exception:matrix'))
+on conflict do nothing;
+
+-- Assertions for the lifecycle matrix.
+do $$
+declare
+  pending_sizes integer;
+  pending_validation integer;
+  bad_needs integer;
+begin
+ select count(*) into pending_sizes
+ from public.equipacion_personas_temporada pt
+ where pt.id=private.test_uuid('equip:season-person:5') and pt.estado='validada'
+   and not exists(select 1 from public.equipacion_tallas_persona tp
+                  where tp.persona_id=pt.persona_id and tp.temporada_id=pt.temporada_id and tp.confirmada_at is not null);
+ if pending_sizes<>1 then raise exception 'EQUIPACIONES fixture: validated/pending-size case missing'; end if;
+
+ select count(*) into pending_validation
+ from public.equipacion_personas_temporada
+ where id=private.test_uuid('equip:season-person:6') and estado='pendiente_validacion';
+ if pending_validation<>1 then raise exception 'EQUIPACIONES fixture: pending-validation case missing'; end if;
+
+ select count(*) into bad_needs
+ from public.equipacion_necesidades n
+ where n.persona_id in (
+   select persona_id from public.equipacion_personas_temporada
+   where id in (private.test_uuid('equip:season-person:5'),private.test_uuid('equip:season-person:6'))
+ );
+ if bad_needs<>0 then raise exception 'EQUIPACIONES fixture: pending lifecycle cases must not create needs'; end if;
+end $$;
+
+
 do $$
 declare
   v_missing integer;
