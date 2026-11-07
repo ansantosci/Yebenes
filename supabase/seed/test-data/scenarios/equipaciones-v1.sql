@@ -441,7 +441,15 @@ insert into public.equipacion_movimientos_stock(id,temporada_id,articulo_id,tall
 select private.test_uuid('equip:movement:partial:cam-ent'),temporada_id,private.test_uuid('equip:art:cam-ent'),talla,'entrega',-1,private.test_uuid('equip:assign:partial:cam-ent'),'TEST-PARTIAL','Entrega parcial pack' from target
 union all
 select private.test_uuid('equip:movement:partial:pan-ent'),temporada_id,private.test_uuid('equip:art:pan-ent'),talla,'entrega',-1,private.test_uuid('equip:assign:partial:pan-ent'),'TEST-PARTIAL','Entrega parcial pack' from target
-on conflict(asignacion_id) where asignacion_id is not null do nothing;
+on conflict(id) do update
+set temporada_id=excluded.temporada_id,
+    articulo_id=excluded.articulo_id,
+    talla=excluded.talla,
+    tipo=excluded.tipo,
+    cantidad=excluded.cantidad,
+    asignacion_id=excluded.asignacion_id,
+    referencia=excluded.referencia,
+    observaciones=excluded.observaciones;
 
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 values
