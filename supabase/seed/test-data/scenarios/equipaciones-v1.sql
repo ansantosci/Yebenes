@@ -206,6 +206,28 @@ select 'TEST-S','equipacion_personas_temporada',id from public.equipacion_person
 where id in (select private.test_uuid('equip:season-person:'||g) from generate_series(1,6) g)
 on conflict do nothing;
 
+-- Confirm sizes only for club-validated people. This is deliberately before
+-- persona_temporada_id/confirmada_at is attached to needs, because 056 enforces that order.
+with validated as (
+  select pt.persona_id,pt.temporada_id,row_number() over(order by pt.persona_id) n
+  from public.equipacion_personas_temporada pt
+  where pt.id in (select private.test_uuid('equip:season-person:'||g) from generate_series(1,5) g)
+    and pt.estado='validada'
+)
+insert into public.equipacion_tallas_persona(id,temporada_id,persona_id,talla_general,confirmada_at)
+select private.test_uuid('equip:confirmed-size:'||n),temporada_id,persona_id,
+       case when n=1 then '3XS' when n=2 then '2XS' when n=3 then 'XS' when n=4 then 'S' else 'M' end,
+       now()-interval '8 days'
+from validated
+on conflict(temporada_id,persona_id) do update
+set talla_general=excluded.talla_general,confirmada_at=excluded.confirmada_at;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_tallas_persona',id
+from public.equipacion_tallas_persona
+where id in (select private.test_uuid('equip:confirmed-size:'||g) from generate_series(1,5) g)
+on conflict do nothing;
+
 update public.equipacion_necesidades n
 set persona_temporada_id=pt.id,confirmada_at=coalesce(n.confirmada_at,now()-interval '7 days')
 from public.equipacion_personas_temporada pt
