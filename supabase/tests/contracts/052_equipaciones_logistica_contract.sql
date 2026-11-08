@@ -47,7 +47,9 @@ end $$;
 begin;
 do $$
 declare
-  tid uuid; aid uuid; packid uuid;
+  tid uuid := '05200000-0000-4000-8000-000000000001'::uuid;
+  aid uuid := '05200000-0000-4000-8000-000000000002'::uuid;
+  packid uuid := '05200000-0000-4000-8000-000000000003'::uuid;
   personid uuid := '05200000-0000-4000-8000-000000000010'::uuid;
   playerid uuid := '05200000-0000-4000-8000-000000000011'::uuid;
   ptid uuid := '05200000-0000-4000-8000-000000000012'::uuid;
@@ -67,14 +69,16 @@ begin
   perform set_config('request.jwt.claim.sub',test_auth_uid::text,true);
   perform set_config('request.jwt.claim.role','authenticated',true);
 
-  select id into tid from public.temporadas where estado='activa' order by created_at desc nulls last limit 1;
-  select p.id,p.pack_id,pa.articulo_id into nid,packid,aid
-  from public.equipacion_necesidades p
-  join public.equipacion_pack_articulos pa on pa.pack_id=p.pack_id
-  where p.pack_id is not null limit 1;
-  if tid is null or packid is null or aid is null then raise exception '052 contract setup failed: season/pack/article context missing'; end if;
-  -- nid above is context only; reset to the contract-owned need id.
-  nid := '05200000-0000-4000-8000-000000000014'::uuid;
+  -- Contract-owned logistics context. Do not depend on TEST-S/DEMO-S contents.
+  -- Use planificacion because the schema permits only one active season.
+  insert into public.temporadas(id,nombre,anio_inicio,anio_fin,fecha_inicio,fecha_fin,estado)
+  values(tid,'Contrato 052 2098/2099',2098,2099,date '2098-07-01',date '2099-06-30','planificacion');
+  insert into public.equipacion_articulos(id,nombre,codigo,tipo_prenda,ambito,variante,usa_talla,activo)
+  values(aid,'Articulo contrato 052','CONTRACT-052','camiseta','jugador','general',true,true);
+  insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
+  values(packid,tid,'CONTRACT-052','Pack contrato 052','jugador','entrenamiento',0,true);
+  insert into public.equipacion_pack_articulos(pack_id,articulo_id,cantidad,obligatorio,orden)
+  values(packid,aid,1,true,1);
 
   insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,email_contacto,telefono,activo)
   values(personid,'Contrato 052','Logistica',date '1990-01-01','contract052@test.invalid','699052052',true);
