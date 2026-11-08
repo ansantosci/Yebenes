@@ -654,3 +654,327 @@ body:has(#authScreen:not(.hidden)) .auth-screen{display:flex;flex-direction:colu
   .topbar .icon-button{width:36px;height:36px;min-width:36px;padding:0;border-radius:9px;background:rgba(255,255,255,.11);font-size:1rem}
   .topbar-skyline .madrid-identity-art{width:min(44vw,168px)}
 }
+
+
+/* V95.3.5 - responsive management sidebar */
+.sidebar-menu-button{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.14);color:#fff;width:42px;height:42px;border-radius:11px;font-size:1.35rem;font-weight:900;cursor:pointer;flex:0 0 42px;margin-left:10px}
+.club-sidebar{position:fixed!important;z-index:60!important;left:0!important;top:0!important;bottom:0!important;width:min(330px,88vw)!important;background:#fff!important;box-shadow:12px 0 35px rgba(15,23,42,.22)!important;padding:16px 12px calc(16px + env(safe-area-inset-bottom))!important;overflow:auto!important}
+.club-sidebar.hidden{display:none!important}.club-sidebar:not(.hidden){display:block!important}
+.club-sidebar-backdrop{position:fixed;inset:0;z-index:55;background:rgba(15,23,42,.42);backdrop-filter:blur(2px)}.club-sidebar-backdrop.hidden{display:none!important}
+.club-sidebar-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 6px 14px;border-bottom:1px solid #e5e7eb;margin-bottom:8px}.club-sidebar-head strong{display:block;font-size:1.15rem}.club-sidebar-actions{display:flex;gap:6px}.sidebar-pin{display:none}.sidebar-pin.active{background:#eef7ff}
+#clubSidebar #clubNav{position:static!important;display:grid!important;grid-template-columns:1fr!important;inset:auto!important;width:100%!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;gap:4px!important}
+#clubSidebar #clubNav .nav-item{position:static!important;width:100%!important;display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;gap:12px!important;border:0!important;border-radius:11px!important;background:transparent!important;padding:11px 12px!important;color:#334155!important;font-size:.92rem!important;height:auto!important}
+#clubSidebar #clubNav .nav-item span{font-size:1.15rem!important;width:24px;text-align:center}#clubSidebar #clubNav .nav-item:hover{background:#f1f5f9!important}#clubSidebar #clubNav .nav-item.active{background:#fff1f3!important;color:var(--red)!important;font-weight:850!important}
+@media(min-width:1100px){.sidebar-pin{display:inline-flex}.club-sidebar{width:286px!important}.club-sidebar-pinned #appShell main{margin-left:286px}.club-sidebar-pinned .global-sponsors-footer{left:286px}.club-sidebar-pinned .sidebar-menu-button{display:none!important}}
+@media(max-width:1099px){#sidebarPinButton{display:none!important}}
+
+
+/* V95.3.5 - pulido definitivo de navegación lateral y cabecera de gestión */
+/* Escritorio: menu, escudo, identidad, Madrid y acciones comparten una sola fila. */
+@media(min-width:901px){
+  .topbar{grid-template-columns:42px 72px minmax(0,1fr) minmax(180px,340px) 38px 38px;gap:12px}
+  .topbar .sidebar-menu-button{grid-column:1;grid-row:1;margin:0;align-self:center;justify-self:center}
+  .topbar .brand-mark{grid-column:2;grid-row:1;width:72px;height:72px;flex-basis:72px}
+  .topbar .brand-copy{grid-column:3;grid-row:1}
+  .topbar-skyline{grid-column:4;grid-row:1}
+  .topbar .role-switch-button{grid-column:5;grid-row:1}
+  .topbar>#logoutButton{grid-column:6;grid-row:1}
+}
+/* Tablet/movil: mantiene el boton junto al escudo sin robar una fila adicional. */
+@media(max-width:900px){
+  .topbar{grid-template-columns:42px 52px minmax(0,1fr) 38px 38px;gap:8px}
+  .topbar .sidebar-menu-button{grid-column:1;grid-row:1;margin:0;align-self:center;justify-self:center}
+  .topbar .brand-mark{grid-column:2;grid-row:1;width:52px;height:52px;flex-basis:52px}
+  .topbar .brand-copy{grid-column:3;grid-row:1}
+  .topbar .role-switch-button{grid-column:4;grid-row:1}
+  .topbar>#logoutButton{grid-column:5;grid-row:1}
+  .topbar-skyline{grid-column:1/-1;grid-row:2}
+}
+@media(max-width:640px){
+  .topbar{grid-template-columns:40px 50px minmax(0,1fr) 36px 36px;gap:6px}
+  .topbar .brand-mark{width:50px;height:50px;flex-basis:50px}
+  .topbar .sidebar-menu-button{width:40px;height:40px;font-size:1.25rem}
+}
+/* El menu de gestion es siempre una lista vertical; nunca hereda el carrusel inferior. */
+#clubSidebar .sidebar-club-nav{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;overflow-x:hidden!important;overflow-y:visible!important;white-space:normal!important;scrollbar-width:auto!important}
+#clubSidebar .sidebar-club-nav .nav-item{display:grid!important;grid-template-columns:28px minmax(0,1fr)!important;grid-auto-flow:row!important;white-space:normal!important;overflow:visible!important;flex:0 0 auto!important}
+#clubSidebar .sidebar-club-nav .nav-item span{grid-column:1!important;width:28px!important}
+
+
+/* V95.3.5 - definitive vertical management drawer */
+html body #clubSidebar {
+  overflow-x: hidden !important;
+}
+html body #clubSidebar #clubNav.sidebar-club-nav,
+html body #clubSidebar nav#clubNav {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  overflow: visible !important;
+  overflow-x: hidden !important;
+  white-space: normal !important;
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+}
+html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item,
+html body #clubSidebar nav#clubNav > button.nav-item {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 11px 12px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+}
+html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
+  flex: 0 0 26px !important;
+}
+
+
+/* V95.3.5 - drawer close/unpin polish */
+.club-sidebar-head > div:first-child > strong {
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+@media(min-width:1100px){
+  body:not(.club-sidebar-pinned) .sidebar-menu-button:not(.hidden){
+    display:inline-flex!important;
+    align-items:center;
+    justify-content:center;
+  }
+}
+
+/* V95.3.5 - club-branded navigation polish */
+.club-sidebar{border-right:3px solid #e5b91e!important}
+.club-sidebar-head{margin:-16px -12px 10px!important;padding:16px 14px 14px!important;min-height:74px;background:linear-gradient(135deg,#06466f,#0b6f9f)!important;border-bottom:3px solid #e5b91e!important;color:#fff!important}
+.club-sidebar-title{display:flex;flex-direction:column;justify-content:center}.club-sidebar-kicker{font-size:.66rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase;color:#f3cf42;margin-bottom:4px}.club-sidebar-head strong{font-size:1.14rem!important;color:#fff}
+.club-sidebar-actions{align-items:center}.club-sidebar-actions .icon-button{width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.25)!important;background:rgba(255,255,255,.12)!important;color:#fff!important;border-radius:10px!important}
+#sidebarPinButton.active{background:#e3062c!important;border-color:#e3062c!important}
+#clubSidebar #clubNav .nav-item{min-height:46px!important;border-left:3px solid transparent!important;transition:.16s ease!important}#clubSidebar #clubNav .nav-item:hover{background:#eef6fa!important;border-left-color:#e5b91e!important}#clubSidebar #clubNav .nav-item.active{background:#fff0f3!important;color:#c90028!important;border-left-color:#e3062c!important}
+#clubSidebar .nav-icon{width:27px!important;height:27px!important;display:inline-flex!important;align-items:center;justify-content:center!important;flex:0 0 27px!important;color:#07557f}#clubSidebar .nav-item.active .nav-icon{color:#d5002b}#clubSidebar .nav-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media(min-width:1100px){.topbar .brand-mark img{width:84px!important;height:84px!important;max-width:84px!important;object-fit:contain}.topbar,main,.global-sponsors-footer{transition:.2s ease}body.club-sidebar-open .topbar{padding-left:304px!important}body.club-sidebar-open #appShell main{margin-left:286px!important}body.club-sidebar-open .global-sponsors-footer{left:286px!important}body.club-sidebar-open #clubSidebarBackdrop{display:none!important}}
+
+/* V95.3.5 - floating rounded desktop drawer */
+@media(min-width:1100px){
+ .club-sidebar{top:12px!important;left:12px!important;bottom:12px!important;width:286px!important;border:1px solid rgba(229,185,30,.9)!important;border-radius:18px!important;overflow:hidden auto!important;box-shadow:0 16px 42px rgba(15,43,64,.22)!important}
+ .club-sidebar-head{border-radius:17px 17px 0 0!important}
+ .sidebar-menu-button.drawer-visible{display:none!important}
+ body.club-sidebar-open .topbar{padding-left:316px!important}
+ body.club-sidebar-open #appShell main{margin-left:298px!important}
+ body.club-sidebar-open .global-sponsors-footer{left:298px!important}
+}
+@media(max-width:1099px){.club-sidebar{top:0!important;left:0!important;bottom:0!important;border-radius:0 18px 18px 0!important}}
+
+
+/* V95.3.5 - final rounded drawer clipping and hamburger state */
+@media(min-width:1100px){
+  .club-sidebar{
+    top:16px!important;
+    left:12px!important;
+    bottom:16px!important;
+    border:2px solid #e5b91e!important;
+    border-radius:20px!important;
+    overflow:hidden!important;
+    clip-path:inset(0 round 20px)!important;
+    box-shadow:0 16px 42px rgba(15,43,64,.24)!important;
+  }
+  .club-sidebar-head{
+    margin:0!important;
+    padding:14px 12px!important;
+    border-radius:18px 18px 0 0!important;
+    flex:0 0 auto!important;
+  }
+  #clubSidebar #clubNav{
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    max-height:calc(100vh - 118px)!important;
+    padding:0 10px 14px!important;
+    box-sizing:border-box!important;
+  }
+  body.club-sidebar-open .sidebar-menu-button{
+    display:none!important;
+  }
+  body.club-sidebar-open .topbar{padding-left:316px!important}
+  body.club-sidebar-open #appShell main{margin-left:298px!important}
+  body.club-sidebar-open .global-sponsors-footer{left:298px!important}
+}
+
+
+/* V95.3.5 - safe structural drawer shell; authentication/runtime untouched */
+@media(min-width:1100px){
+  .club-sidebar{
+    top:16px!important;
+    left:12px!important;
+    bottom:16px!important;
+    width:286px!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:20px!important;
+    overflow:visible!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    clip-path:none!important;
+  }
+  .club-sidebar-shell{
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    box-sizing:border-box;
+    overflow:hidden;
+    background:#fff;
+    border:2px solid #e5b91e;
+    border-radius:20px;
+    box-shadow:0 16px 42px rgba(15,43,64,.24);
+  }
+  .club-sidebar-head{
+    margin:0!important;
+    border-radius:0!important;
+    flex:0 0 auto!important;
+  }
+  #clubSidebar #clubNav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:0 10px 14px!important;
+  }
+  body.club-sidebar-open .sidebar-menu-button{
+    display:none!important;
+  }
+}
+@media(max-width:1099px){
+  .club-sidebar{
+    padding:0!important;
+    background:transparent!important;
+    overflow:visible!important;
+  }
+  .club-sidebar-shell{
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    background:#fff;
+    border-radius:0 18px 18px 0;
+    box-shadow:12px 0 35px rgba(15,23,42,.22);
+  }
+  #clubSidebar #clubNav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+  }
+}
+
+
+/* V95.3.5 - visible floating drawer + wider adaptive desktop workspace */
+@media(min-width:1100px){
+  /* Leave unmistakable air around all four drawer corners. */
+  .club-sidebar{
+    top:28px!important;
+    left:12px!important;
+    bottom:18px!important;
+    width:286px!important;
+    padding:0!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:20px!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+    clip-path:none!important;
+  }
+  .club-sidebar-shell{
+    width:100%!important;
+    height:100%!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
+    background:#fff!important;
+    border:2px solid #e5b91e!important;
+    border-radius:20px!important;
+    box-shadow:0 16px 42px rgba(15,43,64,.24)!important;
+  }
+  .club-sidebar-head{
+    border-radius:18px 18px 0 0!important;
+  }
+
+  /* The workspace uses the available viewport instead of keeping the old narrow column. */
+  #appShell main{
+    width:min(1440px, calc(100vw - 48px))!important;
+    max-width:1440px!important;
+    box-sizing:border-box!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  body.club-sidebar-open #appShell main,
+  body.club-sidebar-pinned #appShell main{
+    width:min(1440px, calc(100vw - 334px))!important;
+    max-width:1440px!important;
+    margin-left:310px!important;
+    margin-right:auto!important;
+  }
+
+  /* Main page-level panels can actually consume the wider workspace. */
+  #appShell main > section,
+  #appShell main .view,
+  #appShell main .screen{
+    max-width:100%!important;
+  }
+
+  body.club-sidebar-open .topbar,
+  body.club-sidebar-pinned .topbar{
+    padding-left:316px!important;
+  }
+  body.club-sidebar-open .global-sponsors-footer,
+  body.club-sidebar-pinned .global-sponsors-footer{
+    left:298px!important;
+  }
+}
+@media(min-width:1600px){
+  #appShell main{max-width:1480px!important}
+  body.club-sidebar-open #appShell main,
+  body.club-sidebar-pinned #appShell main{max-width:1480px!important}
+}
+
+/* V95.3.5 - Equipaciones management foundation */
+.equipment-hero{background:linear-gradient(135deg,#07557f,#0b719f 62%,#06466f)}
+.equipment-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.equipment-number{display:inline-flex;min-width:42px;height:42px;border-radius:50%;align-items:center;justify-content:center;background:#07557f;color:#fff;font-weight:950;font-size:1.1rem}
+@media(max-width:900px){.equipment-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.equipment-tabs{overflow-x:auto;flex-wrap:nowrap}.equipment-tabs .entity-tab{flex:0 0 auto}}
+@media(max-width:560px){.equipment-summary-grid{grid-template-columns:1fr}}
+
+/* V95.3.5 - readable Equipaciones operational views */
+.equipment-toolbar{display:flex;justify-content:space-between;align-items:end;margin:4px 0 12px}.equipment-toolbar>div{display:flex;flex-direction:column;gap:2px}.equipment-toolbar span{font-size:.82rem;color:#64748b}
+.size-chip,.equipment-status{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:.78rem;font-weight:850;background:#eaf4f8;color:#07557f}
+.size-chip.pending{background:#fff3cd;color:#8a5a00}.equipment-status{background:#eef2f7;color:#334155}
+
+/* V95.3.5 - deterministic Equipaciones loading states */
+.equipment-load-state{min-height:82px;display:flex;align-items:center;gap:14px;padding:18px 20px;background:#fff;border:1px solid #e2e8f0;border-radius:16px}
+.equipment-load-state strong{display:block;margin-bottom:4px}.equipment-load-state p{margin:0;color:#64748b}
+.equipment-load-state.error{border-color:#fecaca;background:#fff7f7}.equipment-load-state.error strong{color:#b42318}
+.equipment-spinner{width:24px;height:24px;border:3px solid #dbe7ee;border-top-color:#07557f;border-radius:50%;animation:equipmentSpin .8s linear infinite;flex:0 0 auto}
+@keyframes equipmentSpin{to{transform:rotate(360deg)}}
+
+/* V95.3.12: Equipaciones aligned with shared tabbed-screen language. */
+.equipment-workspace .equipment-tabs{position:relative;top:auto;background:transparent;margin-bottom:14px;border-bottom:1px solid #eef0f3;padding:4px 0 12px}
+.equipment-panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:2px 0 14px}.equipment-panel-head h2{margin:3px 0 2px}.equipment-panel-head p{margin:0}
+.equipment-secondary-block{margin-top:18px;padding-top:16px;border-top:1px solid #eef0f3}
+.equipment-delivery-list{display:grid;gap:14px}.equipment-delivery-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.equipment-delivery-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #eef0f3}.equipment-delivery-head>div:first-child{display:flex;flex-direction:column;gap:3px}.equipment-delivery-head span{color:#64748b;font-size:.86rem}.equipment-delivery-state .equipment-status{font-size:.8rem}.compact-table{border-radius:0;border:0}.compact-table table{margin:0}.compact-table th{background:#fafbfc}.equipment-number.small{min-width:32px;height:32px;font-size:.9rem}
+.equipment-status.complete{background:#e9f7ef;color:#17663a}.equipment-status.warning{background:#fff3cd;color:#8a5a00}.equipment-status.pending{background:#fff0f2;color:#a3122d}.equipment-status.info{background:#eaf4f8;color:#07557f}.equipment-status.muted{background:#eef0f3;color:#6b7280}
+@media(max-width:720px){.equipment-panel-head,.equipment-delivery-head{align-items:flex-start;flex-direction:column}.equipment-delivery-state{width:100%}.equipment-workspace .equipment-tabs{margin-left:0;margin-right:0}.equipment-delivery-card{border-radius:14px}}

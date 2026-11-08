@@ -6,10 +6,10 @@ on:
         description: Promotion operation
         required: true
         type: choice
-        options: [DRY_RUN, DEVELOP_TO_TEST, TEST_TO_DEMO]
+        options: [DRY_RUN, DEVELOP_PREVIEW, DEVELOP_BACKEND_PREVIEW, DEVELOP_TO_TEST, TEST_TO_DEMO]
         default: DRY_RUN
       confirmation:
-        description: DEVELOP_TO_TEST requires PROMOTE_TO_TEST; TEST_TO_DEMO requires PROMOTE_TO_DEMO.
+        description: DEVELOP_PREVIEW publishes develop only; DEVELOP_BACKEND_PREVIEW requires DEPLOY_DEVELOP_BACKEND and applies develop backend to TEST without Git promotion; DEVELOP_TO_TEST requires PROMOTE_TO_TEST; TEST_TO_DEMO requires PROMOTE_TO_DEMO.
         required: false
         type: string
 
@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           case '${{ inputs.mode }}' in
-            DEVELOP_TO_TEST) echo "ref=develop" >> "$GITHUB_OUTPUT" ;;
+            DEVELOP_PREVIEW|DEVELOP_BACKEND_PREVIEW|DEVELOP_TO_TEST) echo "ref=develop" >> "$GITHUB_OUTPUT" ;;
             TEST_TO_DEMO) echo "ref=test" >> "$GITHUB_OUTPUT" ;;
             *) echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT" ;;
           esac
@@ -66,6 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           case '${{ inputs.mode }}' in
+            DEVELOP_PREVIEW) source=origin/develop; dest=origin/develop; target=DEVELOP; destination_ref=develop ;;
+            DEVELOP_BACKEND_PREVIEW) source=origin/develop; dest=origin/test; target=TEST; destination_ref=test ;;
             DEVELOP_TO_TEST) source=origin/develop; dest=origin/test; target=TEST; destination_ref=test ;;
             TEST_TO_DEMO) source=origin/test; dest=origin/main; target=DEMO; destination_ref=main ;;
             *) source=origin/develop; dest=origin/test; target=NONE; destination_ref=none ;;
@@ -73,6 +75,7 @@ jobs:
           frontend=0; edge=0
           if git diff --name-only "$dest" "$source" -- index.html app.js styles.css config.js sw.js version.json manifest.webmanifest assets/ | grep -q .; then frontend=1; fi
           if git diff --name-only "$dest" "$source" -- supabase/functions/ | grep -q .; then edge=1; fi
+          if [ '${{ inputs.mode }}' = 'DEVELOP_PREVIEW' ]; then frontend=1; fi
           echo "frontend_changed=$frontend" >> "$GITHUB_OUTPUT"
           echo "edge_changed=$edge" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
@@ -133,6 +136,62 @@ jobs:
           git fetch origin test main --prune
           git diff --exit-code origin/test origin/main
           echo '✅ Git promotion TEST → DEMO complete.' >> "$GITHUB_STEP_SUMMARY"
+
+  architecture_develop_preview:
+    name: Architecture guardrails (DEVELOP preview)
+    needs: analyze
+    if: ${{ inputs.mode == 'DEVELOP_PREVIEW' }}
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: develop
+
+  frontend_develop_preview:
+    name: Publish DEVELOP preview
+    needs: [analyze, architecture_develop_preview]
+    if: ${{ inputs.mode == 'DEVELOP_PREVIEW' }}
+    uses: ./.github/workflows/pages-multi-environment.yml
+    secrets: inherit
+
+  backend_preview_gate:
+    name: Confirm DEVELOP backend preview
+    needs: analyze
+    if: ${{ inputs.mode == 'DEVELOP_BACKEND_PREVIEW' }}
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Validate explicit backend confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRMATION" = "DEPLOY_DEVELOP_BACKEND" ] || { echo "::error::Type DEPLOY_DEVELOP_BACKEND to apply develop backend changes to TEST without Git promotion."; exit 2; }
+
+  architecture_develop_backend_preview:
+    name: Architecture guardrails (DEVELOP backend preview)
+    needs: [analyze, backend_preview_gate]
+    if: ${{ inputs.mode == 'DEVELOP_BACKEND_PREVIEW' }}
+    uses: ./.github/workflows/architecture-guardrails.yml
+    with:
+      source_ref: develop
+
+  migrations_develop_backend_preview:
+    name: Migrations and contracts (DEVELOP backend preview -> TEST)
+    needs: architecture_develop_backend_preview
+    if: ${{ inputs.mode == 'DEVELOP_BACKEND_PREVIEW' }}
+    uses: ./.github/workflows/supabase-migrations-deploy.yml
+    with:
+      source_ref: develop
+      target: TEST
+    secrets: inherit
+
+  edge_develop_backend_preview:
+    name: Edge Functions (DEVELOP backend preview -> TEST)
+    needs: [analyze, migrations_develop_backend_preview]
+    if: ${{ inputs.mode == 'DEVELOP_BACKEND_PREVIEW' && needs.analyze.outputs.edge_changed == '1' }}
+    uses: ./.github/workflows/supabase-test-edge-functions-deploy.yml
+    with:
+      source_ref: develop
+      target: TEST
+    secrets: inherit
 
   architecture_test:
     name: Architecture guardrails (TEST)
@@ -201,7 +260,7 @@ jobs:
 
   summary:
     name: Promotion summary
-    needs: [analyze, promote_test, promote_demo, architecture_test, migrations_test, edge_test, architecture_demo, migrations_demo, edge_demo, frontend]
+    needs: [analyze, frontend_develop_preview, backend_preview_gate, architecture_develop_backend_preview, migrations_develop_backend_preview, edge_develop_backend_preview, promote_test, promote_demo, architecture_test, migrations_test, edge_test, architecture_demo, migrations_demo, edge_demo, frontend]
     if: ${{ always() && inputs.mode != 'DRY_RUN' }}
     runs-on: ubuntu-26.04
     steps:
@@ -209,18 +268,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '## Promotion V2.5 summary' >> "$GITHUB_STEP_SUMMARY"
+          echo '## Promotion V2.5.2 summary' >> "$GITHUB_STEP_SUMMARY"
           echo '- Git promotion: handled by selected operation' >> "$GITHUB_STEP_SUMMARY"
           echo '- Migrations/contracts: always executed idempotently' >> "$GITHUB_STEP_SUMMARY"
           echo '- Edge Functions: conditional on source diff' >> "$GITHUB_STEP_SUMMARY"
           echo '- Frontend/Pages: conditional on frontend diff' >> "$GITHUB_STEP_SUMMARY"
-          if [ '${{ inputs.mode }}' = 'DEVELOP_TO_TEST' ]; then
+          if [ '${{ inputs.mode }}' = 'DEVELOP_PREVIEW' ]; then
+            [ '${{ needs.frontend_develop_preview.result }}' = success ]
+            echo '✅ DEVELOP frontend preview validated and published without promotion.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ '${{ inputs.mode }}' = 'DEVELOP_BACKEND_PREVIEW' ]; then
+            [ '${{ needs.backend_preview_gate.result }}' = success ]
+            [ '${{ needs.architecture_develop_backend_preview.result }}' = success ]
+            [ '${{ needs.migrations_develop_backend_preview.result }}' = success ]
+            echo '✅ DEVELOP backend preview applied to TEST backend without Git/frontend promotion.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ '${{ inputs.mode }}' = 'DEVELOP_TO_TEST' ]; then
             [ '${{ needs.promote_test.result }}' = success ]
             [ '${{ needs.architecture_test.result }}' = success ]
             [ '${{ needs.migrations_test.result }}' = success ]
+            echo '✅ Requested promotion and mandatory backend validation completed.' >> "$GITHUB_STEP_SUMMARY"
           else
             [ '${{ needs.promote_demo.result }}' = success ]
             [ '${{ needs.architecture_demo.result }}' = success ]
             [ '${{ needs.migrations_demo.result }}' = success ]
+            echo '✅ Requested promotion and mandatory backend validation completed.' >> "$GITHUB_STEP_SUMMARY"
           fi
-          echo '✅ Requested promotion and mandatory backend validation completed.' >> "$GITHUB_STEP_SUMMARY"
