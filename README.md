@@ -1,3 +1,134 @@
+### V95.3.12 — Equipaciones alineada con el patrón visual y el modelo operativo
+- **V95.3.12**: Equipaciones reutiliza el componente común `entity-tabs/entity-tab`, con la misma navegación, activo corporativo y scroll responsive que Personas y Entrenadores.
+- **V95.3.12**: `Equipación y tallas` separa validación de temporada, pendiente de tallas y necesidad confirmada; una persona no genera demanda hasta confirmar tallas/equipación.
+- **V95.3.12**: `Stock` muestra lotes con proveedor, origen y vigencia para distinguir stock actual, histórico reutilizable y no válido.
+- **V95.3.12**: `Reparto y entregas` se agrupa por persona/pack y muestra entregas completas o parciales por prenda, manteniendo dorsal como dato de partido y no como pestaña independiente.
+- **V95.3.12**: Resumen e indicadores adoptan la nueva semántica de personas por confirmar, demanda confirmada, packs parciales y stock histórico válido.
+
+### V95.3.11 — Actualización frontend coherente y sin bucles
+- **V95.3.11**: Equipaciones carga `equipacion_articulos` como catálogo maestro activo, sin filtrar por `temporada_id` (columna inexistente); se mantienen los filtros de temporada en las tablas operativas.
+- **V95.3.11**: elimina Dorsales como pestaña independiente e integra el dorsal en Reparto y entregas; las asignaciones/entregas se cargan acotadas a las necesidades de la temporada activa.
+- **V95.3.11**: la subpestaña de Equipaciones se persiste de forma independiente y se restaura tras actualización/recarga; listados de necesidades, stock, pedidos y dorsales usan orden estable.
+- **V95.3.11**: restaura automáticamente Equipaciones y su pestaña tras recarga/cambio de versión; Reparto y entregas muestra asignaciones y entregas reales del backend.
+- Corrige la publicación incompleta de V95.3.6: `version.json` avanzó, pero `APP_VERSION` e `index.html` seguían en V95.3.5.
+- Alinea `APP_VERSION`, `YEBENES_APP_VERSION`, recursos versionados de `index.html`, `sw.js` y `version.json` en V95.3.11.
+- Mantiene la corrección de Equipaciones de V95.3.6: uso del UUID real de la temporada activa de Supabase.
+- Refuerza `validate-frontend-version.sh` para bloquear futuras publicaciones con versiones internas incoherentes.
+
+# V95.2.15 — Navegación lateral responsive y preview automático de DEVELOP
+
+### V95.3.6 — Equipaciones usa la temporada activa real de Supabase
+- La carga del módulo **Equipaciones** deja de utilizar el identificador legacy `s-2026` y resuelve la temporada mediante `dbActiveSeason().id`.
+- Todas las consultas del módulo (Resumen, Necesidades y tallas, Stock, Pedidos, Reparto y entregas y Dorsales) reciben así el UUID real de `temporadas.id`.
+- Corrige el error `invalid input syntax for type uuid: "s-2026"` detectado al validar el escenario sintético EQUIPACIONES en DEVELOP.
+- No modifica el modelo de datos ni los workflows; es una corrección exclusivamente frontend.
+
+### V95.3.5 — Inicialización de Equipaciones desde la navegación
+- La carga de Equipaciones deja de depender de un listener secundario del botón del menú.
+- `setView('equipmentView')` inicia directamente `loadEquipmentData()`, de modo que cualquier entrada real a la pantalla dispara la consulta.
+- Se conserva el control de estados de V95.3.4: cargando, cargado, vacío, error y reintento.
+- El placeholder HTML deja de afirmar que existe una carga en curso antes de que JavaScript haya iniciado la consulta.
+- No se modifica backend ni el modelo de datos.
+
+
+### V95.3.4 — Carga determinista de Equipaciones
+- La entrada al módulo inicia siempre la consulta y renderiza automáticamente `Resumen` al completarse.
+- Se diferencian estados de carga, datos vacíos y error; el módulo ya no puede quedar indefinidamente mostrando `Cargando equipaciones…`.
+- Se añade límite defensivo de espera y acción `Reintentar` cuando la consulta falla.
+- Tras una carga correcta se restablece `Resumen` como pestaña activa y se actualizan automáticamente sus indicadores.
+- No se modifica el modelo de datos ni el backend.
+
+
+### V95.3.3 — Equipaciones: necesidades y datos legibles
+- La versión global se alinea por delante de las migraciones internas 95.3.0/95.3.1/95.3.2.
+- `Necesidades y tallas` pasa de placeholder a tabla real con persona, faceta, modalidad/pack, talla general, excepciones y estado.
+- Stock cruza artículos y compra sugerida para mostrar nombres y falta por comprar.
+- Dorsales resuelve equipo y jugador y mantiene el dorsal como elemento visual destacado.
+- Pedidos amplía la información operativa disponible sin asumir un único pedido activo.
+- No se modifica backend en esta iteración.
+
+
+### V95.3.0 — Equipaciones: primera interfaz de gestión
+- Se incorpora **Equipaciones** al menú exclusivamente para perfiles Administrador y Club.
+- Primera pantalla conectada al backend 051–053 con indicadores de necesidades, pendientes, stock disponible y compra sugerida.
+- Navegación interna preparada para Necesidades y tallas, Stock, Pedidos, Reparto/entregas y Dorsales.
+- Stock, pedidos y dorsales disponen de primeras vistas de lectura sobre datos reales.
+- La estética se mantiene provisionalmente sobre la línea actual mientras el club decide entre las propuestas visuales presentadas.
+- La ficha deportiva de jugador/entrenador queda planificada para reutilizar la fotografía documental existente en Supabase, con avatar genérico cuando no exista, y dorsal destacado tras su asignación/entrega.
+
+
+### V95.2.24 — Área de trabajo adaptable en escritorio
+- El drawer flotante deja un margen superior visible para que sus cuatro esquinas redondeadas se perciban claramente.
+- El área principal deja de conservar el ancho estrecho histórico y aprovecha el espacio horizontal disponible en monitores de escritorio.
+- Con el menú abierto o fijado, el contenido se recalcula sobre el ancho restante en lugar de dejar una gran zona vacía a la derecha.
+- Se mantienen límites máximos para evitar una expansión excesiva en pantallas ultrapanorámicas.
+- El cambio prepara una superficie de trabajo más adecuada para tablas, filtros y el futuro módulo de Equipaciones sin modificar el comportamiento de navegación validado en V95.2.23.
+
+
+### V95.2.23 — Navegación contextual del menú
+- Al entrar en una sección desde el menú principal, la vista se posiciona en la parte superior de la pantalla para mostrar su cabecera completa.
+- La paginación y los controles internos de los listados mantienen su comportamiento de scroll orientado al listado.
+- En escritorio, seleccionar una opción mantiene abierto el menú para facilitar navegación consecutiva entre módulos.
+- En móvil/tablet, seleccionar una opción sigue cerrando el drawer para recuperar el espacio de pantalla.
+- La chincheta continúa controlando la persistencia del menú abierto entre recargas.
+
+
+### V95.2.22 — Recuperación estable del drawer
+- Se parte de V95.2.20, última versión verificada con recuperación de sesión correcta.
+- La estructura redondeada del drawer se implementa únicamente mediante HTML/CSS.
+- `app.js` conserva intacta la lógica funcional de V95.2.20, salvo el identificador de versión; no se modifica autenticación, recuperación de sesión ni registro de eventos.
+- El contenedor interior controla fondo, borde, sombra y las cuatro esquinas; la lista de navegación controla su propio scroll.
+- V95.2.21 queda descartada por regresión durante la recuperación de sesión.
+
+
+### V95.2.20 — Cierre técnico del drawer
+- El panel de escritorio queda separado del borde superior y recortado como un rectángulo flotante con las cuatro esquinas redondeadas.
+- El scroll se limita al contenido de navegación para no interferir con el radio superior de la cabecera.
+- El botón `☰` queda oculto siempre que el drawer está abierto en escritorio y reaparece al cerrarlo.
+- Se mantienen sin cambios la iconografía, colores, escudo ampliado y realineación de cabecera/contenido/pie.
+
+
+### V95.2.19 — Cierre visual de la navegación
+- En escritorio el menú lateral se muestra como panel flotante separado de los bordes y con las cuatro esquinas redondeadas.
+- Se mantienen sombra, borde y colores de identidad del club.
+- El botón `☰` se oculta mientras el panel está abierto y reaparece al cerrarlo.
+- Cabecera, contenido y pie continúan realineándose para no quedar ocultos.
+- En móvil se mantiene el comportamiento overlay con las esquinas derechas redondeadas.
+
+
+### V95.2.18 — Pulido visual y realineación del menú
+- Cabecera del drawer rediseñada con identidad visual del club y controles centrados.
+- Iconos del menú sustituidos por SVG lineales coherentes.
+- Azul, rojo y amarillo del club aplicados a cabecera, selección y estados.
+- Escudo ampliado en escritorio.
+- En escritorio, abrir el drawer realinea cabecera, contenido y pie; en móvil continúa como overlay.
+
+
+### V95.2.17 — Cierre y fijación del menú lateral
+- La cabecera del drawer se simplifica a **Menú principal**.
+- Al cerrar con `✕` un menú fijado, se elimina primero la fijación y reaparece inmediatamente el botón `☰`.
+- Se conserva la persistencia al recargar cuando el usuario mantiene el menú fijado.
+- En móvil el cierre continúa funcionando sin opción de fijación.
+
+
+### V95.2.16 — Corrección definitiva del menú lateral
+- El menú de gestión se fuerza a disposición vertical, una opción por fila y a ancho completo.
+- Se elimina cualquier desplazamiento horizontal heredado de la antigua navegación inferior.
+- Se mantiene el drawer responsive, fijación en escritorio, persistencia y cabecera con escudo ampliado.
+- El cambio se valida primero mediante preview automático de DEVELOP antes de cualquier promoción a TEST.
+
+
+- Sustituye para los perfiles de gestión la antigua barra inferior por un menú lateral responsive accesible mediante `☰`; Familia/Jugador conservan su navegación contextual propia.
+- En escritorio el menú puede fijarse con `📌`; la preferencia queda guardada localmente en el navegador. En móvil/tablet funciona como drawer superpuesto y se cierra al navegar, tocar fuera, pulsar `✕` o `Esc`.
+- Aísla el menú de gestión de los estilos heredados de `bottom-nav`, garantizando una lista estrictamente vertical sin desplazamiento horizontal.
+- Integra `☰`, escudo, identidad del club, composición Madrid y acciones en la cabecera; aumenta el escudo autenticado para equilibrarlo visualmente con la identidad de Madrid.
+- Mantiene Equipaciones como futuro módulo de gestión exclusivo para Administrador/Club; familias, jugadores y entrenadores solo comunicarán sus tallas/necesidad desde sus contextos correspondientes.
+- Añade `DEVELOP_PREVIEW` al orquestador V2.5.2 para publicar DEVELOP sin promover a TEST ni DEMO.
+- Automatiza el preview de GitHub Pages ante `push` a `develop` cuando cambian archivos frontend (`index.html`, `app.js`, `styles.css`, `config.js`, `sw.js`, `version.json`, `manifest.webmanifest` o `assets/**`), con validación previa de versión y arquitectura.
+- Runtime CI/CD actualizado y validado con Node 24, `actions/checkout@v5`, Ubuntu 26.04 y Actions de Pages compatibles con Node 24.
+- Equipaciones backend queda desplegado y certificado en DEVELOP/TEST/DEMO mediante 051 (fundación), 052 (logística) y 053 (recepciones/stock y múltiples pedidos simultáneos).
+- TEST y DEMO continúan siendo promociones manuales controladas mediante `DEVELOP_TO_TEST` y `TEST_TO_DEMO`.
+
 # V95.2.13 — Contexto de ficha aislado por cuenta
 
 - Evita que una ficha seleccionada temporalmente se reutilice al entrar con otra cuenta o al cambiar de perfil Familia/Jugador.

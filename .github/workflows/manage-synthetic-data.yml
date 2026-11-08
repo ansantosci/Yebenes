@@ -18,7 +18,7 @@ on:
         description: TEST scenario (ignored for DEMO)
         required: true
         type: choice
-        options: [BASELINE, NOTIFICATIONS]
+        options: [BASELINE, NOTIFICATIONS, EQUIPACIONES]
         default: BASELINE
       demo_confirmation:
         description: For DEMO RESET, type MANAGE_DEMO_DATA

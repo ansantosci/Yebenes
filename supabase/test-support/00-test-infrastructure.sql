@@ -33,4 +33,25 @@ create or replace function private.test_uuid(p_key text) returns uuid language s
 $$;
 revoke all on function private.test_uuid(text) from public;
 
+-- TEST-only administrative helper. Reception lines are immutable during normal
+-- application use; synthetic dataset teardown may temporarily suspend only the
+-- DELETE guard while removing TEST-S rows. The reset runs inside one transaction.
+create or replace function private.test_set_reception_delete_guard(p_enabled boolean)
+returns void
+language plpgsql
+security definer
+set search_path = pg_catalog, public, private
+as $$
+begin
+  if p_enabled then
+    execute format('alter table %I.%I enable trigger %I',
+      'public','equipacion_recepcion_lineas','equipacion_recepcion_lineas_no_delete');
+  else
+    execute format('alter table %I.%I disable trigger %I',
+      'public','equipacion_recepcion_lineas','equipacion_recepcion_lineas_no_delete');
+  end if;
+end;
+$$;
+revoke all on function private.test_set_reception_delete_guard(boolean) from public, anon, authenticated;
+
 commit;

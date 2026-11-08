@@ -46,6 +46,20 @@ select persona_id,
 from private.test_access_identities
 on conflict(id) do update set email_contacto=excluded.email_contacto,telefono=excluded.telefono,activo=true;
 
+-- Repair any historical principal-document residue for permanent TEST-ACCESS Personas.
+-- Only the deterministic access document is allowed to remain principal/active.
+update public.documentos_identidad d
+set es_principal=false,
+    activo=false,
+    fecha_hasta=greatest(d.fecha_desde,coalesce(d.fecha_hasta,current_date))
+where d.es_principal=true
+  and d.activo=true
+  and exists (
+    select 1 from private.test_access_identities a
+    where a.persona_id=d.persona_id
+      and d.id<>private.test_uuid('access-document:'||a.persona_id::text)
+  );
+
 -- Every permanent functional TEST identity has a deterministic valid Spanish DNI.
 -- This prevents login profiles from being technically valid but unusable in real forms.
 with access_docs as (

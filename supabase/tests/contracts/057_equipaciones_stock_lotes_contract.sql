@@ -1,0 +1,1 @@
+begin; do $$ begin if to_regclass('public.equipacion_stock_lotes') is null or to_regclass('public.equipacion_stock_lote_vigencia') is null or to_regclass('public.equipacion_stock_lotes_disponibles') is null then raise exception '057 missing'; end if; end $$; rollback;
