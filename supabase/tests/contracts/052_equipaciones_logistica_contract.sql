@@ -56,6 +56,7 @@ declare
   sizeid uuid := '05200000-0000-4000-8000-000000000013'::uuid;
   nid uuid := '05200000-0000-4000-8000-000000000014'::uuid;
   asid uuid := '05200000-0000-4000-8000-000000000015'::uuid;
+  lotid uuid := '05200000-0000-4000-8000-000000000016'::uuid;
   test_auth_uid uuid;
 begin
   select p.auth_user_id into test_auth_uid
@@ -93,20 +94,26 @@ begin
     (id,temporada_id,persona_id,faceta,jugador_id,pack_id,estado,comunicada_at,confirmada_at,persona_temporada_id)
   values(nid,tid,personid,'jugador',playerid,packid,'comunicada',now(),now(),ptid);
 
-  insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica,cantidad_reservada)
-  values(tid,aid,'3XS',2,0)
-  on conflict(temporada_id,articulo_id,talla) do update
-  set cantidad_fisica=greatest(public.equipacion_stock.cantidad_fisica,2),cantidad_reservada=0;
+  -- Since 062, physical lot stock is authoritative. Keep the legacy aggregate as a compatibility projection.
+  insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+  values(lotid,aid,'3XS',tid,'CONTRACT-052-LOT',2,0);
+  insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at,observaciones)
+  values(lotid,tid,'valido',now(),'Contract 052');
+  perform private.equipacion_recalcular_stock_legacy(tid,aid,'3XS');
+
   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
   values(asid,nid,aid,'3XS',1,'propuesta','manual');
 
-  perform private.equipacion_reservar_asignacion(asid);
+  perform private.equipacion_reservar_asignacion_lote(asid,lotid,1);
   if not exists(select 1 from public.equipacion_asignaciones where id=asid and estado='reservada') then raise exception '052 smoke failed: reserve state'; end if;
-  if not exists(select 1 from public.equipacion_stock where temporada_id=tid and articulo_id=aid and talla='3XS' and cantidad_reservada=1) then raise exception '052 smoke failed: stock reservation'; end if;
+  if not exists(select 1 from public.equipacion_asignacion_lotes where asignacion_id=asid and lote_id=lotid and estado='reservada' and cantidad=1) then raise exception '052 smoke failed: lot reservation'; end if;
+  if not exists(select 1 from public.equipacion_stock_lotes where id=lotid and cantidad_fisica=2 and cantidad_reservada=1) then raise exception '052 smoke failed: physical lot reservation'; end if;
 
   perform private.equipacion_confirmar_entrega(asid,null);
   if not exists(select 1 from public.equipacion_asignaciones where id=asid and estado='entregada') then raise exception '052 smoke failed: delivery state'; end if;
   if (select count(*) from public.equipacion_entregas where asignacion_id=asid)<>1 then raise exception '052 smoke failed: expected one delivery'; end if;
+  if not exists(select 1 from public.equipacion_stock_lotes where id=lotid and cantidad_fisica=1 and cantidad_reservada=0) then raise exception '052 smoke failed: delivered lot stock'; end if;
+  if not exists(select 1 from public.equipacion_material_persona where asignacion_id=asid and lote_id=lotid and persona_id=personid) then raise exception '052 smoke failed: delivered material history'; end if;
 end $$;
 rollback;
 
