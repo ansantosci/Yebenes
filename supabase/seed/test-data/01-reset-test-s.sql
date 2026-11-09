@@ -94,7 +94,7 @@ DO $$ declare t text; begin
     'equipacion_packs','equipacion_config_temporada','equipacion_articulos',
     'notificaciones_salida','historico_citas_rrmm','citas_reconocimiento_medico','reconocimientos_medicos',
     'documentos_federativos','requisitos_federativos_inscripcion','pagos_inscripcion','situacion_economica_inscripcion',
-    'historico_participaciones_temporada','persona_participaciones_temporada','historico_estados_inscripcion','asignaciones_jugador_equipo','inscripciones','representaciones_jugador',
+    'historico_estados_temporada','historico_participaciones_temporada','persona_participaciones_temporada','historico_estados_inscripcion','asignaciones_jugador_equipo','inscripciones','representaciones_jugador',
 'entrenador_licencias_rffm','entrenador_formaciones','entrenador_disponibilidad',
     'entrenador_temporadas','asignaciones_entrenador_equipo','autorizaciones_menor',
     'entrenadores','jugadores','persona_roles','documentos_identidad','horarios_equipo','configuracion_economica_equipo','personas','temporadas'
