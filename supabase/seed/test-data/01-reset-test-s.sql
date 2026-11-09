@@ -57,6 +57,30 @@ where exists (
     and e.entity_id=s.articulo_id
 );
 
+-- 060 backfill can create participation rows for pre-existing TEST-S people before
+-- those participation IDs have ever been registered in test_dataset_entities.
+-- Remove participation history and participation rows transitively by TEST-S person
+-- before the generic registry-driven teardown.
+delete from public.historico_participaciones_temporada h
+where exists (
+  select 1
+  from public.persona_participaciones_temporada p
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S'
+   and e.table_name='personas'
+   and e.entity_id=p.persona_id
+  where p.id=h.participacion_id
+);
+
+delete from public.persona_participaciones_temporada p
+where exists (
+  select 1
+  from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='personas'
+    and e.entity_id=p.persona_id
+);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
