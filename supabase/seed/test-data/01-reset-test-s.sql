@@ -45,6 +45,18 @@ or (m.asignacion_id is not null and exists (
     and e.entity_id=m.asignacion_id
 ));
 
+-- Stock rows can predate registry hardening and still reference TEST-S articles.
+-- Remove them transitively before deleting registered articles, even when the stock row
+-- itself has no test_dataset_entities entry.
+delete from public.equipacion_stock s
+where exists (
+  select 1
+  from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='equipacion_articulos'
+    and e.entity_id=s.articulo_id
+);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
