@@ -82,11 +82,20 @@ begin
     raise exception '060 contract failed: tutor facet accepted';
   exception when check_violation then null; end;
 
+  -- A real Person without a player facet must be rejected by the facet guard.
+  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo)
+  values('06000000-0000-4000-8000-000000000099','Sin','Faceta 060',date '1990-01-01',true);
+
   begin
     insert into public.persona_participaciones_temporada(persona_id,temporada_id,faceta,origen,estado)
     values('06000000-0000-4000-8000-000000000099',tid,'jugador','administrativa','propuesta');
-    raise exception '060 contract failed: missing person/facet accepted';
-  exception when foreign_key_violation then null; end;
+    raise exception '060 contract failed: person without player facet accepted';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'Season participation facet jugador requires an existing player facet' then
+        raise;
+      end if;
+  end;
 end $$;
 rollback;
 
