@@ -362,11 +362,13 @@ on conflict do nothing;
 -- Carlos is an adult player/coach and Pablo is 14+ at the 2026-09-01 season reference date.
 insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo) values
 (private.test_uuid('doc:particip:carlos'),private.test_uuid('particip:carlos'),'dni','74000101Q','ES',true,date '2026-07-01',true),
-(private.test_uuid('doc:particip:pablo'),private.test_uuid('particip:pablo'),'dni','74000102V','ES',true,date '2026-07-01',true)
+(private.test_uuid('doc:particip:pablo'),private.test_uuid('particip:pablo'),'dni','74000102V','ES',true,date '2026-07-01',true),
+(private.test_uuid('doc:particip:lucia'),private.test_uuid('particip:lucia'),'dni','74000103H','ES',true,date '2026-07-01',true)
 on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_hasta=null,activo=true;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 values('TEST-S','documentos_identidad',private.test_uuid('doc:particip:carlos')),
-      ('TEST-S','documentos_identidad',private.test_uuid('doc:particip:pablo'))
+      ('TEST-S','documentos_identidad',private.test_uuid('doc:particip:pablo')),
+      ('TEST-S','documentos_identidad',private.test_uuid('doc:particip:lucia'))
 on conflict do nothing;
 
 insert into public.jugadores(id,persona_id,activo,fecha_alta) values
