@@ -248,7 +248,6 @@ join public.equipacion_stock_lotes l on l.id=al.lote_id;
 create or replace view public.equipacion_reparto_resumen as
 select n.id necesidad_id,n.persona_id,n.temporada_id,n.faceta,n.jugador_id,n.entrenador_id,n.pack_id,
 count(a.id)::integer prendas_asignadas,
-count(a.id) filter(where a.estado='reservada')::integer prendas_preparadas,
 count(a.id) filter(where a.estado='entregada')::integer prendas_entregadas,
 case
  when count(a.id)=0 then 'pendiente'
@@ -256,7 +255,8 @@ case
  when count(a.id) filter(where a.estado='entregada')>0 then 'entrega_parcial'
  when count(a.id) filter(where a.estado='reservada')=count(a.id) then 'preparada'
  when count(a.id) filter(where a.estado='reservada')>0 then 'preparacion_parcial'
- else 'pendiente' end estado_reparto
+ else 'pendiente' end estado_reparto,
+count(a.id) filter(where a.estado='reservada')::integer prendas_preparadas
 from public.equipacion_necesidades n
 left join public.equipacion_asignaciones a on a.necesidad_id=n.id and a.estado<>'cancelada'
 group by n.id,n.persona_id,n.temporada_id,n.faceta,n.jugador_id,n.entrenador_id,n.pack_id;
