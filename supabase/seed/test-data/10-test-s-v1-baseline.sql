@@ -340,4 +340,83 @@ on conflict(id) do update set estado=excluded.estado,motivo_rechazo=excluded.mot
 insert into private.test_dataset_entities select 'TEST-S','requisitos_federativos_inscripcion',private.test_uuid('req:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')x where n<=6 on conflict do nothing;
 
 update private.test_datasets set scenario='BASELINE',loaded_at=now() where id='TEST-S';
+
+-- V1.3 canonical future-season multifacet participation coverage (060).
+
+
+insert into public.temporadas(id,nombre,anio_inicio,anio_fin,fecha_inicio,fecha_fin,estado)
+values(private.test_uuid('particip:season'),'2027/2028 TEST-S',2027,2028,date '2027-07-01',date '2028-06-30','planificacion')
+on conflict(id) do update set estado='planificacion',updated_at=now();
+insert into private.test_dataset_entities values('TEST-S','temporadas',private.test_uuid('particip:season'),now()) on conflict do nothing;
+
+insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,email_contacto,activo) values
+(private.test_uuid('particip:carlos'),'Carlos','Multifaceta',date '1985-01-01','carlos.multifaceta@test.invalid',true),
+(private.test_uuid('particip:pablo'),'Pablo','Multifaceta',date '2010-01-01','pablo.multifaceta@test.invalid',true),
+(private.test_uuid('particip:lucia'),'Lucia','Multifaceta',date '2012-01-01','lucia.multifaceta@test.invalid',true)
+on conflict(id) do update set activo=true;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','personas',private.test_uuid('particip:carlos')),('TEST-S','personas',private.test_uuid('particip:pablo')),('TEST-S','personas',private.test_uuid('particip:lucia'))
+on conflict do nothing;
+
+-- Multifacet identities follow the same real-document rules as the rest of BASELINE.
+-- Carlos is an adult player/coach and Pablo is 14+ at the 2026-09-01 season reference date.
+insert into public.documentos_identidad(id,persona_id,tipo,numero,pais_emisor,es_principal,fecha_desde,activo) values
+(private.test_uuid('doc:particip:carlos'),private.test_uuid('particip:carlos'),'dni','74000101Q','ES',true,date '2026-07-01',true),
+(private.test_uuid('doc:particip:pablo'),private.test_uuid('particip:pablo'),'dni','74000102V','ES',true,date '2026-07-01',true),
+(private.test_uuid('doc:particip:lucia'),private.test_uuid('particip:lucia'),'dni','74000103H','ES',true,date '2026-07-01',true)
+on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_hasta=null,activo=true;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','documentos_identidad',private.test_uuid('doc:particip:carlos')),
+      ('TEST-S','documentos_identidad',private.test_uuid('doc:particip:pablo')),
+      ('TEST-S','documentos_identidad',private.test_uuid('doc:particip:lucia'))
+on conflict do nothing;
+
+insert into public.jugadores(id,persona_id,activo,fecha_alta) values
+(private.test_uuid('particip:carlos:player'),private.test_uuid('particip:carlos'),true,date '2026-07-01'),
+(private.test_uuid('particip:pablo:player'),private.test_uuid('particip:pablo'),true,date '2026-07-01'),
+(private.test_uuid('particip:lucia:player'),private.test_uuid('particip:lucia'),true,date '2026-07-01')
+on conflict(id) do update set activo=true;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','jugadores',private.test_uuid('particip:carlos:player')),('TEST-S','jugadores',private.test_uuid('particip:pablo:player')),('TEST-S','jugadores',private.test_uuid('particip:lucia:player'))
+on conflict do nothing;
+
+insert into public.entrenadores(id,persona_id,activo) values
+(private.test_uuid('particip:carlos:coach'),private.test_uuid('particip:carlos'),true),
+(private.test_uuid('particip:pablo:coach'),private.test_uuid('particip:pablo'),true)
+on conflict(id) do update set activo=true;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','entrenadores',private.test_uuid('particip:carlos:coach')),('TEST-S','entrenadores',private.test_uuid('particip:pablo:coach'))
+on conflict do nothing;
+
+insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta)
+values
+(private.test_uuid('particip:rep:pablo'),private.test_uuid('particip:pablo:player'),private.test_uuid('particip:carlos'),date '2026-07-01','TEST-S multifaceta'),
+(private.test_uuid('particip:rep:lucia'),private.test_uuid('particip:lucia:player'),private.test_uuid('particip:carlos'),date '2026-07-01','TEST-S multifaceta')
+on conflict(id) do update set fecha_hasta=null;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','representaciones_jugador',private.test_uuid('particip:rep:pablo')),('TEST-S','representaciones_jugador',private.test_uuid('particip:rep:lucia'))
+on conflict do nothing;
+
+insert into public.persona_participaciones_temporada(id,persona_id,temporada_id,faceta,origen,estado,solicitada_at,aceptada_at) values
+(private.test_uuid('particip:carlos:player:2728'),private.test_uuid('particip:carlos'),private.test_uuid('particip:season'),'jugador','continuidad','solicitada',now(),null),
+(private.test_uuid('particip:carlos:coach:2728'),private.test_uuid('particip:carlos'),private.test_uuid('particip:season'),'entrenador','continuidad','aceptada',now(),now()),
+(private.test_uuid('particip:pablo:player:2728'),private.test_uuid('particip:pablo'),private.test_uuid('particip:season'),'jugador','continuidad','aceptada',now(),now()),
+(private.test_uuid('particip:pablo:coach:2728'),private.test_uuid('particip:pablo'),private.test_uuid('particip:season'),'entrenador','continuidad','en_revision',now(),null),
+(private.test_uuid('particip:lucia:player:2728'),private.test_uuid('particip:lucia'),private.test_uuid('particip:season'),'jugador','continuidad','aceptada',now(),now())
+on conflict(persona_id,temporada_id,faceta) do update set estado=excluded.estado,solicitada_at=excluded.solicitada_at,aceptada_at=excluded.aceptada_at;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','persona_participaciones_temporada',id from public.persona_participaciones_temporada where temporada_id=private.test_uuid('particip:season')
+on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','historico_participaciones_temporada',h.id
+from public.historico_participaciones_temporada h join public.persona_participaciones_temporada p on p.id=h.participacion_id
+where p.temporada_id=private.test_uuid('particip:season') on conflict do nothing;
+
+do $$ begin
+ if (select count(*) from public.persona_participaciones_temporada where temporada_id=private.test_uuid('particip:season'))<>5 then
+   raise exception 'PARTICIPACIONES fixture: expected 5 rows';
+ end if;
+end $$;
+
 commit;
