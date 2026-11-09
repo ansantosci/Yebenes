@@ -24,7 +24,7 @@ select 'TEST-S','equipacion_articulos',id from public.equipacion_articulos where
 -- Packs.
 with s as (select id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
-select private.test_uuid('equip:pack:full'),id,'TEST-PACK-COMPLETO','Pack completo 190 €','jugador','entrenamiento',190,true from s
+select private.test_uuid('equip:pack:full'),id,'TEST-PACK-ENTRENAMIENTO','Pack entrenamiento','jugador','entrenamiento',190,true from s
 union all select private.test_uuid('equip:pack:partido'),id,'TEST-PACK-PARTIDO','Solo jugar 35 €','jugador','partido_campo',35,true from s
 union all select private.test_uuid('equip:pack:tecnico'),id,'TEST-PACK-TECNICO','Equipación técnico','entrenador','tecnico',0,true from s
 on conflict(temporada_id,codigo) do update set nombre=excluded.nombre,precio=excluded.precio,activo=true;
@@ -35,14 +35,12 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) value
 insert into public.equipacion_pack_articulos(id,pack_id,articulo_id,cantidad,obligatorio,orden) values
 (private.test_uuid('equip:pa:1'),private.test_uuid('equip:pack:full'),private.test_uuid('equip:art:cam-ent'),1,true,10),
 (private.test_uuid('equip:pa:2'),private.test_uuid('equip:pack:full'),private.test_uuid('equip:art:pan-ent'),1,true,20),
-(private.test_uuid('equip:pa:3'),private.test_uuid('equip:pack:full'),private.test_uuid('equip:art:cam-par'),1,true,30),
-(private.test_uuid('equip:pa:4'),private.test_uuid('equip:pack:full'),private.test_uuid('equip:art:pan-par'),1,true,40),
 (private.test_uuid('equip:pa:5'),private.test_uuid('equip:pack:partido'),private.test_uuid('equip:art:cam-par'),1,true,10),
 (private.test_uuid('equip:pa:6'),private.test_uuid('equip:pack:partido'),private.test_uuid('equip:art:pan-par'),1,true,20),
 (private.test_uuid('equip:pa:7'),private.test_uuid('equip:pack:tecnico'),private.test_uuid('equip:art:tecnico'),1,true,10)
 on conflict(pack_id,articulo_id) do update set cantidad=excluded.cantidad,obligatorio=true;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-select 'TEST-S','equipacion_pack_articulos',private.test_uuid('equip:pa:'||g) from generate_series(1,7) g on conflict do nothing;
+select 'TEST-S','equipacion_pack_articulos',x from (values (private.test_uuid('equip:pa:1')),(private.test_uuid('equip:pa:2')),(private.test_uuid('equip:pa:5')),(private.test_uuid('equip:pa:6')),(private.test_uuid('equip:pa:7'))) v(x) on conflict do nothing;
 
 -- Six players from BASELINE: varied general sizes and one per-garment exception.
 with p as (
@@ -103,9 +101,28 @@ select private.test_uuid('equip:need:'||p.jugador_id::text),p.persona_id,s.tempo
  case when p.n<=4 then private.test_uuid('equip:pack:full') else private.test_uuid('equip:pack:partido') end,
  'campo',p.n>4,(array['comunicada','validada','preparacion','completa','validada','comunicada'])[p.n],'temporada',now()
 from p cross join s
-on conflict(temporada_id,faceta,jugador_id) do update set pack_id=excluded.pack_id,reutiliza_entrenamiento=excluded.reutiliza_entrenamiento,estado=excluded.estado,comunicada_at=now();
+on conflict(id) do update set pack_id=excluded.pack_id,reutiliza_entrenamiento=excluded.reutiliza_entrenamiento,estado=excluded.estado,comunicada_at=now();
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 select 'TEST-S','equipacion_necesidades',private.test_uuid('equip:need:'||j.id::text) from public.jugadores j join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id order by j.id limit 6 on conflict do nothing;
+
+-- 062 multipack coverage: first four players also need a separate match pack.
+with p as (
+ select j.id jugador_id,j.persona_id,row_number() over(order by j.id) n
+ from public.jugadores j join private.test_dataset_entities de
+   on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+ order by j.id limit 4
+), s as (select id temporada_id from public.temporadas where estado='activa' limit 1)
+insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,jugador_id,pack_id,tipo_partido,reutiliza_entrenamiento,estado,origen,comunicada_at)
+select private.test_uuid('equip:need:match:'||p.jugador_id::text),p.persona_id,s.temporada_id,'jugador',p.jugador_id,
+       private.test_uuid('equip:pack:partido'),'campo',false,'validada','temporada',now()
+from p cross join s
+on conflict(id) do update set pack_id=excluded.pack_id,estado=excluded.estado,comunicada_at=now();
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_necesidades',private.test_uuid('equip:need:match:'||j.id::text)
+from public.jugadores j join private.test_dataset_entities de
+ on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+order by j.id limit 4 on conflict do nothing;
 
 -- One coach need, to cover trainer sizing.
 with c as (select e.id entrenador_id,e.persona_id from public.entrenadores e join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='entrenadores' and de.entity_id=e.id order by e.id limit 1), s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
@@ -121,7 +138,7 @@ order by e.id limit 1 on conflict do nothing;
 with c as (select e.id entrenador_id,e.persona_id from public.entrenadores e join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='entrenadores' and de.entity_id=e.id order by e.id limit 1), s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,entrenador_id,pack_id,reutiliza_tecnico,estado,origen,comunicada_at)
 select private.test_uuid('equip:need:coach'),c.persona_id,s.temporada_id,'entrenador',c.entrenador_id,private.test_uuid('equip:pack:tecnico'),false,'validada','temporada',now() from c cross join s
-on conflict(temporada_id,faceta,entrenador_id) do update set pack_id=excluded.pack_id,estado='validada';
+on conflict(id) do update set pack_id=excluded.pack_id,estado='validada';
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_necesidades',private.test_uuid('equip:need:coach')) on conflict do nothing;
 
 -- Stock with shortages to exercise purchase suggestions.
@@ -464,8 +481,8 @@ begin
  where necesidad_id=(select n.id from public.equipacion_necesidades n
    join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
    where pt.id=private.test_uuid('equip:season-person:4'));
- if r.estado_reparto is distinct from 'parcial' or r.prendas_asignadas<>3 or r.prendas_entregadas<>2 then
-   raise exception 'EQUIPACIONES fixture: expected partial pack 2/3, got %/% state %',
+ if r.estado_reparto is distinct from 'entrega_parcial' or r.prendas_asignadas<>3 or r.prendas_entregadas<>2 then
+   raise exception 'EQUIPACIONES fixture: expected partial delivery 2/3, got %/% state %',
      coalesce(r.prendas_entregadas,0),coalesce(r.prendas_asignadas,0),coalesce(r.estado_reparto,'NULL');
  end if;
 end $$;
