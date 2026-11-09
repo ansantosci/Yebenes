@@ -261,7 +261,7 @@ const K={
   seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
   inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
   medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
-  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',navLive:'yebenes-navigation-live-v1',telemetryDevice:'yebenes-telemetry-device-v1'
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',navLive:'yebenes-navigation-live-v1',telemetryDevice:'yebenes-telemetry-device-v1',contextSeason:'yebenes-context-season-v1'
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
@@ -632,6 +632,7 @@ async function loadSupabaseStructure(){
   dbTeams=(teamRes.data||[]).map(x=>({id:x.id,seasonId:x.temporada_id,categoryId:x.categoria_id,name:x.nombre,code:x.codigo,gender:x.genero,modality:x.modalidad,active:x.activo!==false}));
   dbCategoryRules=(ruleRes.data||[]).map(x=>({seasonId:x.temporada_id,categoryId:x.categoria_id,from:x.anio_nacimiento_desde,to:x.anio_nacimiento_hasta,active:x.activo!==false}));
   dbStructureLoaded=true;
+  renderSeasonContextHeader();
   await loadSupabaseCoaches();
   if((currentUser.roles||[]).includes('admin')) await loadSupabasePersons();
 }
@@ -772,6 +773,32 @@ async function ensureMinorCoachAssignmentAllowed(personId){
 function coachTeamName(id){return dbStructureLoaded?(dbTeams.find(t=>t.id===id)?.name||'—'):teamName(id)}
 function coachTeamCategoryId(id){return dbStructureLoaded?dbTeams.find(t=>t.id===id)?.categoryId:teams.find(t=>t.id===id)?.categoryId}
 function dbActiveSeason(){return dbSeasons.find(s=>s.status==='activa')||dbSeasons[0]||null}
+function seasonStatusLabel(status){return status==='activa'?'Vigente':status==='en_cierre'?'En proceso de cierre':status==='cerrada'?'Cerrada':'Planificación'}
+function dbContextSeason(){
+  if(!dbSeasons.length)return null;
+  let saved=null;try{saved=localStorage.getItem(K.contextSeason)}catch{}
+  const stored=dbSeasons.find(s=>s.id===saved);
+  if(stored)return stored;
+  const fallback=dbActiveSeason()||dbSeasons.find(s=>s.status==='planificacion')||dbSeasons[0]||null;
+  if(fallback)try{localStorage.setItem(K.contextSeason,fallback.id)}catch{}
+  return fallback;
+}
+function setDbContextSeason(id){
+  const season=dbSeasons.find(s=>s.id===id);if(!season)return null;
+  try{localStorage.setItem(K.contextSeason,season.id)}catch{}
+  renderSeasonContextHeader();return season;
+}
+function renderSeasonContextHeader(){
+  const staticEl=$('#seasonContextStatic'),control=$('#seasonContextControl'),select=$('#seasonContextSelect'),badge=$('#seasonContextBadge');
+  const privileged=['admin','club'].includes(currentRole)&&dbStructureLoaded;
+  const active=dbActiveSeason(),context=privileged?dbContextSeason():active;
+  if($('#currentSeasonLabel'))$('#currentSeasonLabel').textContent=(context||active)?.name||currentSeason()?.name||'';
+  if(!staticEl||!control||!select||!badge)return;
+  staticEl.classList.toggle('hidden',privileged);control.classList.toggle('hidden',!privileged);
+  if(!privileged)return;
+  select.innerHTML=dbSeasons.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${esc(seasonStatusLabel(s.status))}</option>`).join('');
+  select.value=context?.id||'';badge.textContent=seasonStatusLabel(context?.status);badge.dataset.state=context?.status||'planificacion';
+}
 function dbCategoryName(id){return dbCategories.find(c=>c.id===id)?.name||'—'}
 function categoryAgeOrder(categoryId,remote=dbStructureLoaded){
   if(remote){
@@ -788,7 +815,7 @@ function sortTeamsByCategoryAge(list,remote=dbStructureLoaded){
     return String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'});
   });
 }
-function dbSeasonTeams(){const s=dbActiveSeason();return s?dbTeams.filter(t=>t.seasonId===s.id):[]}
+function dbSeasonTeams(){const s=dbContextSeason();return s?dbTeams.filter(t=>t.seasonId===s.id):[]}
 function dbCategoryForBirth(birth){
   if(!birth)return null;
   const season=dbActiveSeason(),year=Number(String(birth).slice(0,4));
@@ -1753,7 +1780,7 @@ function showRoleChooser(force=false){
 function showApp(options={}){
   hideSessionRestoring();const preserveView=Boolean(options.preserveView);
   if(!currentRole||!roleAvailable(currentUser,currentRole)){currentRole=availableRoles(currentUser)[0]||null}if(!currentRole)return;
-  $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);$('#currentSeasonLabel').textContent=currentSeason()?.name||'';$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
+  $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);renderSeasonContextHeader();$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
   const familyLike=['family','player'].includes(currentRole);
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
@@ -2298,8 +2325,8 @@ async function linkPersonAuth(){const p=dbPersons.find(x=>x.id===selectedPersonA
 
 
 async function loadEconomicConfigs(){
-  if(!sb||!['admin','club'].includes(currentRole)||!dbActiveSeason())return [];
-  const {data,error}=await sb.from('configuracion_economica_equipo').select('id,temporada_id,equipo_id,importe_inscripcion,admite_fraccionamiento,requiere_pago_ficha,observaciones').eq('temporada_id',dbActiveSeason().id);
+  if(!sb||!['admin','club'].includes(currentRole)||!dbContextSeason())return [];
+  const {data,error}=await sb.from('configuracion_economica_equipo').select('id,temporada_id,equipo_id,importe_inscripcion,admite_fraccionamiento,requiere_pago_ficha,observaciones').eq('temporada_id',dbContextSeason().id);
   if(error)throw error;dbEconomicConfigs=data||[];return dbEconomicConfigs;
 }
 function renderEconomicTeamConfig(){
@@ -2377,10 +2404,13 @@ function renderStructure(){
   const can=currentRole==='admin';
   const canEconomic=['admin','club'].includes(currentRole);
   if(dbStructureLoaded){
-    const active=dbActiveSeason();
+    const active=dbActiveSeason(),context=dbContextSeason();
+    if($('#structureSeasonName'))$('#structureSeasonName').textContent=context?.name||'—';
+    if($('#structureSeasonState'))$('#structureSeasonState').textContent=context?`Estado: ${seasonStatusLabel(context.status)}${context.id!==active?.id?' · Temporada de trabajo distinta de la vigente':''}`:'';
     $('#openSeasonModal').style.display='none';
     $('#openTeamModal').style.display='none';
-    $('#seasonsTable').innerHTML=dbSeasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===active?.id?'<span class="status complete">Actual</span>':'—'}</td><td>${s.status==='cerrada'?'Cerrada':s.status==='activa'?'Activa':'Planificación'}</td><td>—</td></tr>`).join('');
+    $('#seasonsTable').innerHTML=dbSeasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===active?.id?'<span class="status complete">Actual</span>':'—'}</td><td>${esc(seasonStatusLabel(s.status))}</td><td>${s.id===context?.id?'<span class="status complete">En uso</span>':`<button class="secondary tiny use-context-season" data-id="${esc(s.id)}">Trabajar aquí</button>`}</td></tr>`).join('');
+    $$('.use-context-season').forEach(b=>b.onclick=()=>{setDbContextSeason(b.dataset.id);renderStructure()});
     const body=$('#structureTeamsTable');
     body.innerHTML='<tr><td colspan="9">Cargando equipos y configuración económica…</td></tr>';
     loadEconomicConfigs().then(()=>{
@@ -2421,7 +2451,7 @@ function openTeamEdit(id){
   f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';
   const sportsEditable=['admin','club'].includes(currentRole);['name','categoryId','code','modality','gender','active'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!sportsEditable});
   ['amount','installments','required','notes'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!['admin','club'].includes(currentRole)});
-  $('#teamModalSeason').textContent=remote?`Temporada ${dbActiveSeason()?.name||''} · ${currentRole==='club'?'Gestión deportiva del club':'Administración'}`:`Temporada ${seasonName(currentSeasonId)}`;
+  $('#teamModalSeason').textContent=remote?`Temporada ${dbContextSeason()?.name||''} · ${currentRole==='club'?'Gestión deportiva del club':'Administración'}`:`Temporada ${seasonName(currentSeasonId)}`;
   $('#teamModalTitle').textContent=t.name||'Editar equipo';
   const teamModal=$('#teamModal'),closeTeam=$('#closeTeamModal'),cancelTeam=$('#cancelTeam'),teamForm=$('#teamForm');
   if(closeTeam)closeTeam.onclick=()=>teamModal?.close();
@@ -2617,6 +2647,7 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
 
 if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
+const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure()};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 
