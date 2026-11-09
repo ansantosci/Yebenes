@@ -1,3 +1,7 @@
+### V95.3.14 — Pulido del contexto global de temporada (062A)
+- **V95.3.14**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
+- **V95.3.14**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
+
 ### V95.3.13 — Contexto global de temporada (062A)
 - **V95.3.13**: Club y Administrador disponen de un selector global y persistente de temporada de trabajo integrado en la cabecera.
 - **V95.3.13**: `dbActiveSeason()` conserva la temporada vigente y `dbContextSeason()` representa la temporada seleccionada para gestión.

@@ -1,4 +1,4 @@
-const APP_VERSION='95.3.13';
+const APP_VERSION='95.3.14';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -796,7 +796,7 @@ function renderSeasonContextHeader(){
   if(!staticEl||!control||!select||!badge)return;
   staticEl.classList.toggle('hidden',privileged);control.classList.toggle('hidden',!privileged);
   if(!privileged)return;
-  select.innerHTML=dbSeasons.map(s=>`<option value="${esc(s.id)}">${esc(s.name)} · ${esc(seasonStatusLabel(s.status))}</option>`).join('');
+  select.innerHTML=dbSeasons.map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
   select.value=context?.id||'';badge.textContent=seasonStatusLabel(context?.status);badge.dataset.state=context?.status||'planificacion';
 }
 function dbCategoryName(id){return dbCategories.find(c=>c.id===id)?.name||'—'}
@@ -2409,7 +2409,7 @@ function renderStructure(){
     if($('#structureSeasonState'))$('#structureSeasonState').textContent=context?`Estado: ${seasonStatusLabel(context.status)}${context.id!==active?.id?' · Temporada de trabajo distinta de la vigente':''}`:'';
     $('#openSeasonModal').style.display='none';
     $('#openTeamModal').style.display='none';
-    $('#seasonsTable').innerHTML=dbSeasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===active?.id?'<span class="status complete">Actual</span>':'—'}</td><td>${esc(seasonStatusLabel(s.status))}</td><td>${s.id===context?.id?'<span class="status complete">En uso</span>':`<button class="secondary tiny use-context-season" data-id="${esc(s.id)}">Trabajar aquí</button>`}</td></tr>`).join('');
+    $('#seasonsTable').innerHTML=dbSeasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===active?.id?'<span class="status complete">Vigente</span>':'—'}</td><td>${esc(seasonStatusLabel(s.status))}</td><td>${s.id===context?.id?'<span class="status complete">En uso</span>':`<button class="secondary tiny use-context-season" data-id="${esc(s.id)}">Trabajar aquí</button>`}</td></tr>`).join('');
     $$('.use-context-season').forEach(b=>b.onclick=()=>{setDbContextSeason(b.dataset.id);renderStructure()});
     const body=$('#structureTeamsTable');
     body.innerHTML='<tr><td colspan="9">Cargando equipos y configuración económica…</td></tr>';
