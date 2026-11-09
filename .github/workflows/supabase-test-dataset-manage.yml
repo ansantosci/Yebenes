@@ -86,6 +86,34 @@ jobs:
                where d.persona_id=p.id and d.activo and d.es_principal and d.tipo in ('dni','nie')
                  and private.documento_espanol_valido(d.tipo,d.numero)
              );
+          -- Diagnostic: identify every TEST-S player aged 14+ that violates the identity contract.
+          -- This does not change validation or data; it only makes failures actionable.
+          select 'invalid_14plus_player',
+                 j.id as jugador_id,
+                 p.id as persona_id,
+                 p.nombre,
+                 p.primer_apellido,
+                 p.fecha_nacimiento,
+                 coalesce(string_agg(
+                   concat_ws(':',d.tipo,d.numero,
+                     case when d.activo then 'activo' else 'inactivo' end,
+                     case when d.es_principal then 'principal' else 'no_principal' end,
+                     case when private.documento_espanol_valido(d.tipo,d.numero) then 'valido' else 'invalido' end
+                   ), ' | ' order by d.created_at
+                 ), 'SIN_DOCUMENTOS') as documentos
+          from private.test_dataset_entities e
+          join public.jugadores j on j.id=e.entity_id
+             and e.dataset_id='TEST-S' and e.table_name='jugadores'
+          join public.personas p on p.id=j.persona_id
+          left join public.documentos_identidad d on d.persona_id=p.id
+          where date '2026-09-01' >= (p.fecha_nacimiento + interval '14 years')::date
+          group by j.id,p.id,p.nombre,p.primer_apellido,p.fecha_nacimiento
+          having not exists (
+            select 1 from public.documentos_identidad vd
+            where vd.persona_id=p.id and vd.activo and vd.es_principal and vd.tipo='dni'
+              and private.documento_espanol_valido(vd.tipo,vd.numero)
+          );
+
           -- Functional identity contracts: every TEST-S tutor must have phone + active principal DNI.
           do $$
           begin
