@@ -978,3 +978,16 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 .equipment-delivery-list{display:grid;gap:14px}.equipment-delivery-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden}.equipment-delivery-head{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #eef0f3}.equipment-delivery-head>div:first-child{display:flex;flex-direction:column;gap:3px}.equipment-delivery-head span{color:#64748b;font-size:.86rem}.equipment-delivery-state .equipment-status{font-size:.8rem}.compact-table{border-radius:0;border:0}.compact-table table{margin:0}.compact-table th{background:#fafbfc}.equipment-number.small{min-width:32px;height:32px;font-size:.9rem}
 .equipment-status.complete{background:#e9f7ef;color:#17663a}.equipment-status.warning{background:#fff3cd;color:#8a5a00}.equipment-status.pending{background:#fff0f2;color:#a3122d}.equipment-status.info{background:#eaf4f8;color:#07557f}.equipment-status.muted{background:#eef0f3;color:#6b7280}
 @media(max-width:720px){.equipment-panel-head,.equipment-delivery-head{align-items:flex-start;flex-direction:column}.equipment-delivery-state{width:100%}.equipment-workspace .equipment-tabs{margin-left:0;margin-right:0}.equipment-delivery-card{border-radius:14px}}
+
+/* V95.3.13 — global season work context */
+.season-context-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;opacity:1}
+.season-context-control{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.season-context-control select{max-width:260px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:4px 24px 4px 7px;font:inherit;font-weight:800;cursor:pointer}
+.season-context-control select option{color:#172033;background:#fff}
+.season-context-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 7px;font-size:.62rem;font-weight:900;letter-spacing:.03em;text-transform:uppercase;background:rgba(255,255,255,.18);color:#fff}
+.season-context-badge[data-state="planificacion"]{background:#fff3cd;color:#6b4b00}
+.season-context-badge[data-state="en_cierre"]{background:#ffe2c7;color:#7a3b00}
+.season-context-badge[data-state="cerrada"]{background:#e8edf3;color:#475467}
+.season-context-badge[data-state="activa"]{background:#dcfce7;color:#166534}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+@media(max-width:640px){.season-context-control select{max-width:190px;font-size:.64rem}.season-context-badge{font-size:.56rem;padding:2px 5px}.season-role-separator{display:none}}

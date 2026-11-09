@@ -1,3 +1,13 @@
+### V95.3.14 — Pulido del contexto global de temporada (062A)
+- **V95.3.14**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
+- **V95.3.14**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
+
+### V95.3.13 — Contexto global de temporada (062A)
+- **V95.3.13**: Club y Administrador disponen de un selector global y persistente de temporada de trabajo integrado en la cabecera.
+- **V95.3.13**: `dbActiveSeason()` conserva la temporada vigente y `dbContextSeason()` representa la temporada seleccionada para gestión.
+- **V95.3.13**: Estructura es la primera pantalla migrada al contexto: equipos y configuración económica de equipo se filtran por la temporada seleccionada.
+- **V95.3.13**: El estado Planificación/Vigente/En proceso de cierre/Cerrada se muestra de forma explícita; el resto de dominios continúa temporalmente anclado a la vigente.
+
 ### V95.3.12 — Equipaciones alineada con el patrón visual y el modelo operativo
 - **V95.3.12**: Equipaciones reutiliza el componente común `entity-tabs/entity-tab`, con la misma navegación, activo corporativo y scroll responsive que Personas y Entrenadores.
 - **V95.3.12**: `Equipación y tallas` separa validación de temporada, pendiente de tallas y necesidad confirmada; una persona no genera demanda hasta confirmar tallas/equipación.
