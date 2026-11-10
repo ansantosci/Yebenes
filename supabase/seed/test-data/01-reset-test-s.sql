@@ -31,6 +31,55 @@ where exists (
 -- fails later, the transaction rollback restores the trigger state automatically.
 select private.test_set_reception_delete_guard(false);
 
+-- 062+ logistics creates children automatically (lot, validity and lot reservations).
+-- They may survive an interrupted run without registry rows. Remove every such child
+-- transitively from registered TEST-S reception lines / assignments before generic teardown.
+delete from public.equipacion_ajustes_stock a
+where exists (
+  select 1 from public.equipacion_stock_lotes l
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_recepcion_lineas'
+   and e.entity_id=l.recepcion_linea_id
+  where l.id=a.lote_id
+)
+or exists (
+  select 1 from public.equipacion_asignacion_lotes al
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_asignaciones'
+   and e.entity_id=al.asignacion_id
+  where al.lote_id=a.lote_id
+);
+
+delete from public.equipacion_asignacion_lotes al
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S' and e.table_name='equipacion_asignaciones'
+    and e.entity_id=al.asignacion_id
+)
+or exists (
+  select 1 from public.equipacion_stock_lotes l
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_recepcion_lineas'
+   and e.entity_id=l.recepcion_linea_id
+  where l.id=al.lote_id
+);
+
+delete from public.equipacion_stock_lote_vigencia v
+where exists (
+  select 1 from public.equipacion_stock_lotes l
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_recepcion_lineas'
+   and e.entity_id=l.recepcion_linea_id
+  where l.id=v.lote_id
+);
+
+delete from public.equipacion_stock_lotes l
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S' and e.table_name='equipacion_recepcion_lineas'
+    and e.entity_id=l.recepcion_linea_id
+);
+
 -- Trigger-generated stock movements are children of TEST-S logistics rows but may not
 -- have their own registry entry. Delete them transitively before the generic teardown.
 delete from public.equipacion_movimientos_stock m
