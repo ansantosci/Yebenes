@@ -15,6 +15,11 @@ do $$ begin
  if (select count(*) from econ_people)<>2 then raise exception 'ECONOMIA: expected two baseline players'; end if;
 end $$;
 
+create temp table econ_charge_ids(
+  key text primary key,
+  cargo_id uuid not null
+) on commit drop;
+
 -- Scenario-specific equipment economic modalities.
 insert into public.economia_modalidades_equipacion(id,temporada_id,codigo,nombre,importe,requiere_entrenamiento,requiere_partido)
 select private.test_uuid('econ:modalidad:completa'),temporada_id,'TEST-COMPLETA','Completa TEST',190,true,true from econ_people where n=1
@@ -30,13 +35,18 @@ from econ_people cross join lateral (select id from public.economia_conceptos wh
 on conflict(persona_id,temporada_id) where clave_origen='CUOTA_TEMPORADA'
 do update set importe_base=excluded.importe_base,descripcion=excluded.descripcion,estado='activo',updated_at=now();
 
+insert into econ_charge_ids(key,cargo_id)
+select 'cuota:'||ep.n,c.id
+from econ_people ep
+join public.economia_cargos c on c.persona_id=ep.persona_id and c.temporada_id=ep.temporada_id and c.clave_origen='CUOTA_TEMPORADA';
+
 insert into public.economia_ajustes(id,cargo_id,tipo,importe,nombre,motivo,origen)
-values(private.test_uuid('econ:ajuste:hermano'),private.test_uuid('econ:cuota:2'),'descuento',-50,'Segundo hermano','Descuento temporada TEST','automatico')
+values(private.test_uuid('econ:ajuste:hermano'),(select cargo_id from econ_charge_ids where key='cuota:2'),'descuento',-50,'Segundo hermano','Descuento temporada TEST','automatico')
 on conflict(id) do nothing;
 
 -- Partial payment only on sibling 1. It must never affect sibling 2.
 insert into public.economia_pagos(id,cargo_id,importe,metodo,fecha_pago,registrado_por,observaciones)
-select private.test_uuid('econ:pago:cuota1'),private.test_uuid('econ:cuota:1'),100,'efectivo',current_date,p.auth_user_id,'Pago parcial TEST'
+select private.test_uuid('econ:pago:cuota1'),(select cargo_id from econ_charge_ids where key='cuota:1'),100,'efectivo',current_date,p.auth_user_id,'Pago parcial TEST'
 from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
 join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
 where p.auth_user_id is not null order by (r.codigo='administrador') desc limit 1
@@ -44,7 +54,7 @@ on conflict(id) do nothing;
 
 -- Formal team-price change is a regularisation on the same fee, not a second fee.
 insert into public.economia_ajustes(id,cargo_id,tipo,importe,nombre,motivo,origen)
-values(private.test_uuid('econ:ajuste:cambio-equipo'),private.test_uuid('econ:cuota:1'),'regularizacion',25,'Cambio de equipo','Cuota objetivo 250 -> 275','automatico')
+values(private.test_uuid('econ:ajuste:cambio-equipo'),(select cargo_id from econ_charge_ids where key='cuota:1'),'regularizacion',25,'Cambio de equipo','Cuota objetivo 250 -> 275','automatico')
 on conflict(id) do nothing;
 
 -- Equipment economics: sibling 1 complete 190, sibling 2 reuse 35.
@@ -57,10 +67,16 @@ from econ_people cross join lateral (select id from public.economia_conceptos wh
 on conflict(temporada_id,persona_id,clave_origen) where clave_origen is not null
 do update set importe_base=excluded.importe_base,descripcion=excluded.descripcion,estado='activo',updated_at=now();
 
+insert into econ_charge_ids(key,cargo_id)
+select 'equip:'||ep.n,c.id
+from econ_people ep
+join public.economia_cargos c on c.persona_id=ep.persona_id and c.temporada_id=ep.temporada_id
+ and c.clave_origen='EQUIPACION_TEST_'||ep.n;
+
 insert into public.economia_cargo_equipacion(cargo_id,modalidad_id)
 values
-(private.test_uuid('econ:equip:1'),private.test_uuid('econ:modalidad:completa')),
-(private.test_uuid('econ:equip:2'),private.test_uuid('econ:modalidad:reutiliza'))
+((select cargo_id from econ_charge_ids where key='equip:1'),private.test_uuid('econ:modalidad:completa')),
+((select cargo_id from econ_charge_ids where key='equip:2'),private.test_uuid('econ:modalidad:reutiliza'))
 on conflict(cargo_id) do update set modalidad_id=excluded.modalidad_id;
 
 -- Manual charge is explicit before its payment.
@@ -70,20 +86,25 @@ from econ_people cross join lateral (select id from public.economia_conceptos wh
 on conflict(temporada_id,persona_id,clave_origen) where clave_origen is not null
 do update set importe_base=30,descripcion='Torneo TEST',estado='activo',updated_at=now();
 
+insert into econ_charge_ids(key,cargo_id)
+select 'manual:1',c.id from econ_people ep
+join public.economia_cargos c on c.persona_id=ep.persona_id and c.temporada_id=ep.temporada_id and c.clave_origen='MANUAL_TORNEO_TEST'
+where ep.n=1;
+
 insert into public.economia_pagos(id,cargo_id,importe,metodo,fecha_pago,registrado_por)
-select private.test_uuid('econ:pago:manual1'),private.test_uuid('econ:manual:1'),30,'efectivo',current_date,p.auth_user_id
+select private.test_uuid('econ:pago:manual1'),(select cargo_id from econ_charge_ids where key='manual:1'),30,'efectivo',current_date,p.auth_user_id
 from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
 join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
 where p.auth_user_id is not null limit 1 on conflict(id) do nothing;
 
 -- Overpayment / subsequent price reduction creates a credit for the same person.
 insert into public.economia_pagos(id,cargo_id,importe,metodo,fecha_pago,registrado_por)
-select private.test_uuid('econ:pago:equip2'),private.test_uuid('econ:equip:2'),35,'efectivo',current_date,p.auth_user_id
+select private.test_uuid('econ:pago:equip2'),(select cargo_id from econ_charge_ids where key='equip:2'),35,'efectivo',current_date,p.auth_user_id
 from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
 join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
 where p.auth_user_id is not null limit 1 on conflict(id) do nothing;
 insert into public.economia_ajustes(id,cargo_id,tipo,importe,nombre,motivo,origen)
-values(private.test_uuid('econ:ajuste:equip2-credit'),private.test_uuid('econ:equip:2'),'regularizacion',-10,'Regularizacion TEST','Cambio aceptado antes de entrega','manual')
+values(private.test_uuid('econ:ajuste:equip2-credit'),(select cargo_id from econ_charge_ids where key='equip:2'),'regularizacion',-10,'Regularizacion TEST','Cambio aceptado antes de entrega','manual')
 on conflict(id) do nothing;
 
 -- Register every scenario entity so RESET is deterministic.
@@ -97,12 +118,11 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) value
 ('TEST-S','economia_cargo_equipacion',private.test_uuid('econ:equip:2')),
 ('TEST-S','economia_pagos',private.test_uuid('econ:pago:manual1')),
 ('TEST-S','economia_pagos',private.test_uuid('econ:pago:equip2')),
-('TEST-S','economia_ajustes',private.test_uuid('econ:ajuste:equip2-credit')),
-('TEST-S','economia_cargos',private.test_uuid('econ:cuota:1')),
-('TEST-S','economia_cargos',private.test_uuid('econ:cuota:2')),
-('TEST-S','economia_cargos',private.test_uuid('econ:equip:1')),
-('TEST-S','economia_cargos',private.test_uuid('econ:equip:2')),
-('TEST-S','economia_cargos',private.test_uuid('econ:manual:1'))
+('TEST-S','economia_ajustes',private.test_uuid('econ:ajuste:equip2-credit'))
+on conflict do nothing;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','economia_cargos',cargo_id from econ_charge_ids
 on conflict do nothing;
 
 -- Functional assertions.
@@ -112,11 +132,11 @@ begin
  select persona_id into p1 from econ_people where n=1;
  select persona_id into p2 from econ_people where n=2;
 
- select * into a from public.economia_estado_cargos where cargo_id=private.test_uuid('econ:cuota:1');
+ select * into a from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='cuota:1');
  if a.importe_exigible<>275 or a.importe_pagado<>100 or a.saldo_pendiente<>175 or a.estado_pago<>'parcialmente_pagado' then
    raise exception 'ECONOMIA: sibling 1 fee incorrect';
  end if;
- select * into b from public.economia_estado_cargos where cargo_id=private.test_uuid('econ:cuota:2');
+ select * into b from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='cuota:2');
  if b.importe_exigible<>200 or b.importe_pagado<>0 or b.saldo_pendiente<>200 or b.estado_pago<>'pendiente' then
    raise exception 'ECONOMIA: sibling 2 fee/discount incorrect';
  end if;
@@ -124,12 +144,12 @@ begin
    raise exception 'ECONOMIA: team change duplicated season fee';
  end if;
 
- select * into e1 from public.economia_estado_cargos where cargo_id=private.test_uuid('econ:equip:1');
- select * into e2 from public.economia_estado_cargos where cargo_id=private.test_uuid('econ:equip:2');
+ select * into e1 from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='equip:1');
+ select * into e2 from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='equip:2');
  if e1.importe_exigible<>190 or e1.importe_pagado<>0 then raise exception 'ECONOMIA: complete equipment incorrect'; end if;
  if e2.importe_exigible<>25 or e2.importe_pagado<>35 or e2.saldo_pendiente<>-10 then raise exception 'ECONOMIA: same-person credit incorrect'; end if;
 
- select * into m from public.economia_estado_cargos where cargo_id=private.test_uuid('econ:manual:1');
+ select * into m from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='manual:1');
  if m.importe_exigible<>30 or m.importe_pagado<>30 or m.estado_pago<>'pagado' then raise exception 'ECONOMIA: manual charge/payment incorrect'; end if;
 
  -- Payment on sibling 1 must not appear in sibling 2 account.
