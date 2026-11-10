@@ -56,6 +56,9 @@ begin
  insert into public.economia_descuento_hermanos_reglas(temporada_id,posicion,tipo,valor) values(tid,2,'fijo',50);
  insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a2,i2,eb,current_date);
  select cargo_id into cid2 from public.economia_cuota_estado where persona_id=p2 and temporada_id=tid;
+ if (select count(*) from private.economia_hermanos_activos(p1,tid))<>2 then
+   raise exception '067: shared tutor must produce exactly two active siblings';
+ end if;
  perform private.economia_recalcular_descuentos_hermanos(p1,tid,'configuracion');
  select * into r from public.economia_estado_cargos where cargo_id=cid2;
  if r.importe_exigible<>225 then raise exception '067: second active sibling expected 225 got %',r.importe_exigible; end if;
