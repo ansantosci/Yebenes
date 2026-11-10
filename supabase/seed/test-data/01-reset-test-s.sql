@@ -199,6 +199,12 @@ where exists (
     and e.entity_id=s.articulo_id
 );
 
+-- 067 economic state is trigger-derived. During TEST-S teardown, deleting/changing
+-- assignments or participations would otherwise recreate economia_cuota_estado after it
+-- has been cleaned. Suspend only the 067 recalculation triggers inside this transaction.
+alter table public.asignaciones_jugador_equipo disable trigger economia_067_asignacion;
+alter table public.persona_participaciones_temporada disable trigger economia_067_participacion_baja;
+
 -- 060 backfill can create participation rows for pre-existing TEST-S people before
 -- those participation IDs have ever been registered in test_dataset_entities.
 -- Remove participation history and participation rows transitively by TEST-S person
@@ -292,6 +298,9 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+alter table public.asignaciones_jugador_equipo enable trigger economia_067_asignacion;
+alter table public.persona_participaciones_temporada enable trigger economia_067_participacion_baja;
+
 select private.test_set_reception_delete_guard(true);
 
 delete from private.test_dataset_entities where dataset_id='TEST-S';
