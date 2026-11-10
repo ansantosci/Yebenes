@@ -229,6 +229,49 @@ where exists (
     and e.entity_id=p.persona_id
 );
 
+-- 066-068 repair-safe economic closure. Automatic recalculations can create ledger
+-- children without their own test_dataset_entities row. Derive every child from charges
+-- owned by TEST-S persons before the generic registry-driven teardown.
+delete from public.economia_regularizaciones_pendientes x
+where exists (
+  select 1 from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_cargo_equipacion x
+where exists (
+  select 1 from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_devoluciones x
+where exists (
+  select 1 from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_pagos x
+where exists (
+  select 1 from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_ajustes x
+where exists (
+  select 1 from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
 -- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
 delete from public.economia_cargo_equipacion x
 where exists (
