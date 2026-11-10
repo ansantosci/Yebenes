@@ -308,6 +308,17 @@ where exists (
   where c.id=x.cargo_id
 );
 
+-- 067 automatic fee triggers can create charges for TEST-S persons without a
+-- test_dataset_entities row for the charge itself. Their ledger children have already
+-- been closed above; now remove those derived root charges before deleting the persons.
+delete from public.economia_cargos c
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='personas'
+    and e.entity_id=c.persona_id
+);
+
 -- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
 delete from public.economia_cargo_equipacion x
 where exists (
