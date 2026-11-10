@@ -239,13 +239,39 @@ or exists (
   where c.id=x.cargo_id
 );
 
+-- 067: configuration/state tables use natural/composite primary keys, not id.
+-- Delete them by TEST-S ownership scope before the generic id-based teardown.
+delete from public.economia_cuota_estado x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=x.persona_id)
+   or exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_equipo_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='equipos' and e.entity_id=x.equipo_id)
+   or exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_categoria_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_descuento_hermanos_reglas x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_temporada_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
     -- 067 economic dependencies must be removed before persons, players, teams, charges and seasons.
-    'economia_regularizaciones_pendientes','economia_cuota_estado','economia_hermanos_vinculos_manuales',
-    'economia_cuota_equipo_config','economia_cuota_categoria_config','economia_descuento_hermanos_reglas','economia_cuota_temporada_config',
+    'economia_regularizaciones_pendientes','economia_hermanos_vinculos_manuales',
+    
     'economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
     'economia_modalidades_equipacion','economia_conceptos',
     'equipacion_ajustes_stock','equipacion_asignacion_lotes',
