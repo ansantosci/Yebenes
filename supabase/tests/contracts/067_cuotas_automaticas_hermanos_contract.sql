@@ -29,7 +29,7 @@ begin
  values(pt1,p1,tid,'jugador','administrativa','aceptada',cat,now()),(pt2,p2,tid,'jugador','administrativa','aceptada',cat,now());
 
  -- No rule anywhere: assignment creates calculation state but no zero-euro charge.
- insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a1,i1,ea,current_date);
+ insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a1,i1,ea,current_date-4);
  if not exists(select 1 from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid and estado_calculo='pendiente_configuracion') then raise exception '067: missing pending configuration state'; end if;
  if exists(select 1 from public.economia_cargos where persona_id=p1 and temporada_id=tid and clave_origen='CUOTA_TEMPORADA') then raise exception '067: missing config must not create zero fee'; end if;
 
@@ -43,8 +43,8 @@ begin
 
  -- Team C overrides category with 250. B inherits category 275. A->B must not duplicate fee; B->C regularises same fee.
  insert into public.economia_cuota_equipo_config(temporada_id,equipo_id,importe) values(tid,ec,250);
- update public.asignaciones_jugador_equipo set fecha_hasta=current_date-1 where id=a1;
- insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values('06700000-0000-4000-8000-000000000017',i1,eb,current_date);
+ update public.asignaciones_jugador_equipo set fecha_hasta=current_date-3 where id=a1;
+ insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values('06700000-0000-4000-8000-000000000017',i1,eb,current_date-2);
  if (select count(*) from public.economia_cargos where persona_id=p1 and temporada_id=tid and clave_origen='CUOTA_TEMPORADA')<>1 then raise exception '067: A->B duplicated season fee'; end if;
  update public.asignaciones_jugador_equipo set fecha_hasta=current_date-1 where id='06700000-0000-4000-8000-000000000017';
  insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values('06700000-0000-4000-8000-000000000018',i1,ec,current_date);
