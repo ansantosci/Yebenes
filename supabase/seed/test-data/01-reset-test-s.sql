@@ -80,6 +80,58 @@ where exists (
     and e.entity_id=l.recepcion_linea_id
 );
 
+-- Repair-safe logistics closure: derive children from registered TEST-S needs, not only
+-- from registry rows for each child. Interrupted/older fixtures may have created assignments
+-- and deliveries without registering those generated rows.
+delete from public.equipacion_ajustes_stock a
+where exists (
+  select 1
+  from public.equipacion_stock_lotes l
+  join public.equipacion_asignacion_lotes al on al.lote_id=l.id
+  join public.equipacion_asignaciones x on x.id=al.asignacion_id
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where l.id=a.lote_id
+);
+
+delete from public.equipacion_asignacion_lotes al
+where exists (
+  select 1
+  from public.equipacion_asignaciones x
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where x.id=al.asignacion_id
+);
+
+delete from public.equipacion_entregas d
+where exists (
+  select 1
+  from public.equipacion_asignaciones x
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where x.id=d.asignacion_id
+);
+
+delete from public.equipacion_movimientos_stock m
+where m.asignacion_id is not null and exists (
+  select 1
+  from public.equipacion_asignaciones x
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where x.id=m.asignacion_id
+);
+
+delete from public.equipacion_asignaciones x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+    and e.entity_id=x.necesidad_id
+);
+
 -- Trigger-generated stock movements are children of TEST-S logistics rows but may not
 -- have their own registry entry. Delete them transitively before the generic teardown.
 delete from public.equipacion_movimientos_stock m
