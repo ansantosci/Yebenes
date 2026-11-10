@@ -49,6 +49,8 @@ jobs:
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then
             test -s supabase/seed/test-data/scenarios/equipaciones-v1.sql
+          elif [ "${{ inputs.scenario }}" = "ECONOMIA" ]; then
+            test -s supabase/seed/test-data/scenarios/economia-v1.sql
           fi
       - name: Reset and load TEST-S v1
         if: ${{ inputs.action == 'RESET' }}
@@ -64,6 +66,8 @@ jobs:
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/equipaciones-v1.sql
+          elif [ "${{ inputs.scenario }}" = "ECONOMIA" ]; then
+            psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/economia-v1.sql
           fi
       - name: Validate dataset
         if: ${{ inputs.action == 'RESET' }}

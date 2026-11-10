@@ -223,10 +223,28 @@ where exists (
     and e.entity_id=p.persona_id
 );
 
+-- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
+delete from public.economia_cargo_equipacion x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargo_equipacion'
+    and e.entity_id=x.cargo_id
+)
+or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
+  where c.id=x.cargo_id
+);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
+    'economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
+    'economia_modalidades_equipacion','economia_conceptos',
     'equipacion_ajustes_stock','equipacion_asignacion_lotes',
     'equipacion_stock_lote_vigencia','equipacion_stock_lotes',
     'equipacion_movimientos_stock',
