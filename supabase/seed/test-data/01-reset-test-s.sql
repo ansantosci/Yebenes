@@ -199,6 +199,16 @@ where exists (
     and e.entity_id=s.articulo_id
 );
 
+-- 067 economic state is trigger-derived. During TEST-S teardown, deleting/changing
+-- assignments or participations would otherwise recreate economia_cuota_estado after it
+-- has been cleaned. Suspend only the 067 recalculation triggers inside this transaction.
+alter table public.asignaciones_jugador_equipo disable trigger economia_067_asignacion;
+alter table public.persona_participaciones_temporada disable trigger economia_067_participacion_baja;
+alter table public.economia_cuota_temporada_config disable trigger economia_067_cfg_temporada;
+alter table public.economia_cuota_categoria_config disable trigger economia_067_cfg_categoria;
+alter table public.economia_cuota_equipo_config disable trigger economia_067_cfg_equipo;
+alter table public.economia_descuento_hermanos_reglas disable trigger economia_067_cfg_hermanos;
+
 -- 060 backfill can create participation rows for pre-existing TEST-S people before
 -- those participation IDs have ever been registered in test_dataset_entities.
 -- Remove participation history and participation rows transitively by TEST-S person
@@ -223,6 +233,92 @@ where exists (
     and e.entity_id=p.persona_id
 );
 
+-- 066-068 repair-safe economic closure.
+-- Primary rule: if a charge is registered as TEST-S, delete every ledger child that
+-- references that exact cargo_id. This is independent of how the child was created.
+-- Secondary rule covers trigger-generated charges belonging to TEST-S persons even if
+-- the charge itself was not explicitly registered.
+delete from public.economia_regularizaciones_pendientes x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_cargo_equipacion x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_devoluciones x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_pagos x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+delete from public.economia_ajustes x
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
+);
+
+-- 067 automatic fee triggers can create charges for TEST-S persons without a
+-- test_dataset_entities row for the charge itself. Their ledger children have already
+-- been closed above; now remove those derived root charges before deleting the persons.
+delete from public.economia_cargos c
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='personas'
+    and e.entity_id=c.persona_id
+);
+
 -- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
 delete from public.economia_cargo_equipacion x
 where exists (
@@ -239,10 +335,39 @@ or exists (
   where c.id=x.cargo_id
 );
 
+-- 067: configuration/state tables use natural/composite primary keys, not id.
+-- Delete them by TEST-S ownership scope before the generic id-based teardown.
+delete from public.economia_cuota_estado x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=x.persona_id)
+   or exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_equipo_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='equipos' and e.entity_id=x.equipo_id)
+   or exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_categoria_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_descuento_hermanos_reglas x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+delete from public.economia_cuota_temporada_config x
+where exists (select 1 from private.test_dataset_entities e
+              where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
 -- remaining registered entities use id as their primary key
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
+    -- 067 economic dependencies must be removed before persons, players, teams, charges and seasons.
+    'economia_regularizaciones_pendientes','economia_hermanos_vinculos_manuales',
+    
     'economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
     'economia_modalidades_equipacion','economia_conceptos',
     'equipacion_ajustes_stock','equipacion_asignacion_lotes',
@@ -263,6 +388,13 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+alter table public.economia_cuota_temporada_config enable trigger economia_067_cfg_temporada;
+alter table public.economia_cuota_categoria_config enable trigger economia_067_cfg_categoria;
+alter table public.economia_cuota_equipo_config enable trigger economia_067_cfg_equipo;
+alter table public.economia_descuento_hermanos_reglas enable trigger economia_067_cfg_hermanos;
+alter table public.asignaciones_jugador_equipo enable trigger economia_067_asignacion;
+alter table public.persona_participaciones_temporada enable trigger economia_067_participacion_baja;
+
 select private.test_set_reception_delete_guard(true);
 
 delete from private.test_dataset_entities where dataset_id='TEST-S';
