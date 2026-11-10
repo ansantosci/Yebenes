@@ -388,103 +388,95 @@ begin
 end $$;
 
 
--- Partial pack delivery: confirmed player 4 has 3 garment assignments, 2 delivered,
--- while the match shirt remains pending because its size has no available stock.
-with target as (
- select n.id necesidad_id,n.persona_id,n.temporada_id,tp.talla_general
- from public.equipacion_necesidades n
- join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
- join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
- where pt.id=private.test_uuid('equip:season-person:4')
-), vals as (
- select private.test_uuid('equip:assign:partial:cam-ent') id,necesidad_id,private.test_uuid('equip:art:cam-ent') articulo_id,talla_general talla,'entregada' estado from target
- union all
- select private.test_uuid('equip:assign:partial:pan-ent'),necesidad_id,private.test_uuid('equip:art:pan-ent'),talla_general,'entregada' from target
- union all
- select private.test_uuid('equip:assign:partial:cam-par'),necesidad_id,private.test_uuid('equip:art:cam-par'),talla_general,'propuesta' from target
-)
-insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen,reservado_at)
-select id,necesidad_id,articulo_id,talla,1,estado,'manual',
-       case when estado='entregada' then now()-interval '1 day' else null end
-from vals
-on conflict(necesidad_id,articulo_id,talla) do update
-set estado=excluded.estado,cantidad=1,reservado_at=excluded.reservado_at;
-
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-values
-('TEST-S','equipacion_asignaciones',private.test_uuid('equip:assign:partial:cam-ent')),
-('TEST-S','equipacion_asignaciones',private.test_uuid('equip:assign:partial:pan-ent')),
-('TEST-S','equipacion_asignaciones',private.test_uuid('equip:assign:partial:cam-par'))
-on conflict do nothing;
-
-insert into public.equipacion_entregas(id,asignacion_id,cantidad,entregada_at,observaciones)
-values
-(private.test_uuid('equip:delivery:partial:cam-ent'),private.test_uuid('equip:assign:partial:cam-ent'),1,now()-interval '1 day','Pack parcial - camiseta entrenamiento'),
-(private.test_uuid('equip:delivery:partial:pan-ent'),private.test_uuid('equip:assign:partial:pan-ent'),1,now()-interval '1 day','Pack parcial - pantalón entrenamiento')
-on conflict(asignacion_id) do update set cantidad=1,entregada_at=excluded.entregada_at,observaciones=excluded.observaciones;
-
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-values
-('TEST-S','equipacion_entregas',private.test_uuid('equip:delivery:partial:cam-ent')),
-('TEST-S','equipacion_entregas',private.test_uuid('equip:delivery:partial:pan-ent'))
-on conflict do nothing;
-
--- Current stock after those deliveries: delivered garments are no longer physically available;
--- the pending match shirt also has zero stock in this player's size.
-with target as (
- select n.temporada_id,tp.talla_general talla
- from public.equipacion_necesidades n
- join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
- join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
- where pt.id=private.test_uuid('equip:season-person:4')
-), arts as (
- select private.test_uuid('equip:art:cam-ent') articulo_id from target
- union all select private.test_uuid('equip:art:pan-ent') from target
- union all select private.test_uuid('equip:art:cam-par') from target
-)
-insert into public.equipacion_stock(temporada_id,articulo_id,talla,cantidad_fisica,cantidad_reservada)
-select t.temporada_id,a.articulo_id,t.talla,0,0 from target t cross join arts a
-on conflict(temporada_id,articulo_id,talla) do update set cantidad_fisica=0,cantidad_reservada=0,updated_at=now();
-
--- Explicit negative movements for the two delivered garments.
-with target as (
- select n.temporada_id,tp.talla_general talla
- from public.equipacion_necesidades n
- join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
- join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
- where pt.id=private.test_uuid('equip:season-person:4')
-)
-insert into public.equipacion_movimientos_stock(id,temporada_id,articulo_id,talla,tipo,cantidad,asignacion_id,referencia,observaciones)
-select private.test_uuid('equip:movement:partial:cam-ent'),temporada_id,private.test_uuid('equip:art:cam-ent'),talla,'entrega',-1,private.test_uuid('equip:assign:partial:cam-ent'),'TEST-PARTIAL','Entrega parcial pack' from target
-union all
-select private.test_uuid('equip:movement:partial:pan-ent'),temporada_id,private.test_uuid('equip:art:pan-ent'),talla,'entrega',-1,private.test_uuid('equip:assign:partial:pan-ent'),'TEST-PARTIAL','Entrega parcial pack' from target
-on conflict(id) do update
-set temporada_id=excluded.temporada_id,
-    articulo_id=excluded.articulo_id,
-    talla=excluded.talla,
-    tipo=excluded.tipo,
-    cantidad=excluded.cantidad,
-    asignacion_id=excluded.asignacion_id,
-    referencia=excluded.referencia,
-    observaciones=excluded.observaciones;
-
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-values
-('TEST-S','equipacion_movimientos_stock',private.test_uuid('equip:movement:partial:cam-ent')),
-('TEST-S','equipacion_movimientos_stock',private.test_uuid('equip:movement:partial:pan-ent'))
-on conflict do nothing;
-
+-- Multipack delivery state for confirmed player 4:
+-- training is delivered 2/2 through traceable lots; the separate match need remains pending.
 do $$
-declare r record;
+declare
+  train_need uuid;
+  match_need uuid;
+  tid uuid;
+  personid uuid;
+  talla text;
+  cam_asg uuid:=private.test_uuid('equip:assign:partial:cam-ent');
+  pan_asg uuid:=private.test_uuid('equip:assign:partial:pan-ent');
+  cam_lot uuid:=private.test_uuid('equip:lot:player4:cam-ent');
+  pan_lot uuid:=private.test_uuid('equip:lot:player4:pan-ent');
+  test_auth_uid uuid;
+  r record;
 begin
- select * into r from public.equipacion_reparto_resumen
- where necesidad_id=(select n.id from public.equipacion_necesidades n
-   join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
-   where pt.id=private.test_uuid('equip:season-person:4'));
- if r.estado_reparto is distinct from 'entrega_parcial' or r.prendas_asignadas<>3 or r.prendas_entregadas<>2 then
-   raise exception 'EQUIPACIONES fixture: expected partial delivery 2/3, got %/% state %',
-     coalesce(r.prendas_entregadas,0),coalesce(r.prendas_asignadas,0),coalesce(r.estado_reparto,'NULL');
- end if;
+  select n.persona_id,n.temporada_id,tp.talla_general
+    into personid,tid,talla
+  from public.equipacion_necesidades n
+  join public.equipacion_personas_temporada pt on pt.id=n.persona_temporada_id
+  join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+  where pt.id=private.test_uuid('equip:season-person:4')
+  limit 1;
+
+  select n.id into train_need
+  from public.equipacion_necesidades n
+  where n.persona_id=personid and n.temporada_id=tid
+    and n.pack_id=private.test_uuid('equip:pack:full');
+
+  select n.id into match_need
+  from public.equipacion_necesidades n
+  where n.persona_id=personid and n.temporada_id=tid
+    and n.pack_id=private.test_uuid('equip:pack:partido');
+
+  if train_need is null or match_need is null then
+    raise exception 'EQUIPACIONES fixture: player 4 multipack needs missing';
+  end if;
+
+  insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+  values
+    (cam_asg,train_need,private.test_uuid('equip:art:cam-ent'),talla,1,'propuesta','manual'),
+    (pan_asg,train_need,private.test_uuid('equip:art:pan-ent'),talla,1,'propuesta','manual')
+  on conflict(id) do update set necesidad_id=excluded.necesidad_id,articulo_id=excluded.articulo_id,
+    talla=excluded.talla,cantidad=1,estado='propuesta',reservado_at=null,updated_at=now();
+
+  insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+  values
+    (cam_lot,private.test_uuid('equip:art:cam-ent'),talla,tid,'Patrick','PLAYER4-CAM',1,0),
+    (pan_lot,private.test_uuid('equip:art:pan-ent'),talla,tid,'Patrick','PLAYER4-PAN',1,0)
+  on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+
+  insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at,observaciones)
+  values
+    (cam_lot,tid,'valido',now(),'TEST-S player 4'),
+    (pan_lot,tid,'valido',now(),'TEST-S player 4')
+  on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
+
+  select p.auth_user_id into test_auth_uid
+  from public.personas p
+  join public.persona_roles pr on pr.persona_id=p.id and pr.activo
+    and pr.fecha_desde<=current_date and (pr.fecha_hasta is null or pr.fecha_hasta>=current_date)
+  join public.roles ro on ro.id=pr.rol_id and ro.codigo in ('administrador','club')
+  where p.activo and p.auth_user_id is not null
+  order by (ro.codigo='administrador') desc limit 1;
+  if test_auth_uid is null then raise exception 'EQUIPACIONES fixture: no admin/club identity for logistics RPC'; end if;
+  perform set_config('request.jwt.claim.sub',test_auth_uid::text,true);
+  perform set_config('request.jwt.claim.role','authenticated',true);
+
+  perform private.equipacion_reservar_asignacion_lote(cam_asg,cam_lot,1);
+  perform private.equipacion_reservar_asignacion_lote(pan_asg,pan_lot,1);
+  perform private.equipacion_confirmar_entrega(cam_asg,test_auth_uid);
+  perform private.equipacion_confirmar_entrega(pan_asg,test_auth_uid);
+
+  select * into r from public.equipacion_reparto_resumen where necesidad_id=train_need;
+  if r.estado_reparto is distinct from 'entregada' or r.prendas_asignadas<>2 or r.prendas_entregadas<>2 then
+    raise exception 'EQUIPACIONES fixture: expected training delivered 2/2, got %/% state %',
+      coalesce(r.prendas_entregadas,0),coalesce(r.prendas_asignadas,0),coalesce(r.estado_reparto,'NULL');
+  end if;
+
+  select * into r from public.equipacion_reparto_resumen where necesidad_id=match_need;
+  if r.estado_reparto is distinct from 'pendiente' or r.prendas_entregadas<>0 then
+    raise exception 'EQUIPACIONES fixture: expected separate match pack pending, state %',
+      coalesce(r.estado_reparto,'NULL');
+  end if;
+
+  if (select count(*) from public.equipacion_material_persona
+      where persona_id=personid and temporada_id=tid and pack_id=private.test_uuid('equip:pack:full'))<>2 then
+    raise exception 'EQUIPACIONES fixture: expected two delivered training garments in personal inventory';
+  end if;
 end $$;
 
 
