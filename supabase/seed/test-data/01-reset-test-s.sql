@@ -223,33 +223,6 @@ where exists (
     and e.entity_id=p.persona_id
 );
 
--- 067: economic fee configuration/state includes composite/non-id primary keys.
--- Remove season/person scoped rows transitively before generic id-based teardown.
-delete from public.economia_regularizaciones_pendientes x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=x.persona_id)
-   or exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
-
-delete from public.economia_hermanos_vinculos_manuales x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
-
-delete from public.economia_cuota_estado x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=x.persona_id)
-   or exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
-
-delete from public.economia_descuento_hermanos_reglas x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
-
-delete from public.economia_cuota_equipo_config x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id)
-   or exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='equipos' and e.entity_id=x.equipo_id);
-
-delete from public.economia_cuota_categoria_config x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id)
-   or exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='categorias' and e.entity_id=x.categoria_id);
-
-delete from public.economia_cuota_temporada_config x
-where exists (select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
-
 -- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
 delete from public.economia_cargo_equipacion x
 where exists (
@@ -270,7 +243,10 @@ or exists (
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
-    'economia_regularizaciones_pendientes','economia_hermanos_vinculos_manuales','economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
+    -- 067 economic dependencies must be removed before persons, players, teams, charges and seasons.
+    'economia_regularizaciones_pendientes','economia_cuota_estado','economia_hermanos_vinculos_manuales',
+    'economia_cuota_equipo_config','economia_cuota_categoria_config','economia_descuento_hermanos_reglas','economia_cuota_temporada_config',
+    'economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
     'economia_modalidades_equipacion','economia_conceptos',
     'equipacion_ajustes_stock','equipacion_asignacion_lotes',
     'equipacion_stock_lote_vigencia','equipacion_stock_lotes',
