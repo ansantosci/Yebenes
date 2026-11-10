@@ -139,6 +139,146 @@ begin
  end if;
 end $$;
 
+
+-- 067/068 functional integration on isolated players: hierarchy, unresolved moves and active siblings.
+do $$
+declare
+ tid uuid; cat uuid; ea uuid; eb uuid; ec uuid;
+ p1 uuid:=private.test_uuid('econ067:p1'); p2 uuid:=private.test_uuid('econ067:p2'); tp uuid:=private.test_uuid('econ067:tutor');
+ j1 uuid:=private.test_uuid('econ067:j1'); j2 uuid:=private.test_uuid('econ067:j2');
+ i1 uuid:=private.test_uuid('econ067:i1'); i2 uuid:=private.test_uuid('econ067:i2');
+ pt1 uuid:=private.test_uuid('econ067:pt1'); pt2 uuid:=private.test_uuid('econ067:pt2');
+ a1 uuid:=private.test_uuid('econ067:a1'); a2 uuid:=private.test_uuid('econ067:a2');
+ cid1 uuid; cid2 uuid; r record;
+begin
+ select ep.temporada_id into tid from econ_people ep where ep.n=1;
+ select i.categoria_id into cat from econ_people ep join public.inscripciones i on i.id=ep.inscripcion_id where ep.n=1;
+ select e.id into ea from public.equipos e where e.temporada_id=tid and e.categoria_id=cat and e.activo order by e.id limit 1;
+ select e.id into eb from public.equipos e where e.temporada_id=tid and e.categoria_id=cat and e.activo and e.id<>ea order by e.id limit 1;
+ if ea is null then raise exception 'ECONOMIA 067: no active team for baseline category'; end if;
+ if eb is null then eb:=ea; end if;
+ ec:=private.test_uuid('econ067:team:c');
+ insert into public.equipos(id,temporada_id,categoria_id,nombre,codigo,activo)
+ values(ec,tid,cat,'ECONOMIA 067 C','E067C',true)
+ on conflict(id) do update set activo=true;
+
+ insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo) values
+ (p1,'Hermano1','ECONOMIA067',date '2015-01-01',true),
+ (p2,'Hermano2','ECONOMIA067',date '2016-01-01',true),
+ (tp,'Tutor','ECONOMIA067',date '1980-01-01',true)
+ on conflict(id) do update set activo=true;
+ insert into public.jugadores(id,persona_id,activo,fecha_alta) values
+ (j1,p1,true,current_date),(j2,p2,true,current_date)
+ on conflict(id) do update set activo=true;
+ insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta) values
+ (private.test_uuid('econ067:r1'),j1,tp,current_date,'ECONOMIA 067 shared tutor'),
+ (private.test_uuid('econ067:r2'),j2,tp,current_date,'ECONOMIA 067 shared tutor')
+ on conflict(id) do nothing;
+ insert into public.inscripciones(id,jugador_id,temporada_id,categoria_id,estado) values
+ (i1,j1,tid,cat,'datos_validados'),(i2,j2,tid,cat,'datos_validados')
+ on conflict(id) do update set estado='datos_validados';
+ insert into public.persona_participaciones_temporada(id,persona_id,temporada_id,faceta,origen,estado,categoria_prevista_id,aceptada_at) values
+ (pt1,p1,tid,'jugador','administrativa','aceptada',cat,now()),
+ (pt2,p2,tid,'jugador','administrativa','aceptada',cat,now())
+ on conflict(persona_id,temporada_id,faceta) do update set estado='aceptada',baja_at=null,motivo_baja=null;
+
+ -- Register roots immediately so interrupted runs remain repairable.
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
+ ('TEST-S','equipos',ec),
+ ('TEST-S','personas',p1),('TEST-S','personas',p2),('TEST-S','personas',tp),
+ ('TEST-S','jugadores',j1),('TEST-S','jugadores',j2),
+ ('TEST-S','representaciones_jugador',private.test_uuid('econ067:r1')),('TEST-S','representaciones_jugador',private.test_uuid('econ067:r2')),
+ ('TEST-S','inscripciones',i1),('TEST-S','inscripciones',i2),
+ ('TEST-S','persona_participaciones_temporada',pt1),('TEST-S','persona_participaciones_temporada',pt2)
+ on conflict do nothing;
+
+ -- Remove any fee configuration inherited from the earlier 066 fixture for this category/season.
+ delete from public.economia_cuota_equipo_config where temporada_id=tid and equipo_id in (ea,eb,ec);
+ delete from public.economia_cuota_categoria_config where temporada_id=tid and categoria_id=cat;
+ delete from public.economia_cuota_temporada_config where temporada_id=tid;
+
+ -- No rule anywhere: assignment creates state, but never a false zero-euro charge.
+ insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a1,i1,ea,current_date-5);
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','asignaciones_jugador_equipo',a1) on conflict do nothing;
+ if not exists(select 1 from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid and estado_calculo='pendiente_configuracion') then
+   raise exception 'ECONOMIA 067: expected pending configuration';
+ end if;
+ if exists(select 1 from public.economia_cargos where persona_id=p1 and temporada_id=tid and clave_origen='CUOTA_TEMPORADA') then
+   raise exception 'ECONOMIA 067: missing configuration created a fee';
+ end if;
+
+ -- Category 275 resolves; adding general 300 later must not overwrite category.
+ insert into public.economia_cuota_categoria_config(temporada_id,categoria_id,importe) values(tid,cat,275);
+ select cargo_id into cid1 from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid;
+ if cid1 is null then raise exception 'ECONOMIA 067: category rule did not consolidate fee'; end if;
+ insert into public.economia_cuota_temporada_config(temporada_id,importe_general) values(tid,300);
+ if (select importe_objetivo from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid)<>275 then
+   raise exception 'ECONOMIA 067: general fee overwrote category exception';
+ end if;
+
+ -- Move from known fee to unresolved destination: remove inherited rules before C assignment.
+ update public.asignaciones_jugador_equipo set fecha_hasta=current_date-4 where id=a1;
+ delete from public.economia_cuota_categoria_config where temporada_id=tid and categoria_id=cat;
+ delete from public.economia_cuota_temporada_config where temporada_id=tid;
+ insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde)
+ values(private.test_uuid('econ067:c-pending'),i1,ec,current_date-3);
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+ values('TEST-S','asignaciones_jugador_equipo',private.test_uuid('econ067:c-pending')) on conflict do nothing;
+ if (select estado_calculo from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid)<>'pendiente_configuracion' then
+   raise exception 'ECONOMIA 067: unresolved destination not pending';
+ end if;
+ select * into r from public.economia_estado_cargos where cargo_id=cid1;
+ if r.importe_exigible<>275 then raise exception 'ECONOMIA 067: unresolved destination changed consolidated fee'; end if;
+
+ -- Team C 250 resolves the pending move on the same charge.
+ insert into public.economia_cuota_equipo_config(temporada_id,equipo_id,importe) values(tid,ec,250);
+ if (select importe_objetivo from public.economia_cuota_estado where persona_id=p1 and temporada_id=tid)<>250 then
+   raise exception 'ECONOMIA 067: team exception expected 250';
+ end if;
+ if (select count(*) from public.economia_cargos where persona_id=p1 and temporada_id=tid and clave_origen='CUOTA_TEMPORADA')<>1 then
+   raise exception 'ECONOMIA 067: move duplicated season fee';
+ end if;
+
+ -- Second sibling: category 275, position 2 fixed discount 50.
+ insert into public.economia_cuota_categoria_config(temporada_id,categoria_id,importe) values(tid,cat,275);
+ insert into public.economia_descuento_hermanos_reglas(temporada_id,posicion,tipo,valor) values(tid,2,'fijo',50)
+ on conflict(temporada_id,posicion) do update set tipo='fijo',valor=50,activo=true;
+ insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a2,i2,ea,current_date-2);
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','asignaciones_jugador_equipo',a2) on conflict do nothing;
+ select cargo_id into cid2 from public.economia_cuota_estado where persona_id=p2 and temporada_id=tid;
+ perform private.economia_recalcular_descuentos_hermanos(p1,tid,'configuracion');
+ if (select count(*) from private.economia_hermanos_activos(p1,tid))<>2 then
+   raise exception 'ECONOMIA 068: shared tutor must yield exactly two active siblings';
+ end if;
+ select * into r from public.economia_estado_cargos where cargo_id=cid2;
+ if r.importe_exigible<>225 then raise exception 'ECONOMIA 067: second sibling expected 225 got %',r.importe_exigible; end if;
+
+ -- First sibling leaves: +50 is proposed, not charged automatically.
+ update public.persona_participaciones_temporada set estado='baja',baja_at=now(),motivo_baja='ECONOMIA 067'
+ where id=pt1;
+ if not exists(select 1 from public.economia_regularizaciones_pendientes
+               where cargo_id=cid2 and tipo='perdida_descuento_hermano' and estado='pendiente' and importe_calculado=50) then
+   raise exception 'ECONOMIA 067: missing sibling-loss proposal';
+ end if;
+ select * into r from public.economia_estado_cargos where cargo_id=cid2;
+ if r.importe_exigible<>225 then raise exception 'ECONOMIA 067: proposal charged before Club decision'; end if;
+
+ -- Register generated economic rows for repair-safe reset.
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+ select 'TEST-S','economia_cargos',c.id from public.economia_cargos c
+ where c.persona_id in (p1,p2) and c.temporada_id=tid
+ on conflict do nothing;
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+ select 'TEST-S','economia_ajustes',a.id from public.economia_ajustes a
+ join public.economia_cargos c on c.id=a.cargo_id
+ where c.persona_id in (p1,p2) and c.temporada_id=tid
+ on conflict do nothing;
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+ select 'TEST-S','economia_regularizaciones_pendientes',rp.id from public.economia_regularizaciones_pendientes rp
+ where rp.persona_id in (p1,p2) and rp.temporada_id=tid
+ on conflict do nothing;
+end $$;
+
 update private.test_datasets set scenario='ECONOMIA',loaded_at=now(),
  metadata='{"purpose":"functional economy scenario","version":"v1"}'::jsonb where id='TEST-S';
 commit;
