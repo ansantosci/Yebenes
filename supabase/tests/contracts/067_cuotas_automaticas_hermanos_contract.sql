@@ -19,10 +19,14 @@ begin
  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo) values
  (p1,'Hermano1','Contract067',date '2015-01-01',true),(p2,'Hermano2','Contract067',date '2016-01-01',true),(tutor,'Tutor','Contract067',date '1980-01-01',true);
  insert into public.jugadores(id,persona_id,activo,fecha_alta) values(j1,p1,true,current_date),(j2,p2,true,current_date);
+ -- Both players are minors: create the shared active legal representative before inscription.
+ -- This both satisfies the domain guard and exercises automatic sibling detection by shared tutor.
+ insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta) values
+ ('06700000-0000-4000-8000-000000000019',j1,tutor,current_date,'Contract 067 shared tutor'),
+ ('06700000-0000-4000-8000-000000000020',j2,tutor,current_date,'Contract 067 shared tutor');
  insert into public.inscripciones(id,jugador_id,temporada_id,categoria_id,estado) values(i1,j1,tid,cat,'datos_validados'),(i2,j2,tid,cat,'datos_validados');
  insert into public.persona_participaciones_temporada(id,persona_id,temporada_id,faceta,origen,estado,categoria_prevista_id,aceptada_at)
  values(pt1,p1,tid,'jugador','administrativa','aceptada',cat,now()),(pt2,p2,tid,'jugador','administrativa','aceptada',cat,now());
- insert into public.representaciones_jugador(jugador_id,representante_persona_id,fecha_desde,motivo_alta) values(j1,tutor,current_date,'Contract 067'),(j2,tutor,current_date,'Contract 067');
 
  -- No rule anywhere: assignment creates calculation state but no zero-euro charge.
  insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde) values(a1,i1,ea,current_date);
