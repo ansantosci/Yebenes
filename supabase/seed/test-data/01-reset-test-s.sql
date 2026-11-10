@@ -204,6 +204,10 @@ where exists (
 -- has been cleaned. Suspend only the 067 recalculation triggers inside this transaction.
 alter table public.asignaciones_jugador_equipo disable trigger economia_067_asignacion;
 alter table public.persona_participaciones_temporada disable trigger economia_067_participacion_baja;
+alter table public.economia_cuota_temporada_config disable trigger economia_067_cfg_temporada;
+alter table public.economia_cuota_categoria_config disable trigger economia_067_cfg_categoria;
+alter table public.economia_cuota_equipo_config disable trigger economia_067_cfg_equipo;
+alter table public.economia_descuento_hermanos_reglas disable trigger economia_067_cfg_hermanos;
 
 -- 060 backfill can create participation rows for pre-existing TEST-S people before
 -- those participation IDs have ever been registered in test_dataset_entities.
@@ -373,6 +377,10 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+alter table public.economia_cuota_temporada_config enable trigger economia_067_cfg_temporada;
+alter table public.economia_cuota_categoria_config enable trigger economia_067_cfg_categoria;
+alter table public.economia_cuota_equipo_config enable trigger economia_067_cfg_equipo;
+alter table public.economia_descuento_hermanos_reglas enable trigger economia_067_cfg_hermanos;
 alter table public.asignaciones_jugador_equipo enable trigger economia_067_asignacion;
 alter table public.persona_participaciones_temporada enable trigger economia_067_participacion_baja;
 
