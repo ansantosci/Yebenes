@@ -229,83 +229,79 @@ where exists (
     and e.entity_id=p.persona_id
 );
 
--- 066-068 repair-safe economic closure. TEST-S has two valid charge roots:
--- (1) charges explicitly registered by scenarios that reuse BASELINE persons (066),
--- (2) any charge owned by a TEST-S person (067+). Automatic ledger children may have
--- no registry row, so derive and remove them from the union of both roots.
+-- 066-068 repair-safe economic closure.
+-- Primary rule: if a charge is registered as TEST-S, delete every ledger child that
+-- references that exact cargo_id. This is independent of how the child was created.
+-- Secondary rule covers trigger-generated charges belonging to TEST-S persons even if
+-- the charge itself was not explicitly registered.
 delete from public.economia_regularizaciones_pendientes x
 where exists (
-  select 1 from public.economia_cargos c
-  where c.id=x.cargo_id and (
-    exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
-    )
-    or exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
-    )
-  )
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
 );
 
 delete from public.economia_cargo_equipacion x
 where exists (
-  select 1 from public.economia_cargos c
-  where c.id=x.cargo_id and (
-    exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
-    )
-    or exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
-    )
-  )
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
 );
 
 delete from public.economia_devoluciones x
 where exists (
-  select 1 from public.economia_cargos c
-  where c.id=x.cargo_id and (
-    exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
-    )
-    or exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
-    )
-  )
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
 );
 
 delete from public.economia_pagos x
 where exists (
-  select 1 from public.economia_cargos c
-  where c.id=x.cargo_id and (
-    exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
-    )
-    or exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
-    )
-  )
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
 );
 
 delete from public.economia_ajustes x
 where exists (
-  select 1 from public.economia_cargos c
-  where c.id=x.cargo_id and (
-    exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=c.id
-    )
-    or exists (
-      select 1 from private.test_dataset_entities e
-      where e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
-    )
-  )
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and e.table_name='economia_cargos'
+    and e.entity_id=x.cargo_id
+) or exists (
+  select 1
+  from public.economia_cargos c
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='personas' and e.entity_id=c.persona_id
+  where c.id=x.cargo_id
 );
 
 -- 066: 1:1 economic extension uses cargo_id as its primary key, not id.
