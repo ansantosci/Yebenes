@@ -227,6 +227,8 @@ where exists (
 DO $$ declare t text; begin
   foreach t in array ARRAY[
     -- 056-058 dependencies must be removed before their parents.
+    'economia_cargo_equipacion','economia_devoluciones','economia_pagos','economia_ajustes','economia_cargos',
+    'economia_modalidades_equipacion','economia_conceptos',
     'equipacion_ajustes_stock','equipacion_asignacion_lotes',
     'equipacion_stock_lote_vigencia','equipacion_stock_lotes',
     'equipacion_movimientos_stock',
