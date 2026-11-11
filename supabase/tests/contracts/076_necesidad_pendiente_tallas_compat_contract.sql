@@ -14,12 +14,14 @@ begin
  values(pid,'Jugador','Contract076',date '2000-01-01',true);
  insert into public.jugadores(id,persona_id,activo,fecha_alta) values(jid,pid,true,current_date);
  insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado)
- values(pt,pid,tid,'jugador',jid,'pendiente');
+ values(pt,pid,tid,'jugador',jid,'validada',now());
+ insert into public.equipacion_tallas_persona(persona_id,temporada_id,talla_general,confirmada_at)
+ values(pid,tid,'3XS',now());
 
  -- This is the exact lifecycle shape that 075 accidentally rejected.
  insert into public.equipacion_necesidades(
-   id,persona_id,temporada_id,faceta,jugador_id,persona_temporada_id,reutiliza_entrenamiento,estado)
- values(nid,pid,tid,'jugador',jid,pt,false,'pendiente_tallas');
+   id,persona_id,temporada_id,faceta,jugador_id,persona_temporada_id,reutiliza_entrenamiento,estado,confirmada_at)
+ values(nid,pid,tid,'jugador',jid,pt,false,'pendiente_tallas',now());
 
  if not exists(select 1 from public.equipacion_necesidades where id=nid and pack_id is null and articulo_id_adicional is null)
  then raise exception '076: pending-size need was not accepted'; end if;

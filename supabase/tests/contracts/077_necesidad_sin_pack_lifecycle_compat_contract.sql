@@ -14,11 +14,13 @@ begin
  values(pid,'Jugador','Contract077',date '2000-01-01',true);
  insert into public.jugadores(id,persona_id,activo,fecha_alta) values(jid,pid,true,current_date);
  insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado)
- values(pt,pid,tid,'jugador',jid,'pendiente');
+ values(pt,pid,tid,'jugador',jid,'validada',now());
+ insert into public.equipacion_tallas_persona(persona_id,temporada_id,talla_general,confirmada_at)
+ values(pid,tid,'3XS',now());
 
  insert into public.equipacion_necesidades(
-   id,persona_id,temporada_id,faceta,jugador_id,persona_temporada_id,reutiliza_entrenamiento,estado)
- values(nid,pid,tid,'jugador',jid,pt,false,'pendiente_tallas');
+   id,persona_id,temporada_id,faceta,jugador_id,persona_temporada_id,reutiliza_entrenamiento,estado,confirmada_at)
+ values(nid,pid,tid,'jugador',jid,pt,false,'pendiente_tallas',now());
 
  -- Mirrors the historical 070 lifecycle that 075/076 accidentally constrained.
  update public.equipacion_necesidades
