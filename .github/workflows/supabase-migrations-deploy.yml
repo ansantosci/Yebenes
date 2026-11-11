@@ -68,8 +68,28 @@ jobs:
           ref: ${{ inputs.source_ref }}
 
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
+        shell: bash
+        run: |
+          if command -v psql >/dev/null 2>&1; then
+            echo "PostgreSQL client already available: $(psql --version)"
+            exit 0
+          fi
+          
+          for attempt in 1 2 3 4; do
+            echo "Installing PostgreSQL client (attempt $attempt/4)..."
+            if sudo apt-get -o Acquire::Retries=3 update && \
+               sudo apt-get -o Acquire::Retries=3 install -y postgresql-client; then
+              break
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              echo "ERROR: unable to install PostgreSQL client after 4 attempts." >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
+          
+          command -v psql >/dev/null 2>&1 || { echo "ERROR: psql is still unavailable after installation." >&2; exit 1; }
+          psql --version
       - name: Select database URL
         id: db
         shell: bash

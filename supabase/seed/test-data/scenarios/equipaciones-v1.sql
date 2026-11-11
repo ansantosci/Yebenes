@@ -462,7 +462,7 @@ begin
   perform private.equipacion_confirmar_entrega(pan_asg,test_auth_uid);
 
   select * into r from public.equipacion_reparto_resumen where necesidad_id=train_need;
-  if r.estado_reparto is distinct from 'entregada' or r.prendas_asignadas<>2 or r.prendas_entregadas<>2 then
+  if r.estado_reparto is distinct from 'completo' or r.prendas_asignadas<>2 or r.prendas_entregadas<>2 then
     raise exception 'EQUIPACIONES fixture: expected training delivered 2/2, got %/% state %',
       coalesce(r.prendas_entregadas,0),coalesce(r.prendas_asignadas,0),coalesce(r.estado_reparto,'NULL');
   end if;
