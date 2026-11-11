@@ -5,6 +5,8 @@ declare
  tid uuid:='07200000-0000-4000-8000-000000000001';
  pid1 uuid:='07200000-0000-4000-8000-000000000002';
  pid2 uuid:='07200000-0000-4000-8000-000000000003';
+ j1 uuid:='07200000-0000-4000-8000-000000000010';
+ j2 uuid:='07200000-0000-4000-8000-000000000011';
  art uuid:='07200000-0000-4000-8000-000000000004';
  pack uuid:='07200000-0000-4000-8000-000000000005';
  need1 uuid:='07200000-0000-4000-8000-000000000006';
@@ -18,7 +20,9 @@ begin
  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo) values
  (pid1,'Confirmed','Contract072',date '2000-01-01',true),
  (pid2,'Draft','Contract072',date '2000-01-01',true);
- insert into public.equipacion_articulos(id,codigo,nombre,tipo,usa_talla,activo)
+ insert into public.jugadores(id,persona_id,activo,fecha_alta) values
+ (j1,pid1,true,current_date),(j2,pid2,true,current_date);
+ insert into public.equipacion_articulos(id,codigo,nombre,tipo_prenda,usa_talla,activo)
  values(art,'ART-072','Articulo 072','camiseta',true,true);
  insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
  values(pack,tid,'PACK-072','Pack 072','jugador','entrenamiento',0,true);
@@ -29,10 +33,10 @@ begin
  values(pid1,tid,'3XS',true,now()),(pid2,tid,'3XS',true,null);
 
  -- persona_temporada_id intentionally null: these rows test the derived view boundary only.
- insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,pack_id,estado,confirmada_at)
+ insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,jugador_id,pack_id,estado,confirmada_at)
  values
- (need1,pid1,tid,'jugador',pack,'comunicada',now()),
- (need2,pid2,tid,'jugador',pack,'comunicada',null);
+ (need1,pid1,tid,'jugador',j1,pack,'comunicada',now()),
+ (need2,pid2,tid,'jugador',j2,pack,'comunicada',null);
 
  select * into r from public.equipacion_compra_sugerida
  where temporada_id=tid and articulo_id=art and talla='3XS';
