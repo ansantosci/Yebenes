@@ -13,7 +13,7 @@ begin
  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo)
  values(pid,'Jugador','Contract077',date '2000-01-01',true);
  insert into public.jugadores(id,persona_id,activo,fecha_alta) values(jid,pid,true,current_date);
- insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado)
+ insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado,validada_at)
  values(pt,pid,tid,'jugador',jid,'validada',now());
  insert into public.equipacion_tallas_persona(persona_id,temporada_id,talla_general,confirmada_at)
  values(pid,tid,'3XS',now());
