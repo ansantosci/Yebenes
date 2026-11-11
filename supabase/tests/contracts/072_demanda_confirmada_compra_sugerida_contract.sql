@@ -36,7 +36,7 @@ begin
 
  select * into r from public.equipacion_compra_sugerida
  where temporada_id=tid and articulo_id=art and talla='3XS';
- if r.demanda_confirmada<>10 or r.falta_comprar<>10 then
+ if r.demanda<>10 or r.demanda_confirmada<>10 or r.falta_comprar<>10 then
    raise exception '072: draft request leaked into confirmed demand';
  end if;
 

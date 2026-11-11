@@ -30,7 +30,7 @@ where n.confirmada_at is not null
 
 create or replace view public.equipacion_compra_sugerida as
 with d as (
-  select temporada_id,articulo_id,talla,sum(cantidad_demandada)::integer demanda_confirmada
+  select temporada_id,articulo_id,talla,sum(cantidad_demandada)::integer demanda
   from public.equipacion_demanda_logistica
   group by 1,2,3
 ), e as (
@@ -53,21 +53,25 @@ with d as (
   group by 1,2,3
 )
 select
- d.temporada_id,d.articulo_id,d.talla,
- d.demanda_confirmada,
+ d.temporada_id,
+ d.articulo_id,
+ d.talla,
+ d.demanda,
  coalesce(e.entregado,0)::integer entregado,
- greatest(d.demanda_confirmada-coalesce(e.entregado,0),0)::integer demanda_pendiente_entrega,
  coalesce(s.cantidad_fisica,0)::integer stock_fisico,
- coalesce(s.cantidad_reservada,0)::integer stock_reservado,
- greatest(coalesce(s.cantidad_fisica,0)-coalesce(s.cantidad_reservada,0),0)::integer stock_disponible,
+ coalesce(s.cantidad_reservada,0)::integer reservado,
  coalesce(p.pendiente_proveedor,0)::integer pendiente_proveedor,
  greatest(
-   d.demanda_confirmada
+   d.demanda
    -coalesce(e.entregado,0)
    -coalesce(s.cantidad_fisica,0)
    -coalesce(p.pendiente_proveedor,0),
    0
- )::integer falta_comprar
+ )::integer falta_comprar,
+ -- 072 additions are appended so CREATE OR REPLACE VIEW remains backwards-compatible.
+ d.demanda::integer demanda_confirmada,
+ greatest(d.demanda-coalesce(e.entregado,0),0)::integer demanda_pendiente_entrega,
+ greatest(coalesce(s.cantidad_fisica,0)-coalesce(s.cantidad_reservada,0),0)::integer stock_disponible
 from d
 left join e using(temporada_id,articulo_id,talla)
 left join public.equipacion_stock s using(temporada_id,articulo_id,talla)
