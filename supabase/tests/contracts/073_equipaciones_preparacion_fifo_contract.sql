@@ -12,6 +12,7 @@ declare
  tid uuid:='07300000-0000-4000-8000-000000000001';
  pid uuid:='07300000-0000-4000-8000-000000000002';
  jid uuid:='07300000-0000-4000-8000-000000000003';
+ pt uuid:='07300000-0000-4000-8000-000000000011';
  art uuid:='07300000-0000-4000-8000-000000000004';
  pack uuid:='07300000-0000-4000-8000-000000000005';
  need uuid:='07300000-0000-4000-8000-000000000006';
@@ -26,14 +27,16 @@ begin
  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo)
  values(pid,'Jugador','Contract073',date '2000-01-01',true);
  insert into public.jugadores(id,persona_id,activo,fecha_alta) values(jid,pid,true,current_date);
+ insert into public.equipacion_personas_temporada(id,persona_id,temporada_id,faceta,jugador_id,estado,validada_at)
+ values(pt,pid,tid,'jugador',jid,'validada',now());
  insert into public.equipacion_articulos(id,codigo,nombre,tipo_prenda,usa_talla,activo)
  values(art,'ART-073','Articulo 073','camiseta',true,true);
  insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
  values(pack,tid,'PACK-073','Entrenamiento 073','jugador','entrenamiento',0,true);
  insert into public.equipacion_tallas_persona(persona_id,temporada_id,talla_general,confirmada_at)
  values(pid,tid,'3XS',now());
- insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,jugador_id,pack_id,estado,confirmada_at)
- values(need,pid,tid,'jugador',jid,pack,'comunicada',now());
+ insert into public.equipacion_necesidades(id,persona_id,temporada_id,faceta,jugador_id,persona_temporada_id,pack_id,estado,confirmada_at)
+ values(need,pid,tid,'jugador',jid,pt,pack,'comunicada',now());
  insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado)
  values(ass,need,art,'3XS',3,'propuesta');
 
