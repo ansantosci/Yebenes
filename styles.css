@@ -991,3 +991,23 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 .season-context-badge[data-state="activa"]{background:#dcfce7;color:#166534}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 @media(max-width:640px){.season-context-control select{max-width:190px;font-size:.64rem}.season-context-badge{font-size:.56rem;padding:2px 5px}.season-role-separator{display:none}}
+
+
+/* V96.0.0 · Equipaciones: reparto operativo */
+.equipment-delivery-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) minmax(180px,280px);gap:12px;margin:0 0 16px}
+.equipment-delivery-toolbar input,.equipment-delivery-toolbar select{width:100%}
+.equipment-economic-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}
+.equipment-economic-strip.has-debt{background:#fff7ed;border-color:#fed7aa}
+.equipment-economic-strip span{font-size:.88rem;color:var(--muted)}
+.equipment-soft-warning{display:block;margin-top:4px;color:#9a3412;font-weight:600}
+.equipment-displace{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:700;color:#9a3412;white-space:nowrap}
+.equipment-delivery-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin-top:12px}
+.equipment-delivery-actions span{font-size:.88rem;color:var(--muted)}
+.equipment-delivery-check{width:18px;height:18px;accent-color:#075985}
+@media(max-width:760px){
+ .equipment-delivery-toolbar{grid-template-columns:1fr}
+ .equipment-economic-strip{align-items:flex-start;flex-direction:column;gap:3px}
+ .equipment-delivery-actions{position:sticky;bottom:8px;z-index:3;background:rgba(255,255,255,.96);padding:10px;border-radius:12px;box-shadow:0 6px 22px rgba(15,23,42,.12)}
+ .equipment-delivery-card .compact-table{overflow-x:auto}
+ .equipment-delivery-card .compact-table table{min-width:760px}
+}
