@@ -1521,3 +1521,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La cabecera autenticada adopta el mismo principio responsive en móvil.
 - No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
 - No requiere migración Supabase ni RESET.
+
+
+#### TEST-S reparto matrix
+The EQUIPACIONES overlay used by TEST-S COMPLETO includes deterministic reparto coverage for V96 UI validation: completed delivery, prepared assignment, direct free-stock availability and supplier-covered pending stock. These cases are additive to lifecycle, multipack, economy and notification coverage and are validated during RESET.

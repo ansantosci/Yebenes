@@ -480,6 +480,111 @@ begin
 end $$;
 
 
+
+-- Stable reparto matrix for V96 frontend/end-to-end validation.
+-- Uses confirmed existing needs and creates deterministic assignments/lots without replacing legacy cases.
+do $$
+declare
+ tid uuid; test_auth_uid uuid;
+ rec record; needid uuid; talla text; aid uuid; lotid uuid; asgid uuid;
+begin
+ select id into tid from public.temporadas where estado='activa' limit 1;
+ select p.auth_user_id into test_auth_uid
+ from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
+ join public.roles ro on ro.id=pr.rol_id and ro.codigo in ('administrador','club')
+ where p.auth_user_id is not null order by (ro.codigo='administrador') desc limit 1;
+ if test_auth_uid is null then raise exception 'EQUIPACIONES reparto matrix: no club/admin identity'; end if;
+ perform set_config('request.jwt.claim.sub',test_auth_uid::text,true);
+ perform set_config('request.jwt.claim.role','authenticated',true);
+
+ -- Player 1 match pack: AVAILABLE DIRECTLY (two garments, free stock).
+ select n.id,tp.talla_general into needid,talla
+ from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
+             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id limit 1);
+ if needid is not null then
+   foreach aid in array array[private.test_uuid('equip:art:cam-par'),private.test_uuid('equip:art:pan-par')] loop
+     asgid:=private.test_uuid('matrix:available:asg:'||aid::text);
+     lotid:=private.test_uuid('matrix:available:lot:'||aid::text);
+     insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+     values(asgid,needid,aid,talla,1,'propuesta','manual')
+     on conflict(id) do update set necesidad_id=excluded.necesidad_id,articulo_id=excluded.articulo_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
+     insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+     values(lotid,aid,talla,tid,'Patrick','MATRIX-AVAILABLE',1,0)
+     on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+     insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at,observaciones)
+     values(lotid,tid,'valido',now(),'V96 disponible directo')
+     on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
+   end loop;
+ end if;
+
+ -- Player 2 match pack: PREPARED (one reserved garment; second remains available).
+ select n.id,tp.talla_general into needid,talla
+ from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
+             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 1 limit 1);
+ if needid is not null then
+   aid:=private.test_uuid('equip:art:cam-par'); asgid:=private.test_uuid('matrix:prepared:asg'); lotid:=private.test_uuid('matrix:prepared:lot');
+   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+   values(asgid,needid,aid,talla,1,'propuesta','manual') on conflict(id) do update set talla=excluded.talla,estado='propuesta',reservado_at=null;
+   insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+   values(lotid,aid,talla,tid,'Patrick','MATRIX-PREPARED',1,0) on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+   insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at) values(lotid,tid,'valido',now())
+   on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
+   perform private.equipacion_reservar_asignacion_lote(asgid,lotid,1);
+ end if;
+
+ -- Player 3 match pack: PENDING SUPPLIER through the existing open order, no free stock.
+ select n.id,tp.talla_general into needid,talla
+ from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
+             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 2 limit 1);
+ if needid is not null then
+   aid:=private.test_uuid('equip:art:cam-par'); asgid:=private.test_uuid('matrix:supplier:asg');
+   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+   values(asgid,needid,aid,'S',1,'propuesta','manual') on conflict(id) do update set talla='S',estado='propuesta',reservado_at=null;
+ end if;
+
+ -- Player 4 already supplies the COMPLETED training pack + pending separate match pack.
+end $$;
+
+-- Register matrix entities for reset traceability.
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_asignaciones',x from (values
+ (private.test_uuid('matrix:available:asg:'||private.test_uuid('equip:art:cam-par')::text)),
+ (private.test_uuid('matrix:available:asg:'||private.test_uuid('equip:art:pan-par')::text)),
+ (private.test_uuid('matrix:prepared:asg')),
+ (private.test_uuid('matrix:supplier:asg'))
+) v(x)
+where exists(select 1 from public.equipacion_asignaciones a where a.id=x)
+on conflict do nothing;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_stock_lotes',x from (values
+ (private.test_uuid('matrix:available:lot:'||private.test_uuid('equip:art:cam-par')::text)),
+ (private.test_uuid('matrix:available:lot:'||private.test_uuid('equip:art:pan-par')::text)),
+ (private.test_uuid('matrix:prepared:lot'))
+) v(x)
+where exists(select 1 from public.equipacion_stock_lotes l where l.id=x)
+on conflict do nothing;
+
+-- Matrix assertions: at least one delivered, prepared, available and supplier-covered assignment.
+do $$
+begin
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='entregada')
+ then raise exception 'EQUIPACIONES reparto matrix: delivered case missing'; end if;
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='preparada')
+ then raise exception 'EQUIPACIONES reparto matrix: prepared case missing'; end if;
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='disponible')
+ then raise exception 'EQUIPACIONES reparto matrix: available case missing'; end if;
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='pedido_proveedor')
+ then raise exception 'EQUIPACIONES reparto matrix: supplier case missing'; end if;
+end $$;
+
+
 do $$
 declare
   v_missing integer;
