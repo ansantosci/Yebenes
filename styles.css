@@ -993,7 +993,7 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 @media(max-width:640px){.season-context-control select{max-width:190px;font-size:.64rem}.season-context-badge{font-size:.56rem;padding:2px 5px}.season-role-separator{display:none}}
 
 
-/* V96.0.0 · Equipaciones: reparto operativo */
+/* V96.0.1 · Equipaciones: reparto operativo */
 .equipment-delivery-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) minmax(180px,280px);gap:12px;margin:0 0 16px}
 .equipment-delivery-toolbar input,.equipment-delivery-toolbar select{width:100%}
 .equipment-economic-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}

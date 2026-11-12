@@ -1,4 +1,4 @@
-const APP_VERSION='96.0.0';
+const APP_VERSION='96.0.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1644,9 +1644,9 @@ async function loadEquipmentData(options={}){
   equipmentLoadState='loading';equipmentLoadError='';
   if(c)c.innerHTML='<div class="equipment-load-state"><span class="equipment-spinner" aria-hidden="true"></span><div><strong>Cargando equipaciones…</strong><p>Consultando los datos de la temporada.</p></div></div>';
   try{
-    const activeSeason=dbActiveSeason();
-    const season=activeSeason?.id;
-    if(!season)throw new Error('No hay una temporada activa disponible en Supabase.');
+    const contextSeason=dbContextSeason();
+    const season=contextSeason?.id;
+    if(!season)throw new Error('No hay una temporada de contexto disponible en Supabase.');
     const queries=[
       sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
       sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
@@ -1705,6 +1705,8 @@ function equipmentArticleNameFromRows(id,rows){const a=(rows||[]).find(x=>x.id==
 function equipmentTeamNameFromRows(id,rows){return (rows||[]).find(x=>x.id===id)?.nombre||'—'}
 function equipmentPersonName(personaId){return equipmentPersonNameFromRows(personaId,equipmentRows.people)}
 function equipmentArticleName(id){return equipmentArticleNameFromRows(id,equipmentRows.articles)}
+function equipmentArticle(id){return equipmentRows.articles.find(x=>x.id===id)||null}
+function equipmentArticleShowsDorsal(id){return equipmentArticle(id)?.personalizable_dorsal===true}
 function equipmentPackName(id){const p=equipmentRows.packs.find(x=>x.id===id);return p?.nombre||'Sin pack'}
 function equipmentSizeRow(personaId){return equipmentRows.sizes.find(x=>x.persona_id===personaId)}
 function equipmentGeneralSize(personaId){return equipmentSizeRow(personaId)?.talla_general||'Pendiente'}
@@ -1733,14 +1735,18 @@ let equipmentDeliverySearch='';
 let equipmentDeliveryTeam='all';
 const equipmentDeliverySelection=new Set();
 const equipmentDeliveryDisplacement=new Set();
-function equipmentOperationalForAssignment(id){return (equipmentRows.operational||[]).find(x=>x.asignacion_id===id)||null}
+function equipmentOperationalForAssignment(id){
+  const op=(equipmentRows.operational||[]).find(x=>x.asignacion_id===id)||null;
+  const delivery=equipmentDeliveryForAssignment(id);
+  return delivery?{...(op||{}),asignacion_id:id,situacion_operativa:'entregada',estado_operativo:'entregada',cantidad_entregada:delivery.cantidad||1}:op;
+}
 function equipmentOperationalLabel(x){
-  const v=x?.situacion_operativa||'pendiente_compra';
+  const v=x?.estado_operativo||x?.situacion_operativa||'pendiente_compra';
   return v==='entregada'?['Entregada','complete']:v==='preparada'?['Preparada','info']:v==='disponible'?['Disponible','complete']:v==='pedido_proveedor'?['Pedido a proveedor','warning']:['Pendiente de compra','pending'];
 }
 function equipmentMoney(v){const n=Number(v||0);return `${n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €`}
-function equipmentCanSelect(op){return op&&['preparada','disponible'].includes(op.situacion_operativa)}
-function equipmentNeedsDisplacement(op){return op&&op.situacion_operativa==='pendiente_compra'&&Number(op.stock_fisico||0)>=Number(op.cantidad_necesaria||1)}
+function equipmentCanSelect(op){return op&&['preparada','disponible'].includes(op.estado_operativo||op.situacion_operativa)}
+function equipmentNeedsDisplacement(op){return op&&(op.estado_operativo||op.situacion_operativa)==='pendiente_compra'&&Number(op.stock_fisico||0)>=Number(op.cantidad_necesaria||1)}
 async function equipmentPrepareAssignment(id){
   const b=document.querySelector(`[data-eq-prepare="${id}"]`);if(b){b.disabled=true;b.textContent='Preparando…'}
   try{const {error}=await sb.rpc('equipacion_preparar_asignacion_fifo',{p_asignacion:id});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
@@ -1827,9 +1833,9 @@ function renderEquipment(){
       <div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Cobertura</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
         const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op);
         const selectable=equipmentCanSelect(op),displace=equipmentNeedsDisplacement(op),checked=equipmentDeliverySelection.has(a.id);
-        const coverage=op?`${Number(op.cantidad_reservada||0)} prep. · ${Number(op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} prov.`:'—';
-        return `<tr><td>${d||op?.situacion_operativa==='entregada'?'✓':`<input class="equipment-delivery-check" type="checkbox" data-eq-select="${a.id}" ${checked?'checked':''} ${selectable||displace?'':'disabled'} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${d?'Entregada':op?.situacion_operativa==='disponible'?`<button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button>`:displace?`<label class="equipment-displace"><input type="checkbox" data-eq-displace="${a.id}" ${equipmentDeliveryDisplacement.has(a.id)?'checked':''}/> Entregar igualmente</label>`:'—'}</td></tr>`}).join('')}</tbody></table></div>
-      <div class="equipment-delivery-actions"><span>${[...equipmentDeliverySelection].filter(id=>g.items.some(a=>a.id===id)).length} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${personId}" type="button">Entregar seleccionadas</button></div></article>`}).join('')||'<div class="info-card"><strong>Sin resultados</strong><p>No hay repartos que coincidan con los filtros actuales.</p></div>'}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;
+        const coverage=d?(d.entregada_at?`Entregada ${formatDate(d.entregada_at)}`:'Entregada'):op?`${Number(op.cantidad_reservada||0)} prep. · ${Number(op.stock_disponible||op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} prov.`:'—';
+        return `<tr><td>${d||(op?.estado_operativo||op?.situacion_operativa)==='entregada'?'✓':`<input class="equipment-delivery-check" type="checkbox" data-eq-select="${a.id}" ${checked?'checked':''} ${selectable||displace?'':'disabled'} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${equipmentArticleShowsDorsal(a.articulo_id)&&dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${d?'Entregada':(op?.estado_operativo||op?.situacion_operativa)==='disponible'?`<button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button>`:displace?`<label class="equipment-displace"><input type="checkbox" data-eq-displace="${a.id}" ${equipmentDeliveryDisplacement.has(a.id)?'checked':''}/> Entregar igualmente</label>`:'—'}</td></tr>`}).join('')}</tbody></table></div>
+      <div class="equipment-delivery-actions">${g.state==='entregado'?'<strong>Entrega completada</strong>':`<span>${[...equipmentDeliverySelection].filter(id=>g.items.some(a=>a.id===id)).length} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${personId}" type="button">Entregar seleccionadas</button>`}</div></article>`}).join('')||'<div class="info-card"><strong>Sin resultados</strong><p>No hay repartos que coincidan con los filtros actuales.</p></div>'}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;
     renderListPagination('equipmentDeliveries',pageRows.total,filtered.length,renderEquipment);
     $('#equipmentDeliverySearch')?.addEventListener('input',e=>{equipmentDeliverySearch=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
     $('#equipmentDeliveryTeam')?.addEventListener('change',e=>{equipmentDeliveryTeam=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
@@ -2718,7 +2724,7 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
 
 if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
-const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure()};
+const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=async e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure();if(activeClubViewId()==='equipmentView')await loadEquipmentData({tab:equipmentTab})};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 
