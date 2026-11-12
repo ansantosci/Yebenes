@@ -1521,3 +1521,9 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La cabecera autenticada adopta el mismo principio responsive en móvil.
 - No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
 - No requiere migración Supabase ni RESET.
+
+
+### TEST-S scenario COMPLETO
+
+`02 - Manage synthetic data` supports `TEST / RESET / COMPLETO`.
+It performs one TEST-S reset and loads, in order: BASELINE, ECONOMIA, EQUIPACIONES and NOTIFICATIONS, followed by `completo-v1.sql` cross-module validation. Individual scenarios remain available for isolated regression tests. COMPLETO is the preferred stable dataset for end-to-end/frontend validation.

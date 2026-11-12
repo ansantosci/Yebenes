@@ -164,7 +164,7 @@ insert into public.equipacion_pedido_lineas(id,pedido_id,articulo_id,talla,canti
 (private.test_uuid('equip:ol:2'),private.test_uuid('equip:order:1'),private.test_uuid('equip:art:pan-par'),'S',5,12),
 (private.test_uuid('equip:ol:3'),private.test_uuid('equip:order:2'),private.test_uuid('equip:art:cam-ent'),'XS',4,15),
 (private.test_uuid('equip:ol:4'),private.test_uuid('equip:order:2'),private.test_uuid('equip:art:pan-ent'),'XS',4,10)
-on conflict(pedido_id,articulo_id,talla) do update set cantidad_pedida=excluded.cantidad_pedida,precio_unitario=excluded.precio_unitario;
+on conflict(pedido_id,articulo_id,talla) where dorsal is null do update set cantidad_pedida=excluded.cantidad_pedida,precio_unitario=excluded.precio_unitario;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) select 'TEST-S','equipacion_pedido_lineas',private.test_uuid('equip:ol:'||g) from generate_series(1,4) g on conflict do nothing;
 
 insert into public.equipacion_recepciones(id,pedido_id,fecha_recepcion,referencia,observaciones)
