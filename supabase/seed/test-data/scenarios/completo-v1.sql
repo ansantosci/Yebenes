@@ -47,13 +47,48 @@ begin
   if v_orders<1 then raise exception 'COMPLETO: equipment orders missing'; end if;
   if v_notifications<1 then raise exception 'COMPLETO: notifications overlay missing'; end if;
 
-  -- At least one synthetic person must participate in both economy and equipment.
-  select count(distinct ec.persona_id) into v_cross
+  -- Cross-module coverage is validated after the deterministic bridge below.
+  null;
+end $$;
+
+
+-- Deterministic cross-module bridge for end-to-end UI:
+-- the first ECONOMIA player also gets one ordinary equipment need in the same season.
+with target as (
+  select ec.persona_id,ec.temporada_id,j.id jugador_id
   from public.economia_cargos ec
-  join public.equipacion_necesidades en on en.persona_id=ec.persona_id and en.temporada_id=ec.temporada_id
-  where exists(select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=ec.id)
-    and exists(select 1 from private.test_dataset_entities e where e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades' and e.entity_id=en.id);
-  if v_cross<1 then raise exception 'COMPLETO: no cross-module person with economy + equipment'; end if;
+  join public.jugadores j on j.persona_id=ec.persona_id
+  where exists(select 1 from private.test_dataset_entities e
+               where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=ec.id)
+  order by ec.persona_id limit 1
+), pack as (
+  select p.id from public.equipacion_packs p
+  join target t on t.temporada_id=p.temporada_id
+  order by p.created_at,p.id limit 1
+)
+insert into public.equipacion_necesidades(
+ id,persona_id,temporada_id,faceta,jugador_id,pack_id,estado,origen,comunicada_at)
+select private.test_uuid('complete:cross:need'),t.persona_id,t.temporada_id,'jugador',t.jugador_id,p.id,
+       'comunicada','manual',now()
+from target t cross join pack p
+on conflict(id) do update set persona_id=excluded.persona_id,temporada_id=excluded.temporada_id,
+ jugador_id=excluded.jugador_id,pack_id=excluded.pack_id,estado='comunicada',updated_at=now();
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','equipacion_necesidades',private.test_uuid('complete:cross:need'))
+on conflict do nothing;
+
+do $$
+begin
+ if not exists(
+   select 1 from public.economia_cargos ec
+   join public.equipacion_necesidades en
+     on en.persona_id=ec.persona_id and en.temporada_id=ec.temporada_id
+   where exists(select 1 from private.test_dataset_entities e
+                where e.dataset_id='TEST-S' and e.table_name='economia_cargos' and e.entity_id=ec.id)
+     and exists(select 1 from private.test_dataset_entities e
+                where e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades' and e.entity_id=en.id)
+ ) then raise exception 'COMPLETO: deterministic economy + equipment cross-module person missing'; end if;
 end $$;
 
 update private.test_datasets
