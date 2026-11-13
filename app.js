@@ -1,4 +1,4 @@
-const APP_VERSION='96.0.0';
+const APP_VERSION='96.1.4';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1644,9 +1644,9 @@ async function loadEquipmentData(options={}){
   equipmentLoadState='loading';equipmentLoadError='';
   if(c)c.innerHTML='<div class="equipment-load-state"><span class="equipment-spinner" aria-hidden="true"></span><div><strong>Cargando equipaciones…</strong><p>Consultando los datos de la temporada.</p></div></div>';
   try{
-    const activeSeason=dbActiveSeason();
-    const season=activeSeason?.id;
-    if(!season)throw new Error('No hay una temporada activa disponible en Supabase.');
+    const contextSeason=dbContextSeason();
+    const season=contextSeason?.id;
+    if(!season)throw new Error('No hay una temporada de contexto disponible en Supabase.');
     const queries=[
       sb.from('equipacion_necesidades').select('*').eq('temporada_id',season),
       sb.from('equipacion_stock_resumen').select('*').eq('temporada_id',season),
@@ -1705,6 +1705,8 @@ function equipmentArticleNameFromRows(id,rows){const a=(rows||[]).find(x=>x.id==
 function equipmentTeamNameFromRows(id,rows){return (rows||[]).find(x=>x.id===id)?.nombre||'—'}
 function equipmentPersonName(personaId){return equipmentPersonNameFromRows(personaId,equipmentRows.people)}
 function equipmentArticleName(id){return equipmentArticleNameFromRows(id,equipmentRows.articles)}
+function equipmentArticle(id){return equipmentRows.articles.find(x=>x.id===id)||null}
+function equipmentArticleShowsDorsal(id){return equipmentArticle(id)?.personalizable_dorsal===true}
 function equipmentPackName(id){const p=equipmentRows.packs.find(x=>x.id===id);return p?.nombre||'Sin pack'}
 function equipmentSizeRow(personaId){return equipmentRows.sizes.find(x=>x.persona_id===personaId)}
 function equipmentGeneralSize(personaId){return equipmentSizeRow(personaId)?.talla_general||'Pendiente'}
@@ -1722,7 +1724,7 @@ function equipmentLifecycleRows(){
 }
 function equipmentDeliveryGroupRows(){
   const byNeed=new Map();(equipmentRows.assignments||[]).forEach(a=>{if(!byNeed.has(a.necesidad_id))byNeed.set(a.necesidad_id,[]);byNeed.get(a.necesidad_id).push(a)});
-  return [...byNeed.entries()].map(([needId,items])=>{const need=equipmentNeed(needId),summary=equipmentRows.deliverySummary.find(x=>x.necesidad_id===needId);const delivered=items.filter(a=>equipmentDeliveryForAssignment(a.id)||a.estado==='entregada').length;return {need,items,delivered,total:items.length,state:summary?.estado_reparto||(delivered===0?'pendiente':delivered<items.length?'parcial':'entregado')}}).sort((a,b)=>equipmentPersonName(a.need?.persona_id).localeCompare(equipmentPersonName(b.need?.persona_id),'es'))
+  return [...byNeed.entries()].map(([needId,items])=>{const need=equipmentNeed(needId),summary=equipmentRows.deliverySummary.find(x=>x.necesidad_id===needId);const delivered=items.filter(a=>equipmentDeliveryForAssignment(a.id)||a.estado==='entregada').length;return {need,items,delivered,total:items.length,state:(delivered===0?'pendiente':delivered<items.length?'parcial':'entregado')}}).sort((a,b)=>equipmentPersonName(a.need?.persona_id).localeCompare(equipmentPersonName(b.need?.persona_id),'es'))
 }
 function equipmentStockLotStateLabel(x){return x.estado==='valido'?'Válido':x.estado==='no_valido'?'No válido':'Pendiente decidir'}
 function equipmentStockOriginLabel(x){const active=dbActiveSeason()?.id;return x.temporada_origen_id===active?'Temporada actual':'Temporada anterior'}
@@ -1733,14 +1735,40 @@ let equipmentDeliverySearch='';
 let equipmentDeliveryTeam='all';
 const equipmentDeliverySelection=new Set();
 const equipmentDeliveryDisplacement=new Set();
-function equipmentOperationalForAssignment(id){return (equipmentRows.operational||[]).find(x=>x.asignacion_id===id)||null}
+const equipmentDeliveryExpanded=new Set();
+function equipmentDeliveryPersonRows(groups){
+  const byPerson=new Map();
+  groups.forEach(g=>{const pid=g.need?.persona_id;if(!byPerson.has(pid))byPerson.set(pid,[]);byPerson.get(pid).push(g)});
+  return [...byPerson.entries()].map(([personId,packs])=>({personId,packs,team:equipmentAssignmentTeam(packs[0]?.items?.[0])}))
+    .sort((a,b)=>equipmentPersonName(a.personId).localeCompare(equipmentPersonName(b.personId),'es'));
+}
+function equipmentPackOperationalState(g){
+  const ops=g.items.map(a=>equipmentOperationalForAssignment(a.id)).filter(Boolean);
+  const delivered=g.items.filter(a=>equipmentDeliveryForAssignment(a.id)||(equipmentOperationalForAssignment(a.id)?.estado_operativo==='entregada')).length;
+  const prepared=ops.filter(x=>x.estado_operativo==='preparada').length;
+  const available=ops.filter(x=>x.estado_operativo==='disponible').length;
+  const supplier=ops.filter(x=>x.estado_operativo==='pedido_proveedor').length;
+  const debt=Math.max(0,...ops.map(x=>Number(x.saldo_pendiente||0)));
+  let key='pending',label=`Pendiente · ${delivered}/${g.items.length}`,cls='pending';
+  if(delivered===g.items.length&&g.items.length){key='delivered';label=`Entregado · ${delivered}/${g.items.length}`;cls='complete'}
+  else if(delivered>0){key='partial';label=`Parcial · ${delivered}/${g.items.length}`;cls='warning'}
+  else if(prepared){key='prepared';label=prepared===g.items.length?`Preparado · ${prepared}/${g.items.length}`:`Preparación parcial · ${prepared}/${g.items.length}`;cls='info'}
+  else if(available){key='available';label=`Disponible · ${available}/${g.items.length}`;cls='complete'}
+  else if(supplier){key='supplier';label=`Proveedor · ${supplier}/${g.items.length}`;cls='warning'}
+  return {key,label,cls,debt,prepared,available,supplier,delivered,total:g.items.length};
+}
+function equipmentOperationalForAssignment(id){
+  const op=(equipmentRows.operational||[]).find(x=>x.asignacion_id===id)||null;
+  const delivery=equipmentDeliveryForAssignment(id);
+  return delivery?{...(op||{}),asignacion_id:id,situacion_operativa:'entregada',estado_operativo:'entregada',cantidad_entregada:delivery.cantidad||1}:op;
+}
 function equipmentOperationalLabel(x){
-  const v=x?.situacion_operativa||'pendiente_compra';
+  const v=x?.estado_operativo||x?.situacion_operativa||'pendiente_compra';
   return v==='entregada'?['Entregada','complete']:v==='preparada'?['Preparada','info']:v==='disponible'?['Disponible','complete']:v==='pedido_proveedor'?['Pedido a proveedor','warning']:['Pendiente de compra','pending'];
 }
 function equipmentMoney(v){const n=Number(v||0);return `${n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €`}
-function equipmentCanSelect(op){return op&&['preparada','disponible'].includes(op.situacion_operativa)}
-function equipmentNeedsDisplacement(op){return op&&op.situacion_operativa==='pendiente_compra'&&Number(op.stock_fisico||0)>=Number(op.cantidad_necesaria||1)}
+function equipmentCanSelect(op){return op&&['preparada','disponible'].includes(op.estado_operativo||op.situacion_operativa)}
+function equipmentNeedsDisplacement(op){return op&&(op.estado_operativo||op.situacion_operativa)==='pendiente_compra'&&Number(op.stock_fisico||0)>=Number(op.cantidad_necesaria||1)}
 async function equipmentPrepareAssignment(id){
   const b=document.querySelector(`[data-eq-prepare="${id}"]`);if(b){b.disabled=true;b.textContent='Preparando…'}
   try{const {error}=await sb.rpc('equipacion_preparar_asignacion_fifo',{p_asignacion:id});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
@@ -1812,32 +1840,50 @@ function renderEquipment(){
     renderListPagination('equipmentOrders',pageRows.total,orders.length,renderEquipment);
   }else{
     const filtered=equipmentDeliveryFilteredGroups(deliveryGroups);
-    const pageRows=pagedRows('equipmentDeliveries',filtered);
+    const persons=equipmentDeliveryPersonRows(filtered);
+    const pageRows=pagedRows('equipmentDeliveries',persons);
     const teams=[...new Set(deliveryGroups.map(g=>equipmentAssignmentTeam(g.items[0])).filter(x=>x&&x!=='—'))].sort((a,b)=>a.localeCompare(b,'es'));
-    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Preparación y entrega</span><h2>Reparto y entregas</h2><p class="meta">Busca al jugador, selecciona las prendas y confirma una única entrega. Preparar es opcional.</p></div></div>
+    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Preparación y entrega</span><h2>Reparto y entregas</h2><p class="meta">Localiza al jugador y despliega solo el pack que necesites gestionar.</p></div></div>
     <div class="equipment-delivery-toolbar"><input id="equipmentDeliverySearch" type="search" placeholder="Buscar jugador, equipo, pack o prenda…" value="${esc(equipmentDeliverySearch)}" /><select id="equipmentDeliveryTeam"><option value="all">Todos los equipos</option>${teams.map(x=>`<option value="${esc(x)}"${equipmentDeliveryTeam===x?' selected':''}>${esc(x)}</option>`).join('')}</select></div>
     <div id="equipmentDeliveriesPaginationTop" class="list-pagination top"></div>
-    <div class="equipment-delivery-list">${pageRows.items.map(g=>{
-      const dorsal=equipmentNumberForNeed(g.need)?.dorsal,personId=g.need?.persona_id;
-      const ops=g.items.map(a=>equipmentOperationalForAssignment(a.id)).filter(Boolean);
-      const debt=Math.max(0,...ops.map(x=>Number(x.saldo_pendiente||0)));
-      const payable=ops.find(x=>x.cargo_id)?.importe_exigible;
-      return `<article class="equipment-delivery-card"><div class="equipment-delivery-head"><div><strong>${esc(equipmentPersonName(personId))}</strong><span>${esc(equipmentPackName(g.need?.pack_id))}${equipmentAssignmentTeam(g.items[0])!=='—'?` · ${esc(equipmentAssignmentTeam(g.items[0]))}`:''}</span></div><div class="equipment-delivery-state">${equipmentStatusBadge(g.state==='parcial'?`Parcial · ${g.delivered}/${g.total}`:g.state==='entregado'?'Entregado':`Pendiente · ${g.delivered}/${g.total}`,g.state==='entregado'?'complete':g.state==='parcial'?'warning':'pending')}</div></div>
-      ${payable!=null?`<div class="equipment-economic-strip ${debt>0?'has-debt':'paid'}"><strong>${debt>0?`Pendiente ${equipmentMoney(debt)}`:'Equipación pagada'}</strong><span>${debt>0?`Importe equipación ${equipmentMoney(payable)} · la deuda no bloquea la entrega`:'Sin deuda pendiente de equipación'}</span></div>`:''}
-      <div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Cobertura</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
-        const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op);
-        const selectable=equipmentCanSelect(op),displace=equipmentNeedsDisplacement(op),checked=equipmentDeliverySelection.has(a.id);
-        const coverage=op?`${Number(op.cantidad_reservada||0)} prep. · ${Number(op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} prov.`:'—';
-        return `<tr><td>${d||op?.situacion_operativa==='entregada'?'✓':`<input class="equipment-delivery-check" type="checkbox" data-eq-select="${a.id}" ${checked?'checked':''} ${selectable||displace?'':'disabled'} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${d?'Entregada':op?.situacion_operativa==='disponible'?`<button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button>`:displace?`<label class="equipment-displace"><input type="checkbox" data-eq-displace="${a.id}" ${equipmentDeliveryDisplacement.has(a.id)?'checked':''}/> Entregar igualmente</label>`:'—'}</td></tr>`}).join('')}</tbody></table></div>
-      <div class="equipment-delivery-actions"><span>${[...equipmentDeliverySelection].filter(id=>g.items.some(a=>a.id===id)).length} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${personId}" type="button">Entregar seleccionadas</button></div></article>`}).join('')||'<div class="info-card"><strong>Sin resultados</strong><p>No hay repartos que coincidan con los filtros actuales.</p></div>'}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;
-    renderListPagination('equipmentDeliveries',pageRows.total,filtered.length,renderEquipment);
+    <div class="equipment-delivery-list person-groups">${pageRows.items.map(person=>{
+      const personDebt=Math.max(0,...person.packs.flatMap(g=>g.items.map(a=>Number(equipmentOperationalForAssignment(a.id)?.saldo_pendiente||0))));
+      return `<section class="equipment-person-card"><div class="equipment-person-head"><div><strong>${esc(equipmentPersonName(person.personId))}</strong><span>${esc(person.team||'')}</span></div>${personDebt>0?equipmentStatusBadge(`Deuda ${equipmentMoney(personDebt)}`,'warning'):''}</div>
+      <div class="equipment-pack-list">${person.packs.map(g=>{
+        const packState=equipmentPackOperationalState(g),key=g.need?.id||`${person.personId}:${g.need?.pack_id}`,expanded=equipmentDeliveryExpanded.has(key);
+        const dorsal=equipmentNumberForNeed(g.need)?.dorsal;
+        const selectableIds=g.items.filter(a=>{const op=equipmentOperationalForAssignment(a.id);return equipmentCanSelect(op)||equipmentNeedsDisplacement(op)}).map(a=>a.id);
+        const selectedCount=selectableIds.filter(id=>equipmentDeliverySelection.has(id)).length;
+        const payable=g.items.map(a=>equipmentOperationalForAssignment(a.id)).find(x=>x?.cargo_id)?.importe_exigible;
+        return `<article class="equipment-pack-card ${expanded?'expanded':''}">
+          <div class="equipment-pack-summary">
+            <button class="equipment-pack-toggle" type="button" data-eq-toggle-pack="${esc(key)}" aria-expanded="${expanded?'true':'false'}" aria-label="${expanded?'Contraer':'Desplegar'} ${esc(equipmentPackName(g.need?.pack_id))}">${expanded?'−':'+'}</button>
+            <span class="equipment-pack-select">${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).length?`<input type="checkbox" data-eq-select-pack="${esc(key)}" data-eq-select-pack-ids="${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).join(',')}" aria-label="Seleccionar prendas entregables de ${esc(equipmentPackName(g.need?.pack_id))}" />`:''}</span>
+            <span class="equipment-pack-title"><strong>${esc(equipmentPackName(g.need?.pack_id))}</strong>${packState.debt>0?`<small>Deuda pendiente ${equipmentMoney(packState.debt)} · no bloquea la entrega</small>`:payable!=null?'<small>Sin deuda pendiente de equipación</small>':''}</span>
+            ${!expanded&&selectedCount?`<span class="equipment-pack-quick-action"><small>${selectedCount} seleccionada${selectedCount===1?'':'s'}</small><button class="primary small" data-eq-deliver-person="${person.personId}" type="button">Entregar</button></span>`:''}
+            <span class="equipment-delivery-state">${equipmentStatusBadge(packState.label,packState.cls)}</span>
+          </div>
+          ${expanded?`<div class="equipment-pack-detail"><div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Cobertura</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
+            const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op);
+            const selectable=equipmentCanSelect(op),displace=equipmentNeedsDisplacement(op),checked=equipmentDeliverySelection.has(a.id);
+            const coverage=d?(d.entregada_at?`Entregada ${fmt(String(d.entregada_at).slice(0,10))}`:'Entregada'):op?`${Number(op.cantidad_reservada||0)} prep. · ${Number(op.stock_disponible||op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} prov.`:'—';
+            return `<tr><td>${d||(op?.estado_operativo||op?.situacion_operativa)==='entregada'?'✓':`<input class="equipment-delivery-check" type="checkbox" data-eq-select="${a.id}" ${checked?'checked':''} ${selectable||displace?'':'disabled'} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${equipmentArticleShowsDorsal(a.articulo_id)&&dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${d?'Entregada':(op?.estado_operativo||op?.situacion_operativa)==='disponible'?`<button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button>`:displace?`<label class="equipment-displace"><input type="checkbox" data-eq-displace="${a.id}" ${equipmentDeliveryDisplacement.has(a.id)?'checked':''}/> Desplazar preparación</label>`:'—'}</td></tr>`}).join('')}</tbody></table></div>
+            <div class="equipment-delivery-actions">${packState.key==='delivered'?'<strong>Entrega completada</strong>':selectableIds.length?`<span>${selectedCount} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${person.personId}" type="button" ${selectedCount?'':'disabled'}>Entregar seleccionadas</button>`:'<span class="meta">Sin prendas entregables en este momento.</span>'}</div></div>`:''}
+        </article>`}).join('')}</div></section>`}).join('')||'<div class="info-card"><strong>Sin resultados</strong><p>No hay repartos que coincidan con los filtros actuales.</p></div>'}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;
+    renderListPagination('equipmentDeliveries',pageRows.total,persons.length,renderEquipment);
     $('#equipmentDeliverySearch')?.addEventListener('input',e=>{equipmentDeliverySearch=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
     $('#equipmentDeliveryTeam')?.addEventListener('change',e=>{equipmentDeliveryTeam=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
+    $$('[data-eq-toggle-pack]').forEach(x=>x.addEventListener('click',()=>{const key=x.dataset.eqTogglePack;equipmentDeliveryExpanded.has(key)?equipmentDeliveryExpanded.delete(key):equipmentDeliveryExpanded.add(key);renderEquipment()}));
+    $$('[data-eq-select-pack]').forEach(x=>{
+      const ids=(x.dataset.eqSelectPackIds||'').split(',').filter(Boolean),selected=ids.filter(id=>equipmentDeliverySelection.has(id)).length;
+      x.checked=ids.length>0&&selected===ids.length;x.indeterminate=selected>0&&selected<ids.length;
+      x.addEventListener('click',e=>e.stopPropagation());
+      x.addEventListener('change',()=>{ids.forEach(id=>x.checked?equipmentDeliverySelection.add(id):equipmentDeliverySelection.delete(id));renderEquipment()});
+    });
     $$('[data-eq-select]').forEach(x=>x.addEventListener('change',()=>{x.checked?equipmentDeliverySelection.add(x.dataset.eqSelect):equipmentDeliverySelection.delete(x.dataset.eqSelect);renderEquipment()}));
-    $$('[data-eq-displace]').forEach(x=>x.addEventListener('change',()=>{const id=x.dataset.eqDisplace;if(x.checked){equipmentDeliveryDisplacement.add(id);equipmentDeliverySelection.add(id)}else equipmentDeliveryDisplacement.delete(id);renderEquipment()}));
-    $$('[data-eq-prepare]').forEach(x=>x.addEventListener('click',()=>equipmentPrepareAssignment(x.dataset.eqPrepare)));
+    $$('[data-eq-displace]').forEach(x=>x.addEventListener('change',()=>{const id=x.dataset.eqDisplace;if(x.checked){equipmentDeliveryDisplacement.add(id);equipmentDeliverySelection.add(id)}else{equipmentDeliveryDisplacement.delete(id);equipmentDeliverySelection.delete(id)}renderEquipment()}));
+    $$('[data-eq-prepare]').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();equipmentPrepareAssignment(x.dataset.eqPrepare)}));
     $$('[data-eq-deliver-person]').forEach(x=>x.addEventListener('click',()=>equipmentDeliverSelected(x.dataset.eqDeliverPerson)));
-
   }
 }
 
@@ -2718,7 +2764,7 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
 
 if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 $('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
-const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure()};
+const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=async e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure();if(activeClubViewId()==='equipmentView')await loadEquipmentData({tab:equipmentTab})};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 
