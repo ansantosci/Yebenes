@@ -605,10 +605,12 @@ begin
  if needid is not null and actor is not null then
    perform set_config('request.jwt.claim.sub',actor::text,true);
    perform set_config('request.jwt.claim.role','authenticated',true);
-   asg:=private.test_uuid('matrix:partial:asg'); lot:=private.test_uuid('matrix:partial:lot');
-   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
-   values(asg,needid,private.test_uuid('equip:art:cam-par'),talla,1,'propuesta','manual')
-   on conflict(id) do update set necesidad_id=excluded.necesidad_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
+   select id into asg from public.equipacion_asignaciones
+   where necesidad_id=needid and articulo_id=private.test_uuid('equip:art:cam-par') and public.equipacion_asignaciones.talla=talla
+   order by created_at,id limit 1;
+   if asg is null then raise exception 'EQUIPACIONES reparto matrix v2: reusable assignment for partial case missing'; end if;
+   update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg;
+   lot:=private.test_uuid('matrix:partial:lot');
    insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
    values(lot,private.test_uuid('equip:art:cam-par'),talla,(select id from public.temporadas where estado='activa' limit 1),'Patrick','MATRIX-PARTIAL',1,0)
    on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
@@ -637,11 +639,23 @@ begin
  where n.id=(select private.test_uuid('equip:need:match:'||j.id::text) from public.jugadores j
  join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 3 limit 1);
  if need_a is not null and need_b is not null then
-   asg_a:=private.test_uuid('matrix:soft:prepared'); asg_b:=private.test_uuid('matrix:soft:beneficiary'); lot:=private.test_uuid('matrix:soft:lot');
-   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
-   values(asg_a,need_a,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual'),
-         (asg_b,need_b,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual')
-   on conflict(id) do update set talla=excluded.talla,estado='propuesta',reservado_at=null;
+   select id into asg_a from public.equipacion_asignaciones
+    where necesidad_id=need_a and articulo_id=private.test_uuid('equip:art:pan-par') and public.equipacion_asignaciones.talla=talla
+    order by created_at,id limit 1;
+   if asg_a is null then
+     asg_a:=private.test_uuid('matrix:soft:prepared');
+     insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+     values(asg_a,need_a,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual');
+   else update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg_a; end if;
+   select id into asg_b from public.equipacion_asignaciones
+    where necesidad_id=need_b and articulo_id=private.test_uuid('equip:art:pan-par') and public.equipacion_asignaciones.talla=talla
+    order by created_at,id limit 1;
+   if asg_b is null then
+     asg_b:=private.test_uuid('matrix:soft:beneficiary');
+     insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+     values(asg_b,need_b,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual');
+   else update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg_b; end if;
+   lot:=private.test_uuid('matrix:soft:lot');
    insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
    values(lot,private.test_uuid('equip:art:pan-par'),talla,tid,'Patrick','MATRIX-SOFT',1,0)
    on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
@@ -670,7 +684,7 @@ begin
  if not exists(
    select 1 from public.equipacion_asignaciones a
    join public.equipacion_necesidades n on n.id=a.necesidad_id
-   where a.id=private.test_uuid('matrix:soft:beneficiary')
+   where a.estado='propuesta'
      and exists(select 1 from public.equipacion_stock_lotes l join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
        where v.temporada_id=n.temporada_id and v.estado='valido' and l.articulo_id=a.articulo_id and l.talla=a.talla
          and l.cantidad_fisica>0 and l.cantidad_fisica=l.cantidad_reservada)
