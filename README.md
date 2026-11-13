@@ -1,6 +1,6 @@
-### V96.0.2 — Pulido del contexto global de temporada (062A)
-- **V96.0.2**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
-- **V96.0.2**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
+### V96.1.0 — Pulido del contexto global de temporada (062A)
+- **V96.1.0**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
+- **V96.1.0**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
 
 ### V95.3.13 — Contexto global de temporada (062A)
 - **V95.3.13**: Club y Administrador disponen de un selector global y persistente de temporada de trabajo integrado en la cabecera.
@@ -1387,7 +1387,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Se incorpora `patrocinadores_club`: nombre, logo, URL opcional, orden y estado activo/inactivo. El frontend solo muestra patrocinadores activos y respeta su orden.
 - La franja de patrocinadores es responsive y desaparece si el club no tiene patrocinadores activos.
 - V95 mantiene las reglas de negocio de V94; el rediseño se implantará progresivamente sin inventar módulos no existentes.
-- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.0.2` se reserva para el siguiente cambio estructural mayor.
+- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.1.0` se reserva para el siguiente cambio estructural mayor.
 - Regla de release: todo incremento de versión debe actualizar también este `README.md`.
 
 
@@ -1521,7 +1521,3 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La cabecera autenticada adopta el mismo principio responsive en móvil.
 - No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
 - No requiere migración Supabase ni RESET.
-
-
-#### TEST-S reparto matrix
-The EQUIPACIONES overlay used by TEST-S COMPLETO includes deterministic reparto coverage for V96 UI validation: completed delivery, partial delivery, prepared assignment, direct free-stock availability, supplier-covered pending stock, soft-preparation displacement and equipment debt. These cases are additive to lifecycle, multipack, economy and notification coverage and are validated during RESET.
