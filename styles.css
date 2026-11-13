@@ -993,7 +993,7 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 @media(max-width:640px){.season-context-control select{max-width:190px;font-size:.64rem}.season-context-badge{font-size:.56rem;padding:2px 5px}.season-role-separator{display:none}}
 
 
-/* V96.1.1 · Equipaciones: reparto operativo */
+/* V96.1.2 · Equipaciones: reparto operativo */
 .equipment-delivery-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) minmax(180px,280px);gap:12px;margin:0 0 16px}
 .equipment-delivery-toolbar input,.equipment-delivery-toolbar select{width:100%}
 .equipment-economic-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0}
@@ -1012,13 +1012,13 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
  .equipment-delivery-card .compact-table table{min-width:760px}
 }
 
-/* V96.1.1 — reparto grouped by player and collapsible packs */
+/* V96.1.2 — reparto grouped by player and collapsible packs */
 .equipment-delivery-list.person-groups{display:grid;gap:16px}
 .equipment-person-card{background:#fff;border:1px solid #dfe5ec;border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(15,48,76,.05)}
 .equipment-person-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;background:#f8fafc;border-bottom:1px solid #e7ebf0}
 .equipment-person-head>div{display:grid;gap:3px}.equipment-person-head strong{font-size:1.05rem}.equipment-person-head span{font-size:.88rem;color:#63758a}
 .equipment-pack-list{display:grid}.equipment-pack-card+.equipment-pack-card{border-top:1px solid #e7ebf0}
-.equipment-pack-summary{width:100%;display:grid;grid-template-columns:34px 24px minmax(0,1fr) auto;align-items:center;gap:12px;padding:15px 18px;border:0;background:#fff;text-align:left;cursor:pointer}
+.equipment-pack-summary{width:100%;display:grid;grid-template-columns:34px 24px minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:15px 18px;border:0;background:#fff;text-align:left;cursor:pointer}
 .equipment-pack-summary:hover{background:#fbfcfe}.equipment-pack-toggle{display:grid;place-items:center;width:28px;height:28px;border:1px solid #cbd6e2;border-radius:50%;font-size:1.25rem;font-weight:700;color:#075c8f}
 .equipment-pack-title{display:grid;gap:3px}.equipment-pack-title strong{font-size:.98rem}.equipment-pack-title small{font-size:.78rem;color:#687a8e;font-weight:500}
 .equipment-pack-detail{border-top:1px solid #edf0f4;background:#fff}.equipment-pack-detail .table-wrap{border:0;border-radius:0}
@@ -1028,3 +1028,5 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 @media(max-width:760px){.equipment-pack-summary{grid-template-columns:32px 24px 1fr}.equipment-pack-summary .equipment-delivery-state{grid-column:3}.equipment-person-head{align-items:flex-start}.equipment-pack-detail{overflow-x:auto}}
 
 .equipment-pack-select{display:grid;place-items:center}.equipment-pack-select input{width:17px;height:17px;cursor:pointer}
+
+.equipment-pack-quick-action{display:flex;align-items:center;gap:10px;white-space:nowrap}.equipment-pack-quick-action small{color:#63758a;font-weight:600}
