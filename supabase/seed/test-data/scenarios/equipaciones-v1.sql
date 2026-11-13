@@ -675,6 +675,24 @@ select 'TEST-S','equipacion_stock_lotes',x from (values
  (private.test_uuid('matrix:partial:lot')),(private.test_uuid('matrix:soft:lot'))
 ) v(x) where exists(select 1 from public.equipacion_stock_lotes l where l.id=x) on conflict do nothing;
 
+-- Link an existing unpaid ECONOMIA equipment charge to an equipment need of the same person/season.
+-- This is the cross-module debt case used by Reparto; no duplicate charge is created.
+do $$
+declare cid uuid; nid uuid;
+begin
+ select c.id,n.id into cid,nid
+ from public.economia_cargos c
+ join public.economia_estado_cargos ec on ec.cargo_id=c.id and ec.saldo_pendiente>0
+ join public.equipacion_necesidades n on n.persona_id=c.persona_id and n.temporada_id=c.temporada_id
+ where c.origen='equipacion' and c.estado='activo'
+ order by c.created_at,c.id,n.created_at,n.id
+ limit 1;
+ if cid is null or nid is null then
+   raise exception 'EQUIPACIONES reparto matrix v2: no unpaid economy equipment charge/person overlap';
+ end if;
+ update public.economia_cargos set equipacion_necesidad_id=nid,updated_at=now() where id=cid;
+end $$;
+
 do $$
 declare tid uuid;
 begin
