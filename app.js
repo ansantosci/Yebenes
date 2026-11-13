@@ -1,4 +1,4 @@
-const APP_VERSION='96.1.0';
+const APP_VERSION='96.1.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1858,6 +1858,7 @@ function renderEquipment(){
         return `<article class="equipment-pack-card ${expanded?'expanded':''}">
           <button class="equipment-pack-summary" type="button" data-eq-toggle-pack="${esc(key)}" aria-expanded="${expanded?'true':'false'}">
             <span class="equipment-pack-toggle" aria-hidden="true">${expanded?'−':'+'}</span>
+            <span class="equipment-pack-select">${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).length?`<input type="checkbox" data-eq-select-pack="${esc(key)}" data-eq-select-pack-ids="${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).join(',')}" aria-label="Seleccionar prendas entregables de ${esc(equipmentPackName(g.need?.pack_id))}" />`:''}</span>
             <span class="equipment-pack-title"><strong>${esc(equipmentPackName(g.need?.pack_id))}</strong>${packState.debt>0?`<small>Deuda pendiente ${equipmentMoney(packState.debt)} · no bloquea la entrega</small>`:payable!=null?'<small>Sin deuda pendiente de equipación</small>':''}</span>
             <span class="equipment-delivery-state">${equipmentStatusBadge(packState.label,packState.cls)}</span>
           </button>
@@ -1871,7 +1872,13 @@ function renderEquipment(){
     renderListPagination('equipmentDeliveries',pageRows.total,persons.length,renderEquipment);
     $('#equipmentDeliverySearch')?.addEventListener('input',e=>{equipmentDeliverySearch=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
     $('#equipmentDeliveryTeam')?.addEventListener('change',e=>{equipmentDeliveryTeam=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
-    $$('[data-eq-toggle-pack]').forEach(x=>x.addEventListener('click',()=>{const key=x.dataset.eqTogglePack;equipmentDeliveryExpanded.has(key)?equipmentDeliveryExpanded.delete(key):equipmentDeliveryExpanded.add(key);renderEquipment()}));
+    $$('[data-eq-toggle-pack]').forEach(x=>x.addEventListener('click',e=>{if(e.target.closest('[data-eq-select-pack]'))return;const key=x.dataset.eqTogglePack;equipmentDeliveryExpanded.has(key)?equipmentDeliveryExpanded.delete(key):equipmentDeliveryExpanded.add(key);renderEquipment()}));
+    $$('[data-eq-select-pack]').forEach(x=>{
+      const ids=(x.dataset.eqSelectPackIds||'').split(',').filter(Boolean),selected=ids.filter(id=>equipmentDeliverySelection.has(id)).length;
+      x.checked=ids.length>0&&selected===ids.length;x.indeterminate=selected>0&&selected<ids.length;
+      x.addEventListener('click',e=>e.stopPropagation());
+      x.addEventListener('change',()=>{ids.forEach(id=>x.checked?equipmentDeliverySelection.add(id):equipmentDeliverySelection.delete(id));renderEquipment()});
+    });
     $$('[data-eq-select]').forEach(x=>x.addEventListener('change',()=>{x.checked?equipmentDeliverySelection.add(x.dataset.eqSelect):equipmentDeliverySelection.delete(x.dataset.eqSelect);renderEquipment()}));
     $$('[data-eq-displace]').forEach(x=>x.addEventListener('change',()=>{const id=x.dataset.eqDisplace;if(x.checked){equipmentDeliveryDisplacement.add(id);equipmentDeliverySelection.add(id)}else{equipmentDeliveryDisplacement.delete(id);equipmentDeliverySelection.delete(id)}renderEquipment()}));
     $$('[data-eq-prepare]').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();equipmentPrepareAssignment(x.dataset.eqPrepare)}));
