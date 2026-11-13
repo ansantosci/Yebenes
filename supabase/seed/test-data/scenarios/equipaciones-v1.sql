@@ -679,7 +679,7 @@ do $$
 declare tid uuid;
 begin
  select id into tid from public.temporadas where estado='activa' limit 1;
- if not exists(select 1 from public.equipacion_reparto_resumen where temporada_id=tid and estado_reparto='parcial')
+ if not exists(select 1 from public.equipacion_reparto_resumen where temporada_id=tid and estado_reparto='entrega_parcial')
  then raise exception 'EQUIPACIONES reparto matrix v2: partial case missing'; end if;
  if not exists(
    select 1 from public.equipacion_asignaciones a
