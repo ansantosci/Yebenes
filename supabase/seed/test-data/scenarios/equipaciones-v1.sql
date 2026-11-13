@@ -675,22 +675,32 @@ select 'TEST-S','equipacion_stock_lotes',x from (values
  (private.test_uuid('matrix:partial:lot')),(private.test_uuid('matrix:soft:lot'))
 ) v(x) where exists(select 1 from public.equipacion_stock_lotes l where l.id=x) on conflict do nothing;
 
--- Link an existing unpaid ECONOMIA equipment charge to an equipment need of the same person/season.
--- This is the cross-module debt case used by Reparto; no duplicate charge is created.
+-- Deterministic cross-module debt case for Reparto.
+-- Attach an unpaid equipment charge to an actual TEST-S equipment need.
 do $$
-declare cid uuid; nid uuid;
+declare nid uuid; pid uuid; tid uuid; conceptid uuid; cid uuid;
 begin
- select c.id,n.id into cid,nid
- from public.economia_cargos c
- join public.economia_estado_cargos ec on ec.cargo_id=c.id and ec.saldo_pendiente>0
- join public.equipacion_necesidades n on n.persona_id=c.persona_id and n.temporada_id=c.temporada_id
- where c.origen='equipacion' and c.estado='activo'
- order by c.created_at,c.id,n.created_at,n.id
- limit 1;
- if cid is null or nid is null then
-   raise exception 'EQUIPACIONES reparto matrix v2: no unpaid economy equipment charge/person overlap';
+ select n.id,n.persona_id,n.temporada_id into nid,pid,tid
+ from public.equipacion_necesidades n
+ join private.test_dataset_entities e on e.dataset_id='TEST-S'
+   and e.table_name='equipacion_necesidades' and e.entity_id=n.id
+ where n.pack_id is not null
+ order by n.created_at,n.id limit 1;
+ select id into conceptid from public.economia_conceptos where codigo='EQUIPACION' limit 1;
+ if nid is null or conceptid is null then
+   raise exception 'EQUIPACIONES reparto matrix v2: need/concept for debt case missing';
  end if;
- update public.economia_cargos set equipacion_necesidad_id=nid,updated_at=now() where id=cid;
+ cid:=private.test_uuid('matrix:debt:cargo');
+ insert into public.economia_cargos(
+   id,persona_id,temporada_id,concepto_id,importe_base,descripcion,origen,
+   equipacion_necesidad_id,clave_origen,estado)
+ values(cid,pid,tid,conceptid,35,'Deuda equipacion TEST-S Reparto','equipacion',
+        nid,'MATRIX_REPARTO_DEBT','activo')
+ on conflict(temporada_id,persona_id,clave_origen) where clave_origen is not null
+ do update set importe_base=35,descripcion=excluded.descripcion,origen='equipacion',
+   equipacion_necesidad_id=nid,estado='activo',updated_at=now();
+ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+ values('TEST-S','economia_cargos',cid) on conflict do nothing;
 end $$;
 
 do $$
