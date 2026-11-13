@@ -585,6 +585,102 @@ begin
 end $$;
 
 
+-- Reparto matrix v2: explicit partial, soft-displacement and debt-labelled cases.
+-- Partial: player 1 match pack gets one garment delivered and one still pending.
+do $$
+declare
+ needid uuid; talla text; asg uuid; lot uuid; actor uuid;
+begin
+ select n.id,tp.talla_general into needid,talla
+ from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
+             from public.jugadores j join private.test_dataset_entities e
+             on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id
+             order by j.id limit 1);
+ select p.auth_user_id into actor from public.personas p
+ join public.persona_roles pr on pr.persona_id=p.id and pr.activo
+ join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
+ where p.auth_user_id is not null order by (r.codigo='administrador') desc limit 1;
+ if needid is not null and actor is not null then
+   perform set_config('request.jwt.claim.sub',actor::text,true);
+   perform set_config('request.jwt.claim.role','authenticated',true);
+   asg:=private.test_uuid('matrix:partial:asg'); lot:=private.test_uuid('matrix:partial:lot');
+   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+   values(asg,needid,private.test_uuid('equip:art:cam-par'),talla,1,'propuesta','manual')
+   on conflict(id) do update set necesidad_id=excluded.necesidad_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
+   insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+   values(lot,private.test_uuid('equip:art:cam-par'),talla,(select id from public.temporadas where estado='activa' limit 1),'Patrick','MATRIX-PARTIAL',1,0)
+   on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+   insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at)
+   values(lot,(select id from public.temporadas where estado='activa' limit 1),'valido',now())
+   on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
+   perform private.equipacion_reservar_asignacion_lote(asg,lot,1);
+   perform private.equipacion_confirmar_entrega(asg,actor);
+ end if;
+end $$;
+
+-- Soft-displacement: one prepared assignment consumes the only physical unit;
+-- another assignment of same article/size therefore has physical-but-committed coverage.
+do $$
+declare tid uuid; need_a uuid; need_b uuid; talla text; lot uuid; asg_a uuid; asg_b uuid; actor uuid;
+begin
+ select id into tid from public.temporadas where estado='activa' limit 1;
+ select p.auth_user_id into actor from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
+ join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
+ where p.auth_user_id is not null order by (r.codigo='administrador') desc limit 1;
+ select n.id,tp.talla_general into need_a,talla from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text) from public.jugadores j
+ join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 1 limit 1);
+ select n.id into need_b from public.equipacion_necesidades n
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text) from public.jugadores j
+ join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 3 limit 1);
+ if need_a is not null and need_b is not null then
+   asg_a:=private.test_uuid('matrix:soft:prepared'); asg_b:=private.test_uuid('matrix:soft:beneficiary'); lot:=private.test_uuid('matrix:soft:lot');
+   insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
+   values(asg_a,need_a,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual'),
+         (asg_b,need_b,private.test_uuid('equip:art:pan-par'),talla,1,'propuesta','manual')
+   on conflict(id) do update set talla=excluded.talla,estado='propuesta',reservado_at=null;
+   insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
+   values(lot,private.test_uuid('equip:art:pan-par'),talla,tid,'Patrick','MATRIX-SOFT',1,0)
+   on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+   insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at)
+   values(lot,tid,'valido',now()) on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
+   perform set_config('request.jwt.claim.sub',actor::text,true); perform set_config('request.jwt.claim.role','authenticated',true);
+   perform private.equipacion_reservar_asignacion_lote(asg_a,lot,1);
+ end if;
+end $$;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_asignaciones',x from (values
+ (private.test_uuid('matrix:partial:asg')),(private.test_uuid('matrix:soft:prepared')),(private.test_uuid('matrix:soft:beneficiary'))
+) v(x) where exists(select 1 from public.equipacion_asignaciones a where a.id=x) on conflict do nothing;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','equipacion_stock_lotes',x from (values
+ (private.test_uuid('matrix:partial:lot')),(private.test_uuid('matrix:soft:lot'))
+) v(x) where exists(select 1 from public.equipacion_stock_lotes l where l.id=x) on conflict do nothing;
+
+do $$
+declare tid uuid;
+begin
+ select id into tid from public.temporadas where estado='activa' limit 1;
+ if not exists(select 1 from public.equipacion_reparto_resumen where temporada_id=tid and estado_reparto='parcial')
+ then raise exception 'EQUIPACIONES reparto matrix v2: partial case missing'; end if;
+ if not exists(
+   select 1 from public.equipacion_asignaciones a
+   join public.equipacion_necesidades n on n.id=a.necesidad_id
+   where a.id=private.test_uuid('matrix:soft:beneficiary')
+     and exists(select 1 from public.equipacion_stock_lotes l join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
+       where v.temporada_id=n.temporada_id and v.estado='valido' and l.articulo_id=a.articulo_id and l.talla=a.talla
+         and l.cantidad_fisica>0 and l.cantidad_fisica=l.cantidad_reservada)
+ ) then raise exception 'EQUIPACIONES reparto matrix v2: soft displacement case missing'; end if;
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=tid and coalesce(saldo_pendiente,0)>0)
+ then raise exception 'EQUIPACIONES reparto matrix v2: equipment debt case missing'; end if;
+end $$;
+
+
+
 do $$
 declare
   v_missing integer;
