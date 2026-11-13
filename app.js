@@ -1,4 +1,4 @@
-const APP_VERSION='96.1.3';
+const APP_VERSION='96.1.4';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1856,13 +1856,13 @@ function renderEquipment(){
         const selectedCount=selectableIds.filter(id=>equipmentDeliverySelection.has(id)).length;
         const payable=g.items.map(a=>equipmentOperationalForAssignment(a.id)).find(x=>x?.cargo_id)?.importe_exigible;
         return `<article class="equipment-pack-card ${expanded?'expanded':''}">
-          <button class="equipment-pack-summary" type="button" data-eq-toggle-pack="${esc(key)}" aria-expanded="${expanded?'true':'false'}">
-            <span class="equipment-pack-toggle" aria-hidden="true">${expanded?'−':'+'}</span>
+          <div class="equipment-pack-summary">
+            <button class="equipment-pack-toggle" type="button" data-eq-toggle-pack="${esc(key)}" aria-expanded="${expanded?'true':'false'}" aria-label="${expanded?'Contraer':'Desplegar'} ${esc(equipmentPackName(g.need?.pack_id))}">${expanded?'−':'+'}</button>
             <span class="equipment-pack-select">${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).length?`<input type="checkbox" data-eq-select-pack="${esc(key)}" data-eq-select-pack-ids="${selectableIds.filter(id=>!equipmentNeedsDisplacement(equipmentOperationalForAssignment(id))).join(',')}" aria-label="Seleccionar prendas entregables de ${esc(equipmentPackName(g.need?.pack_id))}" />`:''}</span>
             <span class="equipment-pack-title"><strong>${esc(equipmentPackName(g.need?.pack_id))}</strong>${packState.debt>0?`<small>Deuda pendiente ${equipmentMoney(packState.debt)} · no bloquea la entrega</small>`:payable!=null?'<small>Sin deuda pendiente de equipación</small>':''}</span>
             ${!expanded&&selectedCount?`<span class="equipment-pack-quick-action"><small>${selectedCount} seleccionada${selectedCount===1?'':'s'}</small><button class="primary small" data-eq-deliver-person="${person.personId}" type="button">Entregar</button></span>`:''}
             <span class="equipment-delivery-state">${equipmentStatusBadge(packState.label,packState.cls)}</span>
-          </button>
+          </div>
           ${expanded?`<div class="equipment-pack-detail"><div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Cobertura</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
             const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op);
             const selectable=equipmentCanSelect(op),displace=equipmentNeedsDisplacement(op),checked=equipmentDeliverySelection.has(a.id);
@@ -1873,7 +1873,7 @@ function renderEquipment(){
     renderListPagination('equipmentDeliveries',pageRows.total,persons.length,renderEquipment);
     $('#equipmentDeliverySearch')?.addEventListener('input',e=>{equipmentDeliverySearch=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
     $('#equipmentDeliveryTeam')?.addEventListener('change',e=>{equipmentDeliveryTeam=e.target.value;listPageState.equipmentDeliveries=1;renderEquipment()});
-    $$('[data-eq-toggle-pack]').forEach(x=>x.addEventListener('click',e=>{if(e.target.closest('[data-eq-select-pack]')||e.target.closest('[data-eq-deliver-person]'))return;const key=x.dataset.eqTogglePack;equipmentDeliveryExpanded.has(key)?equipmentDeliveryExpanded.delete(key):equipmentDeliveryExpanded.add(key);renderEquipment()}));
+    $$('[data-eq-toggle-pack]').forEach(x=>x.addEventListener('click',()=>{const key=x.dataset.eqTogglePack;equipmentDeliveryExpanded.has(key)?equipmentDeliveryExpanded.delete(key):equipmentDeliveryExpanded.add(key);renderEquipment()}));
     $$('[data-eq-select-pack]').forEach(x=>{
       const ids=(x.dataset.eqSelectPackIds||'').split(',').filter(Boolean),selected=ids.filter(id=>equipmentDeliverySelection.has(id)).length;
       x.checked=ids.length>0&&selected===ids.length;x.indeterminate=selected>0&&selected<ids.length;

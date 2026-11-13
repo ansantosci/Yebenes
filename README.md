@@ -1,6 +1,6 @@
-### V96.1.3 — Pulido del contexto global de temporada (062A)
-- **V96.1.3**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
-- **V96.1.3**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
+### V96.1.4 — Pulido del contexto global de temporada (062A)
+- **V96.1.4**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
+- **V96.1.4**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
 
 ### V95.3.13 — Contexto global de temporada (062A)
 - **V95.3.13**: Club y Administrador disponen de un selector global y persistente de temporada de trabajo integrado en la cabecera.
@@ -1387,7 +1387,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Se incorpora `patrocinadores_club`: nombre, logo, URL opcional, orden y estado activo/inactivo. El frontend solo muestra patrocinadores activos y respeta su orden.
 - La franja de patrocinadores es responsive y desaparece si el club no tiene patrocinadores activos.
 - V95 mantiene las reglas de negocio de V94; el rediseño se implantará progresivamente sin inventar módulos no existentes.
-- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.1.3` se reserva para el siguiente cambio estructural mayor.
+- Convención de versión: `95.0.x` estabiliza V95; `95.1.x`, `95.2.x`, etc. añaden funcionalidad relevante dentro de la generación; `96.1.4` se reserva para el siguiente cambio estructural mayor.
 - Regla de release: todo incremento de versión debe actualizar también este `README.md`.
 
 
