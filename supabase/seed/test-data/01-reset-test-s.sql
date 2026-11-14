@@ -125,6 +125,21 @@ where m.asignacion_id is not null and exists (
   where x.id=m.asignacion_id
 );
 
+-- 079 soft-preparation displacement audit references both the affected and beneficiary
+-- assignments with ON DELETE RESTRICT. A real frontend displacement test can therefore leave
+-- audit rows that must be removed before TEST-S assignments are torn down. Scope the cleanup
+-- transitively through registered TEST-S needs so non-synthetic audit history is preserved.
+delete from public.equipacion_preparaciones_desplazadas d
+where exists (
+  select 1
+  from public.equipacion_asignaciones x
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where x.id=d.asignacion_afectada_id
+     or x.id=d.asignacion_beneficiaria_id
+);
+
 delete from public.equipacion_asignaciones x
 where exists (
   select 1 from private.test_dataset_entities e
