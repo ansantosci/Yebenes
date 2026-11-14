@@ -647,6 +647,19 @@ begin
      insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
      values(asg_a,need_a,private.test_uuid('equip:art:pan-par'),v_talla,1,'propuesta','manual');
    else update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg_a; end if;
+   -- Force the beneficiary's logistical demand for this garment to the same size
+   -- as the prepared physical unit. Without this explicit article exception, the
+   -- assignment can exist while 078 cannot join it to the beneficiary demand row.
+   insert into public.equipacion_tallas_excepcion(id,talla_persona_id,articulo_id,talla)
+   select private.test_uuid('matrix:soft:beneficiary:size-exception'),tp.id,
+          private.test_uuid('equip:art:pan-par'),v_talla
+   from public.equipacion_necesidades nb
+   join public.equipacion_tallas_persona tp
+     on tp.persona_id=nb.persona_id and tp.temporada_id=nb.temporada_id
+   where nb.id=need_b
+   on conflict(talla_persona_id,articulo_id) do update
+      set talla=excluded.talla,updated_at=now();
+
    select id into asg_b from public.equipacion_asignaciones
     where necesidad_id=need_b and articulo_id=private.test_uuid('equip:art:pan-par') and public.equipacion_asignaciones.talla=v_talla
     order by created_at,id limit 1;
@@ -710,13 +723,18 @@ begin
  if not exists(select 1 from public.equipacion_reparto_resumen where temporada_id=tid and estado_reparto='entrega_parcial')
  then raise exception 'EQUIPACIONES reparto matrix v2: partial case missing'; end if;
  if not exists(
-   select 1 from public.equipacion_asignaciones a
-   join public.equipacion_necesidades n on n.id=a.necesidad_id
-   where a.estado='propuesta'
-     and exists(select 1 from public.equipacion_stock_lotes l join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
-       where v.temporada_id=n.temporada_id and v.estado='valido' and l.articulo_id=a.articulo_id and l.talla=a.talla
-         and l.cantidad_fisica>0 and l.cantidad_fisica=l.cantidad_reservada)
- ) then raise exception 'EQUIPACIONES reparto matrix v2: soft displacement case missing'; end if;
+   select 1 from public.equipacion_stock_lotes l
+   join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
+   where l.id=private.test_uuid('matrix:soft:lot') and v.temporada_id=tid and v.estado='valido'
+     and l.cantidad_fisica>0 and l.cantidad_fisica=l.cantidad_reservada
+ ) then raise exception 'EQUIPACIONES reparto matrix v2: soft displacement physical stock missing'; end if;
+ if not exists(
+   select 1 from public.equipacion_estado_operativo eo
+   where eo.asignacion_id=private.test_uuid('matrix:soft:beneficiary')
+     and eo.estado_operativo='pendiente_compra'
+     and coalesce(eo.stock_fisico,0)>0
+     and coalesce(eo.stock_disponible,0)=0
+ ) then raise exception 'EQUIPACIONES reparto matrix v2: soft displacement beneficiary not operationally visible'; end if;
  if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=tid and coalesce(saldo_pendiente,0)>0)
  then raise exception 'EQUIPACIONES reparto matrix v2: equipment debt case missing'; end if;
 end $$;
