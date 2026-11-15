@@ -1,3 +1,10 @@
+### V96.3.0 — Flujo operativo Preparación → Entregas
+- **V96.3.0**: Reparto evoluciona a dos colas internas, `Preparación` y `Entregas`, sobre el mismo render jugador → pack → prenda.
+- **Preparación** mantiene packs no completamente preparados, incluidos parciales; permite preparar selección/pack mediante la RPC atómica 085 y conserva entrega directa excepcional.
+- **Entregas** muestra únicamente packs completos con todas sus prendas preparadas y físicamente comprometidas para la persona; la entrega sigue usando 082/083.
+- Un desplazamiento de stock comprometido advierte expresamente que la persona afectada volverá a Preparación hasta disponer de reposición.
+- Sin cambios de negocio en 073–085 ni nuevas migraciones; frontend visible **V96.3.0**.
+
 ### V96.2.1 — Identidad visual y UX de Reparto
 - **V96.2.1**: incorpora como fondo ambiental muy sutil la textura/escudo del club, preservando contraste y reduciendo su presencia en móvil.
 - **V96.2.1**: Reparto sustituye el `confirm()` nativo de entrega por un modal propio reutilizable que conserva advertencias de deuda y desplazamiento de preparaciones.
