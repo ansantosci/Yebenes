@@ -1069,3 +1069,57 @@ body{position:relative;background-color:#f5f7fa;background-image:linear-gradient
 .app-confirm-modal[data-tone="warning"] .app-confirm-message{background:#fff7ed;border-color:#fed7aa;color:#7c2d12}
 .app-confirm-modal .modal-actions{margin-top:18px}
 @media(max-width:760px){body{background-image:linear-gradient(rgba(245,247,250,.97),rgba(245,247,250,.97)),url("assets/club-fabric-background.webp?v=96.2.0");background-attachment:scroll}.app-confirm-shell{padding:16px}}
+
+/* V96.2.1 - Equipaciones mobile navigation polish */
+@media(max-width:720px){
+  .equipment-workspace .equipment-tabs{
+    display:flex;
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-wrap:nowrap;
+    gap:6px;
+    margin-left:0;
+    margin-right:0;
+    padding:4px 12px 10px;
+    scroll-padding-inline:12px;
+    scroll-snap-type:x proximity;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .equipment-workspace .equipment-tabs::-webkit-scrollbar{display:none}
+  .equipment-workspace .equipment-tabs .entity-tab{
+    flex:0 0 auto;
+    white-space:nowrap;
+    scroll-snap-align:start;
+  }
+  .equipment-workspace .list-pagination,
+  .equipment-workspace .list-pagination-top{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    align-items:start;
+  }
+  .equipment-workspace .pagination-summary,
+  .equipment-workspace .pagination-actions,
+  .equipment-workspace .pagination-pages{
+    width:100%;
+  }
+  .equipment-workspace .pagination-actions{
+    justify-content:flex-start;
+    gap:8px;
+  }
+  .equipment-workspace .pagination-actions label{
+    width:auto;
+    min-width:0;
+  }
+  .equipment-workspace .pagination-pages{
+    order:initial;
+    overflow-x:auto;
+    padding:1px 0 3px;
+    scrollbar-width:none;
+  }
+  .equipment-workspace .pagination-pages::-webkit-scrollbar{display:none}
+}
