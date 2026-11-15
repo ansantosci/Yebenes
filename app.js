@@ -1,4 +1,4 @@
-const APP_VERSION='96.1.4';
+const APP_VERSION='96.2.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1774,6 +1774,20 @@ async function equipmentPrepareAssignment(id){
   try{const {error}=await sb.rpc('equipacion_preparar_asignacion_fifo',{p_asignacion:id});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
   catch(err){alert(`No se ha podido preparar la prenda: ${err.message||err}`)}
 }
+function showAppConfirm({eyebrow='CONFIRMACIÓN',title='Confirmar acción',message='',confirmLabel='Aceptar',cancelLabel='Cancelar',tone='default'}={}){
+  const dialog=document.getElementById('appConfirmModal');
+  if(!dialog)return Promise.resolve(window.confirm(`${message}\n\n${title}`));
+  const eyebrowEl=document.getElementById('appConfirmEyebrow'),titleEl=document.getElementById('appConfirmTitle'),messageEl=document.getElementById('appConfirmMessage'),confirmBtn=document.getElementById('appConfirmAccept'),cancelBtn=document.getElementById('appConfirmCancel');
+  eyebrowEl.textContent=eyebrow;titleEl.textContent=title;messageEl.textContent=message;confirmBtn.textContent=confirmLabel;cancelBtn.textContent=cancelLabel;
+  dialog.dataset.tone=tone;
+  return new Promise(resolve=>{
+    let settled=false;
+    const finish=value=>{if(settled)return;settled=true;confirmBtn.removeEventListener('click',onConfirm);cancelBtn.removeEventListener('click',onCancel);dialog.removeEventListener('cancel',onCancel);if(dialog.open)dialog.close();resolve(value)};
+    const onConfirm=()=>finish(true),onCancel=e=>{e?.preventDefault?.();finish(false)};
+    confirmBtn.addEventListener('click',onConfirm);cancelBtn.addEventListener('click',onCancel);dialog.addEventListener('cancel',onCancel);
+    dialog.showModal();confirmBtn.focus();
+  });
+}
 async function equipmentDeliverSelected(personId){
   const ids=[...equipmentDeliverySelection].filter(id=>{const a=equipmentRows.assignments.find(x=>x.id===id),n=equipmentNeed(a?.necesidad_id);return n?.persona_id===personId});
   if(!ids.length){alert('Selecciona al menos una prenda para entregar.');return}
@@ -1783,7 +1797,15 @@ async function equipmentDeliverSelected(personId){
   let msg=`Vas a entregar ${ids.length} prenda${ids.length===1?'':'s'}.`;
   if(displaced.length)msg+=`\n\n${displaced.length} prenda${displaced.length===1?'':'s'} requiere${displaced.length===1?'':'n'} usar stock comprometido y desplazar preparaciones existentes.`;
   if(debt>0)msg+=`\n\nHay ${equipmentMoney(debt)} pendientes de equipación. La entrega no cancela la deuda.`;
-  if(!confirm(msg+'\n\n¿Confirmar entrega?'))return;
+  const confirmed=await showAppConfirm({
+    eyebrow:'REPARTO DE EQUIPACIONES',
+    title:'Confirmar entrega',
+    message:msg,
+    confirmLabel:'Confirmar entrega',
+    cancelLabel:'Cancelar',
+    tone:(displaced.length||debt>0)?'warning':'default'
+  });
+  if(!confirmed)return;
   try{
     const {error}=await sb.rpc('equipacion_entregar_multiple',{p_asignaciones:ids,p_desplazamiento_autorizado:displaced});
     if(error)throw error;
@@ -1863,10 +1885,10 @@ function renderEquipment(){
             ${!expanded&&selectedCount?`<span class="equipment-pack-quick-action"><small>${selectedCount} seleccionada${selectedCount===1?'':'s'}</small><button class="primary small" data-eq-deliver-person="${person.personId}" type="button">Entregar</button></span>`:''}
             <span class="equipment-delivery-state">${equipmentStatusBadge(packState.label,packState.cls)}</span>
           </div>
-          ${expanded?`<div class="equipment-pack-detail"><div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Cobertura</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
+          ${expanded?`<div class="equipment-pack-detail"><div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Disponibilidad</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
             const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op);
             const selectable=equipmentCanSelect(op),displace=equipmentNeedsDisplacement(op),checked=equipmentDeliverySelection.has(a.id);
-            const coverage=d?(d.entregada_at?`Entregada ${fmt(String(d.entregada_at).slice(0,10))}`:'Entregada'):op?`${Number(op.cantidad_reservada||0)} prep. · ${Number(op.stock_disponible||op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} prov.`:'—';
+            const coverage=d?(d.entregada_at?`Entregada ${fmt(String(d.entregada_at).slice(0,10))}`:'Entregada'):op?`Stock: ${Number(op.cantidad_reservada||0)} preparado · ${Number(op.stock_disponible||op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} proveedor`:'—';
             return `<tr><td>${d||(op?.estado_operativo||op?.situacion_operativa)==='entregada'?'✓':`<input class="equipment-delivery-check" type="checkbox" data-eq-select="${a.id}" ${checked?'checked':''} ${selectable||displace?'':'disabled'} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${equipmentArticleShowsDorsal(a.articulo_id)&&dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${d?'Entregada':(op?.estado_operativo||op?.situacion_operativa)==='disponible'?`<button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button>`:displace?`<label class="equipment-displace"><input type="checkbox" data-eq-displace="${a.id}" ${equipmentDeliveryDisplacement.has(a.id)?'checked':''}/> Desplazar preparación</label>`:'—'}</td></tr>`}).join('')}</tbody></table></div>
             <div class="equipment-delivery-actions">${packState.key==='delivered'?'<strong>Entrega completada</strong>':selectableIds.length?`<span>${selectedCount} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${person.personId}" type="button" ${selectedCount?'':'disabled'}>Entregar seleccionadas</button>`:'<span class="meta">Sin prendas entregables en este momento.</span>'}</div></div>`:''}
         </article>`}).join('')}</div></section>`}).join('')||'<div class="info-card"><strong>Sin resultados</strong><p>No hay repartos que coincidan con los filtros actuales.</p></div>'}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;

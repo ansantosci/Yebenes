@@ -1,3 +1,9 @@
+### V96.2.1 — Identidad visual y UX de Reparto
+- **V96.2.1**: incorpora como fondo ambiental muy sutil la textura/escudo del club, preservando contraste y reduciendo su presencia en móvil.
+- **V96.2.1**: Reparto sustituye el `confirm()` nativo de entrega por un modal propio reutilizable que conserva advertencias de deuda y desplazamiento de preparaciones.
+- **V96.2.1**: la columna `Cobertura` pasa a `Disponibilidad` y explicita stock preparado, libre y pendiente de proveedor con terminología más comprensible.
+- Sin cambios de negocio ni backend: se mantiene el baseline validado hasta migración 084.
+
 ### V96.1.4 — Pulido del contexto global de temporada (062A)
 - **V96.1.4**: la cabecera evita duplicar el estado de temporada: el selector muestra el nombre y el badge contiguo muestra Planificación/Vigente/En proceso de cierre/Cerrada.
 - **V96.1.4**: Estructura unifica la terminología de la temporada real usando `Vigente` en lugar de `Actual`, manteniendo separado `En uso` para la temporada de trabajo.
