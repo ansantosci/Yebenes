@@ -47,6 +47,31 @@ begin
   if v_orders<1 then raise exception 'COMPLETO: equipment orders missing'; end if;
   if v_notifications<1 then raise exception 'COMPLETO: notifications overlay missing'; end if;
 
+  -- Canonical entity integrity: every active player with a current team assignment in the active season
+  -- must have the common player participation for that season.
+  if exists(
+    select 1
+    from public.jugadores j
+    join public.inscripciones i on i.jugador_id=j.id
+    join public.temporadas t on t.id=i.temporada_id and t.estado='activa'
+    join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id
+      and aje.fecha_desde<=current_date and (aje.fecha_hasta is null or aje.fecha_hasta>=current_date)
+    where j.activo
+      and not exists(
+        select 1 from public.persona_participaciones_temporada ppt
+        where ppt.persona_id=j.persona_id and ppt.temporada_id=i.temporada_id and ppt.faceta='jugador'
+      )
+  ) then raise exception 'COMPLETO: active player/team assignment without canonical player participation'; end if;
+
+  -- Current operational equipment flows must not finish with a negative equipment balance.
+  if exists(
+    select 1
+    from public.economia_estado_cargos ec
+    join public.economia_cargos c on c.id=ec.cargo_id
+    join public.economia_conceptos co on co.id=c.concepto_id and co.codigo='EQUIPACION'
+    where ec.saldo_pendiente<0
+  ) then raise exception 'COMPLETO: equipment charge with negative balance/overpayment'; end if;
+
   -- Cross-module coverage is validated after the deterministic bridge below.
   null;
 end $$;
