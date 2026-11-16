@@ -114,7 +114,8 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) value
 ('TEST-S','economia_cargo_equipacion',private.test_uuid('econ:equip:1')),
 ('TEST-S','economia_cargo_equipacion',private.test_uuid('econ:equip:2')),
 ('TEST-S','economia_pagos',private.test_uuid('econ:pago:manual1')),
-('TEST-S','economia_pagos',private.test_uuid('econ:pago:equip2')),
+('TEST-S','economia_pagos',private.test_uuid('econ:pago:equip2'))
+on conflict do nothing;
 
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 select 'TEST-S','economia_cargos',cargo_id from econ_charge_ids
