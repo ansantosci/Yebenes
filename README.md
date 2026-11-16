@@ -1547,3 +1547,5 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Physical preparation/delivery/displacement must not mutate Economia ledgers.
 - 086 must continue delegating displacement semantics to 079.
 - No schema or frontend behavior change in this hardening patch.
+
+- Contract 087 corrected to the effective signatures: 079 private direct delivery, 083 private multiple delivery, 082 public wrapper, 086 demand delivery.
