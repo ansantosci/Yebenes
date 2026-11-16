@@ -1,8 +1,12 @@
 -- 090_rls_auth_initialization_plan_contract.sql
+-- Regression contract for migration 090.
+-- PostgreSQL deparses (select auth.uid()) as ( SELECT auth.uid() AS uid ).
+
 do $$
 declare
   r record;
   expr text;
+  stripped text;
   expected_count integer;
 begin
   -- RLS must remain enabled on all five affected tables.
@@ -43,13 +47,13 @@ begin
     )
     and p.cmd='SELECT'
     and p.permissive='PERMISSIVE'
-    and p.roles = array['authenticated']::name[];
+    and p.roles=array['authenticated']::name[];
 
   if expected_count <> 6 then
     raise exception '090: expected 6 authenticated SELECT policies, found %', expected_count;
   end if;
 
-  -- Every target policy must use InitPlan-wrapped auth.uid(), never direct auth.uid().
+  -- PostgreSQL canonical form may include "AS uid".
   for r in
     select p.tablename,p.policyname,p.qual
     from pg_policies p
@@ -65,24 +69,25 @@ begin
   loop
     expr := lower(coalesce(r.qual,''));
 
-    if expr !~ '\(\s*select\s+auth\.uid\s*\(\s*\)\s*\)' then
-      raise exception '090: %.% does not contain wrapped (select auth.uid())',
-        r.tablename,r.policyname;
+    if expr !~ '\(\s*select\s+auth\.uid\s*\(\s*\)(\s+as\s+uid)?\s*\)' then
+      raise exception '090: %.% does not contain InitPlan-wrapped auth.uid(): %',
+        r.tablename,r.policyname,r.qual;
     end if;
 
-    -- Remove wrapped occurrences; no naked auth.uid() may remain.
-    if regexp_replace(
-         expr,
-         '\(\s*select\s+auth\.uid\s*\(\s*\)\s*\)',
-         '',
-         'g'
-       ) ~ 'auth\.uid\s*\(\s*\)' then
-      raise exception '090: %.% still contains direct auth.uid()',
-        r.tablename,r.policyname;
+    stripped := regexp_replace(
+      expr,
+      '\(\s*select\s+auth\.uid\s*\(\s*\)(\s+as\s+uid)?\s*\)',
+      '',
+      'g'
+    );
+
+    if stripped ~ 'auth\.uid\s*\(\s*\)' then
+      raise exception '090: %.% still contains direct auth.uid(): %',
+        r.tablename,r.policyname,r.qual;
     end if;
   end loop;
 
-  -- Existing write/club policies must remain present and unchanged in role/command shape.
+  -- Existing write/club policies remain present with original role/command shape.
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='entrenador_formaciones'
