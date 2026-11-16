@@ -337,9 +337,20 @@ do $$ declare total integer; positioned integer; confirmed integer; pending inte
  if positioned<>total then raise exception 'MATRIX v2: every canonical player must have an equipment lifecycle position (%/%).',positioned,total; end if;
  if confirmed<80 then raise exception 'MATRIX v2: insufficient confirmed equipment population: %',confirmed; end if;
  if pending<10 or prepared<10 or delivered<10 then raise exception 'MATRIX v2: insufficient logistics diversity pending %, prepared %, delivered %',pending,prepared,delivered; end if;
- if exists(select 1 from public.equipacion_necesidades n join test_matrix_players m on m.jugador_id=n.jugador_id and m.temporada_id=n.temporada_id
-           where n.confirmada_at is not null and not exists(select 1 from public.economia_cargos c where c.equipacion_necesidad_id=n.id and c.estado='activo'))
- then raise exception 'MATRIX v2: confirmed equipment need without active economic obligation'; end if;
+ -- Matrix v2 owns only matrix2:need:* rows. Legacy anchor needs remain audited separately.
+ if exists(
+   select 1
+   from public.equipacion_necesidades n
+   join test_matrix_players m
+     on n.id=private.test_uuid('matrix2:need:'||m.jugador_id::text)
+   where n.confirmada_at is not null
+     and n.estado<>'cancelada'
+     and not exists(
+       select 1 from public.economia_cargos c
+       where c.equipacion_necesidad_id=n.id and c.estado='activo'
+     )
+ )
+ then raise exception 'MATRIX v2: matrix-owned confirmed equipment need without active economic obligation'; end if;
 end $$;
 
 update private.test_datasets
