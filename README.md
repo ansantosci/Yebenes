@@ -1540,3 +1540,10 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La cabecera autenticada adopta el mismo principio responsive en móvil.
 - No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
 - No requiere migración Supabase ni RESET.
+
+
+## Regression hardening after V96.3.2 functional validation
+- Adds `087_equipacion_economia_delivery_boundary_contract.sql`.
+- Physical preparation/delivery/displacement must not mutate Economia ledgers.
+- 086 must continue delegating displacement semantics to 079.
+- No schema or frontend behavior change in this hardening patch.
