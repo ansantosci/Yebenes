@@ -186,6 +186,30 @@ from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join
 on conflict(id) do update set equipo_id=excluded.equipo_id,fecha_hasta=null;
 insert into private.test_dataset_entities select 'TEST-S','asignaciones_jugador_equipo',private.test_uuid('player-team:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
 
+-- Canonical participation: every synthetic player assigned to a team must also exist in the common season/facet domain.
+insert into public.persona_participaciones_temporada(
+  id,persona_id,temporada_id,faceta,origen,estado,categoria_prevista_id,aceptada_at
+)
+select private.test_uuid('particip:baseline:'||e.codigo||':'||g),
+       private.test_s_player_person_id(e.codigo,g),e.temporada_id,'jugador','administrativa','aceptada',e.categoria_id,now()
+from public.equipos e
+join public.temporadas t on t.id=e.temporada_id
+cross join generate_series(1,2) g
+where t.estado='activa'
+on conflict(persona_id,temporada_id,faceta) do update set
+  estado='aceptada',categoria_prevista_id=excluded.categoria_prevista_id,aceptada_at=coalesce(public.persona_participaciones_temporada.aceptada_at,excluded.aceptada_at),
+  baja_at=null,motivo_baja=null;
+
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','persona_participaciones_temporada',ppt.id
+from public.persona_participaciones_temporada ppt
+join public.temporadas t on t.id=ppt.temporada_id and t.estado='activa'
+join public.jugadores j on j.persona_id=ppt.persona_id and j.activo
+join public.inscripciones i on i.jugador_id=j.id and i.temporada_id=ppt.temporada_id
+join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id
+where ppt.faceta='jugador' and aje.fecha_desde<=current_date and (aje.fecha_hasta is null or aje.fecha_hasta>=current_date)
+on conflict do nothing;
+
 -- Roles: tutors; adult Senior players get jugador role. Synthetic users remain auth_user_id NULL.
 insert into public.persona_roles(id,persona_id,rol_id,fecha_desde,activo)
 select private.test_uuid('role:tutor:'||e.codigo),private.test_uuid('tutor:'||e.codigo),'5b569d29-62f1-40b9-bfb7-7a65f62ee8aa',date '2026-07-01',true

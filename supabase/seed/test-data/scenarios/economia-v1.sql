@@ -97,15 +97,12 @@ from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr
 join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
 where p.auth_user_id is not null limit 1 on conflict(id) do nothing;
 
--- Overpayment / subsequent price reduction creates a credit for the same person.
+-- Equipment payment: exact payment only. Operational Equipaciones must not create overpayment.
 insert into public.economia_pagos(id,cargo_id,importe,metodo,fecha_pago,registrado_por)
 select private.test_uuid('econ:pago:equip2'),(select cargo_id from econ_charge_ids where key='equip:2'),35,'efectivo',current_date,p.auth_user_id
 from public.personas p join public.persona_roles pr on pr.persona_id=p.id and pr.activo
 join public.roles r on r.id=pr.rol_id and r.codigo in ('administrador','club')
 where p.auth_user_id is not null limit 1 on conflict(id) do nothing;
-insert into public.economia_ajustes(id,cargo_id,tipo,importe,nombre,motivo,origen)
-values(private.test_uuid('econ:ajuste:equip2-credit'),(select cargo_id from econ_charge_ids where key='equip:2'),'regularizacion',-10,'Regularizacion TEST','Cambio aceptado antes de entrega','manual')
-on conflict(id) do nothing;
 
 -- Register every scenario entity so RESET is deterministic.
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
@@ -117,8 +114,7 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) value
 ('TEST-S','economia_cargo_equipacion',private.test_uuid('econ:equip:1')),
 ('TEST-S','economia_cargo_equipacion',private.test_uuid('econ:equip:2')),
 ('TEST-S','economia_pagos',private.test_uuid('econ:pago:manual1')),
-('TEST-S','economia_pagos',private.test_uuid('econ:pago:equip2')),
-('TEST-S','economia_ajustes',private.test_uuid('econ:ajuste:equip2-credit'))
+('TEST-S','economia_pagos',private.test_uuid('econ:pago:equip2'))
 on conflict do nothing;
 
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
@@ -147,7 +143,7 @@ begin
  select * into e1 from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='equip:1');
  select * into e2 from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='equip:2');
  if e1.importe_exigible<>190 or e1.importe_pagado<>0 then raise exception 'ECONOMIA: complete equipment incorrect'; end if;
- if e2.importe_exigible<>25 or e2.importe_pagado<>35 or e2.saldo_pendiente<>-10 then raise exception 'ECONOMIA: same-person credit incorrect'; end if;
+ if e2.importe_exigible<>35 or e2.importe_pagado<>35 or e2.saldo_pendiente<>0 or e2.estado_pago<>'pagado' then raise exception 'ECONOMIA: equipment exact payment incorrect'; end if;
 
  select * into m from public.economia_estado_cargos where cargo_id=(select cargo_id from econ_charge_ids where key='manual:1');
  if m.importe_exigible<>30 or m.importe_pagado<>30 or m.estado_pago<>'pagado' then raise exception 'ECONOMIA: manual charge/payment incorrect'; end if;
