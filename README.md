@@ -1,4 +1,4 @@
-### V96.3.1 — Preparación desde demanda operativa 084
+### V96.3.2 — Preparación desde demanda operativa 084
 - Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
 - Backend 086 materializa de forma controlada las asignaciones faltantes y compone atómicamente esa materialización con 085 para preparación FIFO. Si falla una prenda, se revierte también la materialización de la selección.
 - La entrega directa desde Preparación se conserva también para demanda aún no materializada, reutilizando la semántica de desplazamiento de 079.
