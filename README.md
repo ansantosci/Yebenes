@@ -1,3 +1,16 @@
+### V96.3.2 — Preparación desde demanda operativa 084
+- Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
+- Backend 086 materializa de forma controlada las asignaciones faltantes y compone atómicamente esa materialización con 085 para preparación FIFO. Si falla una prenda, se revierte también la materialización de la selección.
+- La entrega directa desde Preparación se conserva también para demanda aún no materializada, reutilizando la semántica de desplazamiento de 079.
+- 084 sigue siendo proyección read-only; 085 no cambia y continúa siendo la primitiva de preparación múltiple atómica de asignaciones existentes.
+
+### V96.3.0 — Flujo operativo Preparación → Entregas
+- **V96.3.0**: Reparto evoluciona a dos colas internas, `Preparación` y `Entregas`, sobre el mismo render jugador → pack → prenda.
+- **Preparación** mantiene packs no completamente preparados, incluidos parciales; permite preparar selección/pack mediante la RPC atómica 085 y conserva entrega directa excepcional.
+- **Entregas** muestra únicamente packs completos con todas sus prendas preparadas y físicamente comprometidas para la persona; la entrega sigue usando 082/083.
+- Un desplazamiento de stock comprometido advierte expresamente que la persona afectada volverá a Preparación hasta disponer de reposición.
+- Sin cambios de negocio en 073–085 ni nuevas migraciones; frontend visible **V96.3.0**.
+
 ### V96.2.1 — Identidad visual y UX de Reparto
 - **V96.2.1**: incorpora como fondo ambiental muy sutil la textura/escudo del club, preservando contraste y reduciendo su presencia en móvil.
 - **V96.2.1**: Reparto sustituye el `confirm()` nativo de entrega por un modal propio reutilizable que conserva advertencias de deuda y desplazamiento de preparaciones.
@@ -1527,3 +1540,12 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - La cabecera autenticada adopta el mismo principio responsive en móvil.
 - No modifica reglas de negocio, patrocinadores, autenticación ni modo soporte.
 - No requiere migración Supabase ni RESET.
+
+
+## Regression hardening after V96.3.2 functional validation
+- Adds `087_equipacion_economia_delivery_boundary_contract.sql`.
+- Physical preparation/delivery/displacement must not mutate Economia ledgers.
+- 086 must continue delegating displacement semantics to 079.
+- No schema or frontend behavior change in this hardening patch.
+
+- Contract 087 corrected to the effective signatures: 079 private direct delivery, 083 private multiple delivery, 082 public wrapper, 086 demand delivery.
