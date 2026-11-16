@@ -1,3 +1,9 @@
+### V96.3.1 — Preparación desde demanda operativa 084
+- Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
+- Backend 086 materializa de forma controlada las asignaciones faltantes y compone atómicamente esa materialización con 085 para preparación FIFO. Si falla una prenda, se revierte también la materialización de la selección.
+- La entrega directa desde Preparación se conserva también para demanda aún no materializada, reutilizando la semántica de desplazamiento de 079.
+- 084 sigue siendo proyección read-only; 085 no cambia y continúa siendo la primitiva de preparación múltiple atómica de asignaciones existentes.
+
 ### V96.3.0 — Flujo operativo Preparación → Entregas
 - **V96.3.0**: Reparto evoluciona a dos colas internas, `Preparación` y `Entregas`, sobre el mismo render jugador → pack → prenda.
 - **Preparación** mantiene packs no completamente preparados, incluidos parciales; permite preparar selección/pack mediante la RPC atómica 085 y conserva entrega directa excepcional.

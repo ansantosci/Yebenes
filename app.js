@@ -1,4 +1,4 @@
-const APP_VERSION='96.3.0';
+const APP_VERSION='96.3.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1723,8 +1723,13 @@ function equipmentLifecycleRows(){
   return rows.map(sp=>{const size=equipmentSizeRow(sp.persona_id),need=equipmentRows.needs.find(n=>n.persona_id===sp.persona_id&&n.faceta===sp.faceta);let stage='Pendiente validación',cls='pending';if(sp.estado==='validada'&&!size?.confirmada_at){stage='Pendiente de tallas';cls='warning'}else if(sp.estado==='validada'&&size?.confirmada_at&&!need){stage='Tallas confirmadas';cls='info'}else if(need){stage='Necesidad confirmada';cls='complete'}else if(sp.estado==='baja'||sp.estado==='rechazada'){stage=sp.estado==='baja'?'Baja':'No validada';cls='muted'}return {sp,size,need,stage,cls}})
 }
 function equipmentDeliveryGroupRows(){
-  const byNeed=new Map();(equipmentRows.assignments||[]).forEach(a=>{if(!byNeed.has(a.necesidad_id))byNeed.set(a.necesidad_id,[]);byNeed.get(a.necesidad_id).push(a)});
-  return [...byNeed.entries()].map(([needId,items])=>{const need=equipmentNeed(needId),summary=equipmentRows.deliverySummary.find(x=>x.necesidad_id===needId);const delivered=items.filter(a=>equipmentDeliveryForAssignment(a.id)||a.estado==='entregada').length;return {need,items,delivered,total:items.length,state:(delivered===0?'pendiente':delivered<items.length?'parcial':'entregado')}}).sort((a,b)=>equipmentPersonName(a.need?.persona_id).localeCompare(equipmentPersonName(b.need?.persona_id),'es'))
+  const byNeed=new Map();
+  (equipmentRows.operational||[]).forEach(op=>{
+    const a=op.asignacion_id?(equipmentRows.assignments||[]).find(x=>x.id===op.asignacion_id):null;
+    const item={...(a||{}),id:op.asignacion_id||null,necesidad_id:op.necesidad_id,articulo_id:op.articulo_id,talla:op.talla,cantidad:Number(op.cantidad_necesaria||a?.cantidad||1),_op:op};
+    if(!byNeed.has(op.necesidad_id))byNeed.set(op.necesidad_id,[]);byNeed.get(op.necesidad_id).push(item);
+  });
+  return [...byNeed.entries()].map(([needId,items])=>{const need=equipmentNeed(needId);const delivered=items.filter(a=>equipmentOperationalForItem(a)?.estado_operativo==='entregada').length;return {need,items,delivered,total:items.length,state:(delivered===0?'pendiente':delivered<items.length?'parcial':'entregado')}}).sort((a,b)=>equipmentPersonName(a.need?.persona_id).localeCompare(equipmentPersonName(b.need?.persona_id),'es'))
 }
 function equipmentStockLotStateLabel(x){return x.estado==='valido'?'Válido':x.estado==='no_valido'?'No válido':'Pendiente decidir'}
 function equipmentStockOriginLabel(x){const active=dbActiveSeason()?.id;return x.temporada_origen_id===active?'Temporada actual':'Temporada anterior'}
@@ -1743,8 +1748,8 @@ function equipmentDeliveryPersonRows(groups){
     .sort((a,b)=>equipmentPersonName(a.personId).localeCompare(equipmentPersonName(b.personId),'es'));
 }
 function equipmentPackOperationalState(g){
-  const ops=g.items.map(a=>equipmentOperationalForAssignment(a.id)).filter(Boolean);
-  const delivered=g.items.filter(a=>equipmentDeliveryForAssignment(a.id)||(equipmentOperationalForAssignment(a.id)?.estado_operativo==='entregada')).length;
+  const ops=g.items.map(a=>equipmentOperationalForItem(a)).filter(Boolean);
+  const delivered=g.items.filter(a=>equipmentDeliveryForAssignment(a.id)||(equipmentOperationalForItem(a)?.estado_operativo==='entregada')).length;
   const prepared=ops.filter(x=>x.estado_operativo==='preparada').length;
   const available=ops.filter(x=>x.estado_operativo==='disponible').length;
   const supplier=ops.filter(x=>x.estado_operativo==='pedido_proveedor').length;
@@ -1762,6 +1767,10 @@ function equipmentOperationalForAssignment(id){
   const delivery=equipmentDeliveryForAssignment(id);
   return delivery?{...(op||{}),asignacion_id:id,situacion_operativa:'entregada',estado_operativo:'entregada',cantidad_entregada:delivery.cantidad||1}:op;
 }
+function equipmentOperationalForItem(a){return a?._op||equipmentOperationalForAssignment(a?.id)||null}
+function equipmentItemKey(a){return a?.id||`d:${a?.necesidad_id||''}:${a?.articulo_id||''}:${a?.talla||''}`}
+function equipmentDemandPayload(a){return {necesidad_id:a.necesidad_id,articulo_id:a.articulo_id,talla:a.talla}}
+
 function equipmentOperationalLabel(x){
   const v=x?.estado_operativo||x?.situacion_operativa||'pendiente_compra';
   return v==='entregada'?['Entregada','complete']:v==='preparada'?['Preparada','info']:v==='disponible'?['Disponible','complete']:v==='pedido_proveedor'?['Pedido a proveedor','warning']:['Pendiente de compra','pending'];
@@ -1828,29 +1837,31 @@ let equipmentQueueMode='preparation';
 const equipmentPreparationSelection=new Set();
 function equipmentPackIsFullyPrepared(g){
   return g.items.length>0&&g.items.every(a=>{
-    const op=equipmentOperationalForAssignment(a.id);
-    return !equipmentDeliveryForAssignment(a.id)&&(op?.estado_operativo||op?.situacion_operativa)==='preparada';
+    const op=equipmentOperationalForItem(a);
+    return !(a.id&&equipmentDeliveryForAssignment(a.id))&&(op?.estado_operativo||op?.situacion_operativa)==='preparada';
   });
 }
-function equipmentPackIsDelivered(g){return g.items.length>0&&g.items.every(a=>Boolean(equipmentDeliveryForAssignment(a.id))||(equipmentOperationalForAssignment(a.id)?.estado_operativo==='entregada'))}
+function equipmentPackIsDelivered(g){return g.items.length>0&&g.items.every(a=>(a.id&&Boolean(equipmentDeliveryForAssignment(a.id)))||(equipmentOperationalForItem(a)?.estado_operativo==='entregada'))}
 function equipmentGroupsForQueue(groups,mode){
   return groups.filter(g=>mode==='delivery'?equipmentPackIsFullyPrepared(g):(!equipmentPackIsFullyPrepared(g)&&!equipmentPackIsDelivered(g)));
 }
 async function equipmentPrepareSelected(personId){
-  const ids=[...equipmentPreparationSelection].filter(id=>{
-    const a=equipmentRows.assignments.find(x=>x.id===id),n=a?equipmentNeed(a.necesidad_id):null;
-    return n?.persona_id===personId&&(equipmentOperationalForAssignment(id)?.estado_operativo==='disponible');
-  });
-  if(!ids.length)return;
-  const confirmed=await showAppConfirm({eyebrow:'PREPARACIÓN DE EQUIPACIONES',title:ids.length===1?'Preparar prenda':`Preparar ${ids.length} prendas`,message:ids.length===1?'Se reservará esta prenda para la persona seleccionada.':'Se reservarán todas las prendas seleccionadas de forma atómica. Si alguna no puede prepararse, no se preparará ninguna.',confirmLabel:'Confirmar preparación',cancelLabel:'Cancelar'});
+  const items=equipmentDeliveryGroupRows().filter(g=>g.need?.persona_id===personId).flatMap(g=>g.items).filter(a=>equipmentPreparationSelection.has(equipmentItemKey(a))&&equipmentOperationalForItem(a)?.estado_operativo==='disponible');
+  if(!items.length)return;
+  const confirmed=await showAppConfirm({eyebrow:'PREPARACIÓN DE EQUIPACIONES',title:items.length===1?'Preparar prenda':`Preparar ${items.length} prendas`,message:items.length===1?'Se materializará el match y se reservará esta prenda por FIFO para la persona seleccionada.':'Se materializarán los matches necesarios y se reservarán todas las prendas seleccionadas de forma atómica. Si alguna no puede prepararse, no se preparará ninguna.',confirmLabel:'Confirmar preparación',cancelLabel:'Cancelar'});
   if(!confirmed)return;
-  try{
-    const {error}=await sb.rpc('equipacion_preparar_multiple',{p_asignaciones:ids});if(error)throw error;
-    ids.forEach(id=>equipmentPreparationSelection.delete(id));
-    await loadEquipmentData({tab:'deliveries'});
-  }catch(err){
-    await showAppConfirm({eyebrow:'PREPARACIÓN DE EQUIPACIONES',title:'No se ha podido preparar',message:`No se ha preparado ninguna de las prendas seleccionadas.\n\n${err.message||err}`,confirmLabel:'Cerrar',cancelLabel:'Cerrar',tone:'warning'});
-  }
+  try{const {error}=await sb.rpc('equipacion_preparar_demanda',{p_items:items.map(equipmentDemandPayload)});if(error)throw error;items.forEach(a=>equipmentPreparationSelection.delete(equipmentItemKey(a)));await loadEquipmentData({tab:'deliveries'})}
+  catch(err){await showAppConfirm({eyebrow:'PREPARACIÓN DE EQUIPACIONES',title:'No se ha podido preparar',message:`No se ha preparado ninguna de las prendas seleccionadas.\n\n${err.message||err}`,confirmLabel:'Cerrar',cancelLabel:'Cerrar',tone:'warning'})}
+}
+async function equipmentDirectDeliverDemand(a,{allowDisplacement=false}={}){
+  const op=equipmentOperationalForItem(a),debt=Number(op?.saldo_pendiente||0);
+  let msg='Se materializará el match y se entregará esta prenda directamente.';
+  if(allowDisplacement)msg+='\n\nEl stock físico está comprometido para otra persona. Si confirmas, esa preparación será desplazada y la persona afectada volverá a Preparación hasta disponer de reposición.';
+  if(debt>0)msg+=`\n\nHay ${equipmentMoney(debt)} pendientes de equipación. La entrega no cancela la deuda.`;
+  const confirmed=await showAppConfirm({eyebrow:'REPARTO DE EQUIPACIONES',title:'Confirmar entrega directa',message:msg,confirmLabel:'Confirmar entrega',cancelLabel:'Cancelar',tone:(allowDisplacement||debt>0)?'warning':'default'});
+  if(!confirmed)return;
+  try{const {error}=await sb.rpc('equipacion_entregar_demanda',{p_item:equipmentDemandPayload(a),p_permitir_desplazar:allowDisplacement});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
+  catch(err){await showAppConfirm({eyebrow:'REPARTO DE EQUIPACIONES',title:'No se ha podido entregar',message:String(err.message||err),confirmLabel:'Cerrar',cancelLabel:'Cerrar',tone:'warning'})}
 }
 async function equipmentDirectDeliverAssignment(id,{allowDisplacement=false}={}){
   equipmentDeliverySelection.clear();equipmentDeliveryDisplacement.clear();
@@ -1873,16 +1884,16 @@ function renderEquipmentOperations(c,deliveryGroups){
     <div class="equipment-delivery-toolbar"><input id="equipmentDeliverySearch" type="search" placeholder="Buscar jugador, equipo, pack o prenda…" value="${esc(equipmentDeliverySearch)}" /><select id="equipmentDeliveryTeam"><option value="all">Todos los equipos</option>${teams.map(x=>`<option value="${esc(x)}"${equipmentDeliveryTeam===x?' selected':''}>${esc(x)}</option>`).join('')}</select></div>
     <div id="equipmentDeliveriesPaginationTop" class="list-pagination top"></div>
     <div class="equipment-delivery-list person-groups">${pageRows.items.map(person=>{
-      const personDebt=Math.max(0,...person.packs.flatMap(g=>g.items.map(a=>Number(equipmentOperationalForAssignment(a.id)?.saldo_pendiente||0))));
+      const personDebt=Math.max(0,...person.packs.flatMap(g=>g.items.map(a=>Number(equipmentOperationalForItem(a)?.saldo_pendiente||0))));
       return `<section class="equipment-person-card"><div class="equipment-person-head"><div><strong>${esc(equipmentPersonName(person.personId))}</strong><span>${esc(person.team||'')}</span></div>${personDebt>0?equipmentStatusBadge(`Deuda ${equipmentMoney(personDebt)}`,'warning'):''}</div><div class="equipment-pack-list">${person.packs.map(g=>{
         const packState=equipmentPackOperationalState(g),key=g.need?.id||`${person.personId}:${g.need?.pack_id}`,expanded=equipmentDeliveryExpanded.has(key),dorsal=equipmentNumberForNeed(g.need)?.dorsal;
-        const prepIds=g.items.filter(a=>equipmentOperationalForAssignment(a.id)?.estado_operativo==='disponible').map(a=>a.id);
-        const remainingIds=g.items.filter(a=>!equipmentDeliveryForAssignment(a.id)&&equipmentOperationalForAssignment(a.id)?.estado_operativo!=='entregada'&&equipmentOperationalForAssignment(a.id)?.estado_operativo!=='preparada').map(a=>a.id);
+        const prepIds=g.items.filter(a=>equipmentOperationalForItem(a)?.estado_operativo==='disponible').map(equipmentItemKey);
+        const remainingIds=g.items.filter(a=>!(a.id&&equipmentDeliveryForAssignment(a.id))&&equipmentOperationalForItem(a)?.estado_operativo!=='entregada'&&equipmentOperationalForItem(a)?.estado_operativo!=='preparada').map(equipmentItemKey);
         const fullPackPreparable=mode==='preparation'&&remainingIds.length>0&&remainingIds.every(id=>prepIds.includes(id));
-        const deliveryIds=g.items.filter(a=>equipmentOperationalForAssignment(a.id)?.estado_operativo==='preparada').map(a=>a.id);
+        const deliveryIds=g.items.filter(a=>a.id&&equipmentOperationalForItem(a)?.estado_operativo==='preparada').map(a=>a.id);
         const selectedIds=mode==='preparation'?prepIds.filter(id=>equipmentPreparationSelection.has(id)):deliveryIds.filter(id=>equipmentDeliverySelection.has(id));
         const selectedCount=selectedIds.length;
-        const payable=g.items.map(a=>equipmentOperationalForAssignment(a.id)).find(x=>x?.cargo_id)?.importe_exigible;
+        const payable=g.items.map(a=>equipmentOperationalForItem(a)).find(x=>x?.cargo_id)?.importe_exigible;
         const checkboxIds=mode==='preparation'?(fullPackPreparable?remainingIds:[]):deliveryIds;
         return `<article class="equipment-pack-card ${expanded?'expanded':''}"><div class="equipment-pack-summary">
           <button class="equipment-pack-toggle" type="button" data-eq-toggle-pack="${esc(key)}" aria-expanded="${expanded?'true':'false'}" aria-label="${expanded?'Contraer':'Desplegar'} ${esc(equipmentPackName(g.need?.pack_id))}">${expanded?'−':'+'}</button>
@@ -1891,17 +1902,17 @@ function renderEquipmentOperations(c,deliveryGroups){
           ${!expanded&&selectedCount?`<span class="equipment-pack-quick-action"><small>${selectedCount} seleccionada${selectedCount===1?'':'s'}</small><button class="primary small" data-eq-${mode==='preparation'?'prepare':'deliver'}-person="${person.personId}" type="button">${mode==='preparation'?'Preparar':'Entregar'}</button></span>`:''}
           <span class="equipment-delivery-state">${equipmentStatusBadge(packState.label,packState.cls)}</span></div>
           ${expanded?`<div class="equipment-pack-detail"><div class="table-wrap compact-table"><table><thead><tr><th></th><th>Prenda</th><th>Talla</th><th>Dorsal</th><th>Situación</th><th>Disponibilidad</th><th>Acción</th></tr></thead><tbody>${g.items.map(a=>{
-            const op=equipmentOperationalForAssignment(a.id),d=equipmentDeliveryForAssignment(a.id),[label,cls]=equipmentOperationalLabel(op),state=op?.estado_operativo||op?.situacion_operativa,displace=equipmentNeedsDisplacement(op);
+            const op=equipmentOperationalForItem(a),d=a.id?equipmentDeliveryForAssignment(a.id):null,[label,cls]=equipmentOperationalLabel(op),state=op?.estado_operativo||op?.situacion_operativa,displace=equipmentNeedsDisplacement(op);
             const prepSelectable=mode==='preparation'&&state==='disponible',deliverySelectable=mode==='delivery'&&state==='preparada';
-            const checked=mode==='preparation'?equipmentPreparationSelection.has(a.id):equipmentDeliverySelection.has(a.id);
+            const itemKey=equipmentItemKey(a),checked=mode==='preparation'?equipmentPreparationSelection.has(itemKey):equipmentDeliverySelection.has(a.id);
             const coverage=d?(d.entregada_at?`Entregada ${fmt(String(d.entregada_at).slice(0,10))}`:'Entregada'):op?`Stock: ${Number(op.cantidad_reservada||0)} preparado · ${Number(op.stock_disponible||op.stock_libre||0)} libre · ${Number(op.pendiente_proveedor||0)} proveedor`:'—';
             let action='—';
             if(mode==='preparation'&&!d){
-              if(state==='disponible')action=`<div class="equipment-row-actions"><button class="secondary small" data-eq-prepare="${a.id}" type="button">Preparar</button><button class="ghost small" data-eq-direct-deliver="${a.id}" type="button">Entregar ahora</button></div>`;
-              else if(state==='preparada')action=`<button class="ghost small" data-eq-direct-deliver="${a.id}" type="button">Entregar ahora</button>`;
-              else if(displace)action=`<div class="equipment-row-actions vertical"><small class="equipment-soft-warning">Preparada para otra persona</small><button class="ghost small" data-eq-direct-displace="${a.id}" type="button">Entregar usando stock comprometido</button></div>`;
+              if(state==='disponible')action=`<div class="equipment-row-actions"><button class="secondary small" data-eq-prepare="${itemKey}" type="button">Preparar</button><button class="ghost small" data-eq-direct-demand="${itemKey}" type="button">Entregar ahora</button></div>`;
+              else if(state==='preparada'&&a.id)action=`<button class="ghost small" data-eq-direct-deliver="${a.id}" type="button">Entregar ahora</button>`;
+              else if(displace)action=`<div class="equipment-row-actions vertical"><small class="equipment-soft-warning">Preparada para otra persona</small><button class="ghost small" data-eq-direct-demand-displace="${itemKey}" type="button">Entregar usando stock comprometido</button></div>`;
             }
-            return `<tr><td>${d||state==='entregada'?'✓':(prepSelectable||deliverySelectable)?`<input class="equipment-delivery-check" type="checkbox" data-eq-${mode==='preparation'?'prepare-select':'select'}="${a.id}" ${checked?'checked':''} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`:''}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${equipmentArticleShowsDorsal(a.articulo_id)&&dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${mode==='delivery'?'Lista para entregar':action}</td></tr>`}).join('')}</tbody></table></div>
+            return `<tr><td>${d||state==='entregada'?'✓':(prepSelectable||deliverySelectable)?`<input class="equipment-delivery-check" type="checkbox" data-eq-${mode==='preparation'?'prepare-select':'select'}="${mode==='preparation'?itemKey:a.id}" ${checked?'checked':''} aria-label="Seleccionar ${esc(equipmentArticleName(a.articulo_id))}" />`:''}</td><td><strong>${esc(equipmentArticleName(a.articulo_id))}</strong></td><td>${esc(a.talla||'—')}</td><td>${equipmentArticleShowsDorsal(a.articulo_id)&&dorsal!=null?`<span class="equipment-number small">${dorsal}</span>`:'—'}</td><td>${equipmentStatusBadge(label,cls)}${displace&&!d?'<small class="equipment-soft-warning">Stock físico comprometido</small>':''}</td><td>${esc(coverage)}</td><td>${mode==='delivery'?'Lista para entregar':action}</td></tr>`}).join('')}</tbody></table></div>
             <div class="equipment-delivery-actions">${mode==='preparation'?(prepIds.length?`<span>${selectedCount} seleccionada(s)</span><button class="primary small" data-eq-prepare-person="${person.personId}" type="button" ${selectedCount?'':'disabled'}>Preparar seleccionadas</button>`:'<span class="meta">Sin prendas con stock libre para preparar ahora.</span>'):`<span>${selectedCount} seleccionada(s)</span><button class="primary small" data-eq-deliver-person="${person.personId}" type="button" ${selectedCount?'':'disabled'}>Entregar seleccionadas</button>`}</div></div>`:''}
         </article>`}).join('')}</div></section>`}).join('')||`<div class="info-card"><strong>Sin resultados</strong><p>${equipmentQueueEmpty(mode)}</p></div>`}</div><div id="equipmentDeliveriesPagination" class="list-pagination"></div>`;
   renderListPagination(pageKey,pageRows.total,persons.length,renderEquipment);
@@ -1913,9 +1924,11 @@ function renderEquipmentOperations(c,deliveryGroups){
   $$('[data-eq-select-pack]').forEach(x=>{const ids=(x.dataset.eqPackIds||'').split(',').filter(Boolean),selected=ids.filter(id=>equipmentDeliverySelection.has(id)).length;x.checked=ids.length>0&&selected===ids.length;x.indeterminate=selected>0&&selected<ids.length;x.addEventListener('change',()=>{ids.forEach(id=>x.checked?equipmentDeliverySelection.add(id):equipmentDeliverySelection.delete(id));renderEquipment()})});
   $$('[data-eq-prepare-select]').forEach(x=>x.addEventListener('change',()=>{x.checked?equipmentPreparationSelection.add(x.dataset.eqPrepareSelect):equipmentPreparationSelection.delete(x.dataset.eqPrepareSelect);renderEquipment()}));
   $$('[data-eq-select]').forEach(x=>x.addEventListener('change',()=>{x.checked?equipmentDeliverySelection.add(x.dataset.eqSelect):equipmentDeliverySelection.delete(x.dataset.eqSelect);renderEquipment()}));
-  $$('[data-eq-prepare]').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();equipmentPreparationSelection.clear();equipmentPreparationSelection.add(x.dataset.eqPrepare);const a=equipmentRows.assignments.find(y=>y.id===x.dataset.eqPrepare),n=a?equipmentNeed(a.necesidad_id):null;if(n?.persona_id)equipmentPrepareSelected(n.persona_id)}));
+  $$('[data-eq-prepare]').forEach(x=>x.addEventListener('click',e=>{e.stopPropagation();const a=equipmentDeliveryGroupRows().flatMap(g=>g.items).find(y=>equipmentItemKey(y)===x.dataset.eqPrepare),n=a?equipmentNeed(a.necesidad_id):null;equipmentPreparationSelection.clear();if(a)equipmentPreparationSelection.add(equipmentItemKey(a));if(n?.persona_id)equipmentPrepareSelected(n.persona_id)}));
   $$('[data-eq-prepare-person]').forEach(x=>x.addEventListener('click',()=>equipmentPrepareSelected(x.dataset.eqPreparePerson)));
   $$('[data-eq-deliver-person]').forEach(x=>x.addEventListener('click',()=>equipmentDeliverSelected(x.dataset.eqDeliverPerson)));
+  $$('[data-eq-direct-demand]').forEach(x=>x.addEventListener('click',()=>{const a=equipmentDeliveryGroupRows().flatMap(g=>g.items).find(y=>equipmentItemKey(y)===x.dataset.eqDirectDemand);if(a)equipmentDirectDeliverDemand(a)}));
+  $$('[data-eq-direct-demand-displace]').forEach(x=>x.addEventListener('click',()=>{const a=equipmentDeliveryGroupRows().flatMap(g=>g.items).find(y=>equipmentItemKey(y)===x.dataset.eqDirectDemandDisplace);if(a)equipmentDirectDeliverDemand(a,{allowDisplacement:true})}));
   $$('[data-eq-direct-deliver]').forEach(x=>x.addEventListener('click',()=>equipmentDirectDeliverAssignment(x.dataset.eqDirectDeliver)));
   $$('[data-eq-direct-displace]').forEach(x=>x.addEventListener('click',()=>equipmentDirectDeliverAssignment(x.dataset.eqDirectDisplace,{allowDisplacement:true})));
 }
