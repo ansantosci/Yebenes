@@ -1,14 +1,47 @@
 -- TEST-S EQUIPACIONES v1: synthetic operational coverage for DEVELOP/TEST.
 begin;
 
+-- Matrix v2.2 provider/brand masters. Synthetic only; never production defaults.
+insert into public.equipacion_proveedores(id,nombre,contacto,activo,integracion_tipo,observaciones) values
+(private.test_uuid('equip:provider:current'),'TEST-S Proveedor Actual','TEST-S',true,'manual','Proveedor vigente Matrix v2.2'),
+(private.test_uuid('equip:provider:historic'),'TEST-S Proveedor Historico','TEST-S',false,'manual','Proveedor historico Matrix v2.2')
+on conflict(id) do update set nombre=excluded.nombre,activo=excluded.activo,integracion_tipo='manual',observaciones=excluded.observaciones;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
+('TEST-S','equipacion_proveedores',private.test_uuid('equip:provider:current')),
+('TEST-S','equipacion_proveedores',private.test_uuid('equip:provider:historic')) on conflict do nothing;
+
+insert into public.marcas(id,nombre,activo,observaciones) values
+(private.test_uuid('equip:brand:current'),'TEST-S Marca Actual',true,'Marca vigente Matrix v2.2'),
+(private.test_uuid('equip:brand:historic'),'TEST-S Marca Historica',false,'Marca historica Matrix v2.2')
+on conflict(id) do update set nombre=excluded.nombre,activo=excluded.activo,observaciones=excluded.observaciones;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
+('TEST-S','marcas',private.test_uuid('equip:brand:current')),
+('TEST-S','marcas',private.test_uuid('equip:brand:historic')) on conflict do nothing;
+
+-- Previous closed season used only as the real origin of historical Club stock.
+insert into public.temporadas(id,nombre,anio_inicio,anio_fin,fecha_inicio,fecha_fin,estado)
+values(private.test_uuid('equip:season:historic'),'2025/2026 TEST-S HISTORICA',2025,2026,date '2025-07-01',date '2026-06-30','cerrada')
+on conflict(id) do update set estado='cerrada',updated_at=now();
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','temporadas',private.test_uuid('equip:season:historic')) on conflict do nothing;
+
 update private.test_datasets set scenario='EQUIPACIONES',version='1.3',metadata='{"purpose":"equipaciones operational coverage","base":"TEST-S BASELINE"}'::jsonb,loaded_at=now() where id='TEST-S';
 
 -- Season configuration.
 insert into public.equipacion_config_temporada(id,temporada_id,proveedor_nombre,proveedor_contacto,precio_pack_completo,precio_solo_partido,politica_tecnicos,campana_estado,campana_abre_at,campana_limite,campana_mensaje)
-select private.test_uuid('equip:config'),t.id,'Patrick','TEST-S proveedor',190,35,'seleccion_manual','abierta',now(),date '2027-01-31','TEST-S Equipaciones'
+select private.test_uuid('equip:config'),t.id,'TEST-S Proveedor Actual','TEST-S proveedor',190,35,'seleccion_manual','abierta',now(),date '2027-01-31','TEST-S Equipaciones'
 from public.temporadas t where t.estado='activa' limit 1
-on conflict(temporada_id) do update set proveedor_nombre='Patrick',precio_pack_completo=190,precio_solo_partido=35,campana_estado='abierta',campana_mensaje='TEST-S Equipaciones';
+on conflict(temporada_id) do update set proveedor_nombre='TEST-S Proveedor Actual',precio_pack_completo=190,precio_solo_partido=35,campana_estado='abierta',campana_mensaje='TEST-S Equipaciones';
 insert into private.test_dataset_entities select 'TEST-S','equipacion_config_temporada',private.test_uuid('equip:config'),now() on conflict do nothing;
+
+with s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
+insert into public.equipacion_proveedor_temporadas(id,proveedor_id,temporada_id,ambito,principal,activo,observaciones)
+select private.test_uuid('equip:provider-season:current'),private.test_uuid('equip:provider:current'),s.temporada_id,'equipaciones',true,true,'Principal TEST-S' from s
+on conflict(proveedor_id,temporada_id,ambito) do update set principal=true,activo=true,observaciones=excluded.observaciones;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','equipacion_proveedor_temporadas',private.test_uuid('equip:provider-season:current')) on conflict do nothing;
+update public.equipacion_config_temporada set proveedor_id=private.test_uuid('equip:provider:current') where id=private.test_uuid('equip:config');
+
 
 -- Articles.
 insert into public.equipacion_articulos(id,nombre,codigo,tipo_prenda,ambito,variante,usa_talla,activo) values
@@ -20,6 +53,12 @@ insert into public.equipacion_articulos(id,nombre,codigo,tipo_prenda,ambito,vari
 on conflict(codigo) do update set nombre=excluded.nombre,activo=true;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 select 'TEST-S','equipacion_articulos',id from public.equipacion_articulos where codigo like 'TEST-EQ-%' on conflict do nothing;
+insert into public.equipacion_articulos(id,nombre,codigo,tipo_prenda,ambito,variante,usa_talla,activo,personalizable_dorsal,marca_id)
+values(private.test_uuid('equip:art:cam-personalizada'),'Camiseta partido personalizada','TEST-EQ-CAM-PER','camiseta','jugador','campo',true,true,true,private.test_uuid('equip:brand:current'))
+on conflict(codigo) do update set nombre=excluded.nombre,activo=true,personalizable_dorsal=true,marca_id=excluded.marca_id;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+values('TEST-S','equipacion_articulos',private.test_uuid('equip:art:cam-personalizada')) on conflict do nothing;
+update public.equipacion_articulos set marca_id=private.test_uuid('equip:brand:current') where codigo like 'TEST-EQ-%';
 
 -- Packs.
 with s as (select id from public.temporadas where estado='activa' limit 1)
@@ -154,8 +193,8 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id) selec
 -- Two simultaneous supplier orders.
 with s as(select id temporada_id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_pedidos(id,temporada_id,numero,proveedor_nombre,proveedor_contacto,fecha_pedido,estado,observaciones)
-select private.test_uuid('equip:order:1'),s.temporada_id,'TEST-P-001','Patrick','TEST-S',current_date-10,'parcialmente_recibido','Pedido sintético parcialmente recibido' from s union all
-select private.test_uuid('equip:order:2'),s.temporada_id,'TEST-P-002','Patrick','TEST-S',current_date-3,'pedido','Segundo pedido simultáneo' from s
+select private.test_uuid('equip:order:1'),s.temporada_id,'TEST-P-001','TEST-S Proveedor Actual','TEST-S',current_date-10,'parcialmente_recibido','Pedido sintético parcialmente recibido' from s union all
+select private.test_uuid('equip:order:2'),s.temporada_id,'TEST-P-002','TEST-S Proveedor Actual','TEST-S',current_date-3,'pedido','Segundo pedido simultáneo' from s
 on conflict(id) do update set estado=excluded.estado,observaciones=excluded.observaciones;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values('TEST-S','equipacion_pedidos',private.test_uuid('equip:order:1')),('TEST-S','equipacion_pedidos',private.test_uuid('equip:order:2')) on conflict do nothing;
 
@@ -266,19 +305,19 @@ end $$;
 with t as (select id from public.temporadas where estado='activa' limit 1),
 a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-ENT' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-select private.test_uuid('equip:lot:current'),a.id,'3XS',t.id,'Patrick','CURRENT-3XS',5,1 from t,a
+select private.test_uuid('equip:lot:current'),a.id,'3XS',t.id,'TEST-S Proveedor Actual','CURRENT-3XS',5,1 from t,a
 on conflict(id) do update set cantidad_fisica=5,cantidad_reservada=1;
 
 with t as (select id from public.temporadas where estado='activa' limit 1),
 a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-ENT' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-select private.test_uuid('equip:lot:historic-valid'),a.id,'3XS',t.id,'Patrick','PREV-VALID',3,0 from t,a
+select private.test_uuid('equip:lot:historic-valid'),a.id,'3XS',private.test_uuid('equip:season:historic'),'TEST-S Proveedor Historico','PREV-VALID',3,0 from t,a
 on conflict(id) do update set cantidad_fisica=3,cantidad_reservada=0;
 
 with t as (select id from public.temporadas where estado='activa' limit 1),
 a as (select id from public.equipacion_articulos where codigo='TEST-EQ-CAM-PAR' limit 1)
 insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-select private.test_uuid('equip:lot:historic-invalid'),a.id,'3XS',t.id,'Proveedor anterior','OLD-KIT',2,0 from t,a
+select private.test_uuid('equip:lot:historic-invalid'),a.id,'3XS',private.test_uuid('equip:season:historic'),'TEST-S Proveedor Historico','OLD-KIT',2,0 from t,a
 on conflict(id) do update set cantidad_fisica=2,cantidad_reservada=0;
 
 do $$
@@ -435,8 +474,8 @@ begin
 
   insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
   values
-    (cam_lot,private.test_uuid('equip:art:cam-ent'),talla,tid,'Patrick','PLAYER4-CAM',1,0),
-    (pan_lot,private.test_uuid('equip:art:pan-ent'),talla,tid,'Patrick','PLAYER4-PAN',1,0)
+    (cam_lot,private.test_uuid('equip:art:cam-ent'),talla,tid,'TEST-S Proveedor Actual','PLAYER4-CAM',1,0),
+    (pan_lot,private.test_uuid('equip:art:pan-ent'),talla,tid,'TEST-S Proveedor Actual','PLAYER4-PAN',1,0)
   on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
 
   insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at,observaciones)
@@ -511,7 +550,7 @@ begin
      values(asgid,needid,aid,talla,1,'propuesta','manual')
      on conflict(id) do update set necesidad_id=excluded.necesidad_id,articulo_id=excluded.articulo_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
      insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-     values(lotid,aid,talla,tid,'Patrick','MATRIX-AVAILABLE',1,0)
+     values(lotid,aid,talla,tid,'TEST-S Proveedor Actual','MATRIX-AVAILABLE',1,0)
      on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
      insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at,observaciones)
      values(lotid,tid,'valido',now(),'V96 disponible directo')
@@ -530,7 +569,7 @@ begin
    insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
    values(asgid,needid,aid,talla,1,'propuesta','manual') on conflict(id) do update set talla=excluded.talla,estado='propuesta',reservado_at=null;
    insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-   values(lotid,aid,talla,tid,'Patrick','MATRIX-PREPARED',1,0) on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
+   values(lotid,aid,talla,tid,'TEST-S Proveedor Actual','MATRIX-PREPARED',1,0) on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
    insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at) values(lotid,tid,'valido',now())
    on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
    perform private.equipacion_reservar_asignacion_lote(asgid,lotid,1);
@@ -612,7 +651,7 @@ begin
    update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg;
    lot:=private.test_uuid('matrix:partial:lot');
    insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-   values(lot,private.test_uuid('equip:art:cam-par'),v_talla,(select id from public.temporadas where estado='activa' limit 1),'Patrick','MATRIX-PARTIAL',1,0)
+   values(lot,private.test_uuid('equip:art:cam-par'),v_talla,(select id from public.temporadas where estado='activa' limit 1),'TEST-S Proveedor Actual','MATRIX-PARTIAL',1,0)
    on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
    insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at)
    values(lot,(select id from public.temporadas where estado='activa' limit 1),'valido',now())
@@ -670,7 +709,7 @@ begin
    else update public.equipacion_asignaciones set estado='propuesta',reservado_at=null,updated_at=now() where id=asg_b; end if;
    lot:=private.test_uuid('matrix:soft:lot');
    insert into public.equipacion_stock_lotes(id,articulo_id,talla,temporada_origen_id,proveedor_nombre,referencia_proveedor,cantidad_fisica,cantidad_reservada)
-   values(lot,private.test_uuid('equip:art:pan-par'),v_talla,tid,'Patrick','MATRIX-SOFT',1,0)
+   values(lot,private.test_uuid('equip:art:pan-par'),v_talla,tid,'TEST-S Proveedor Actual','MATRIX-SOFT',1,0)
    on conflict(id) do update set cantidad_fisica=1,cantidad_reservada=0,updated_at=now();
    insert into public.equipacion_stock_lote_vigencia(lote_id,temporada_id,estado,decidido_at)
    values(lot,tid,'valido',now()) on conflict(lote_id,temporada_id) do update set estado='valido',decidido_at=now();
@@ -748,6 +787,80 @@ begin
  ) then raise exception 'EQUIPACIONES reparto matrix v2: deliverable equipment debt case missing'; end if;
 end $$;
 
+
+
+-- Matrix v2.2 structured provenance. Current synthetic orders/lots use the active supplier/brand.
+update public.equipacion_pedidos
+set proveedor_id=private.test_uuid('equip:provider:current'),proveedor_nombre='TEST-S Proveedor Actual'
+where id in (select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_pedidos');
+
+update public.equipacion_stock_lotes
+set proveedor_id=private.test_uuid('equip:provider:current'),proveedor_nombre='TEST-S Proveedor Actual',marca_id=private.test_uuid('equip:brand:current')
+where id in (select entity_id from private.test_dataset_entities where dataset_id='TEST-S' and table_name='equipacion_stock_lotes');
+
+-- Existing historic stock cases explicitly belong to the inactive historic supplier/brand.
+update public.equipacion_stock_lotes
+set proveedor_id=private.test_uuid('equip:provider:historic'),proveedor_nombre='TEST-S Proveedor Historico',marca_id=private.test_uuid('equip:brand:historic')
+where id in (private.test_uuid('equip:lot:historic-valid'),private.test_uuid('equip:lot:historic-invalid'));
+
+-- Matrix v2.2 invariants for provider/brand history and same L/#8 across different players.
+do $$
+declare tid uuid; art uuid; ped uuid; j1 uuid; j2 uuid; e1 uuid; e2 uuid; cat uuid; c integer;
+begin
+ select id into tid from public.temporadas where estado='activa' limit 1;
+ if not exists(select 1 from public.equipacion_proveedores where id=private.test_uuid('equip:provider:current') and activo)
+    or not exists(select 1 from public.equipacion_proveedores where id=private.test_uuid('equip:provider:historic') and not activo) then
+   raise exception 'EQUIPACIONES Matrix v2.2: active/historic providers missing'; end if;
+ if not exists(select 1 from public.marcas where id=private.test_uuid('equip:brand:current') and activo)
+    or not exists(select 1 from public.marcas where id=private.test_uuid('equip:brand:historic') and not activo) then
+   raise exception 'EQUIPACIONES Matrix v2.2: active/historic brands missing'; end if;
+ if not exists(select 1 from public.equipacion_stock_lotes l join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
+   where l.id=private.test_uuid('equip:lot:historic-valid') and l.proveedor_id=private.test_uuid('equip:provider:historic')
+     and l.marca_id=private.test_uuid('equip:brand:historic') and l.temporada_origen_id=private.test_uuid('equip:season:historic')
+     and l.temporada_origen_id<>v.temporada_id and v.temporada_id=tid and v.estado='valido') then
+   raise exception 'EQUIPACIONES Matrix v2.2: historic valid stock missing'; end if;
+ if not exists(select 1 from public.equipacion_stock_lotes l join public.equipacion_stock_lote_vigencia v on v.lote_id=l.id
+   where l.id=private.test_uuid('equip:lot:historic-invalid') and l.proveedor_id=private.test_uuid('equip:provider:historic')
+     and l.marca_id=private.test_uuid('equip:brand:historic') and l.temporada_origen_id=private.test_uuid('equip:season:historic')
+     and l.temporada_origen_id<>v.temporada_id and v.temporada_id=tid and v.estado='no_valido') then
+   raise exception 'EQUIPACIONES Matrix v2.2: historic invalid stock missing'; end if;
+
+ -- Two different existing TEST-S players from different teams may share L/#8 in the same personalized order.
+ art:=private.test_uuid('equip:art:cam-personalizada');
+ select j.id,aje.equipo_id into j1,e1 from public.jugadores j
+ join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+ join public.inscripciones i on i.jugador_id=j.id
+ join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null
+ where not exists(select 1 from public.equipacion_dorsales d where d.temporada_id=tid and d.equipo_id=aje.equipo_id and d.dorsal=8 and d.jugador_id<>j.id)
+ order by j.id limit 1;
+ select j.id,aje.equipo_id into j2,e2 from public.jugadores j
+ join private.test_dataset_entities de on de.dataset_id='TEST-S' and de.table_name='jugadores' and de.entity_id=j.id
+ join public.inscripciones i on i.jugador_id=j.id
+ join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null
+ where j.id<>j1 and aje.equipo_id<>e1
+   and not exists(select 1 from public.equipacion_dorsales d where d.temporada_id=tid and d.equipo_id=aje.equipo_id and d.dorsal=8 and d.jugador_id<>j.id)
+ order by j.id limit 1;
+ if art is not null and j1 is not null and j2 is not null then
+   insert into public.equipacion_dorsales(temporada_id,equipo_id,jugador_id,dorsal,origen)
+   values(tid,e1,j1,8,'manual') on conflict(temporada_id,equipo_id,jugador_id) do update set dorsal=8,origen='manual';
+   insert into public.equipacion_dorsales(temporada_id,equipo_id,jugador_id,dorsal,origen)
+   values(tid,e2,j2,8,'manual') on conflict(temporada_id,equipo_id,jugador_id) do update set dorsal=8,origen='manual';
+   ped:=private.test_uuid('matrix:v22:same-dorsal-order');
+   insert into public.equipacion_pedidos(id,temporada_id,numero,proveedor_id,proveedor_nombre,fecha_pedido,estado,observaciones)
+   values(ped,tid,'TEST-V22-008',private.test_uuid('equip:provider:current'),'TEST-S Proveedor Actual',current_date,'borrador','Matrix v2.2 same dorsal')
+   on conflict(id) do update set estado='borrador',proveedor_id=excluded.proveedor_id,proveedor_nombre=excluded.proveedor_nombre;
+   delete from public.equipacion_pedido_lineas where pedido_id=ped;
+   insert into public.equipacion_pedido_lineas(id,pedido_id,articulo_id,talla,cantidad_pedida,jugador_id,dorsal,origen) values
+   (private.test_uuid('matrix:v22:same-dorsal-line:1'),ped,art,'L',1,j1,8,'manual'),
+   (private.test_uuid('matrix:v22:same-dorsal-line:2'),ped,art,'L',1,j2,8,'manual');
+   select count(*) into c from public.equipacion_pedido_lineas where pedido_id=ped and talla='L' and dorsal=8;
+   if c<>2 then raise exception 'EQUIPACIONES Matrix v2.2: same L/#8 for different players not supported'; end if;
+   insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
+   ('TEST-S','equipacion_pedidos',ped),
+   ('TEST-S','equipacion_pedido_lineas',private.test_uuid('matrix:v22:same-dorsal-line:1')),
+   ('TEST-S','equipacion_pedido_lineas',private.test_uuid('matrix:v22:same-dorsal-line:2')) on conflict do nothing;
+ end if;
+end $$;
 
 
 do $$
