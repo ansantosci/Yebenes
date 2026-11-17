@@ -52,9 +52,27 @@ begin
   select count(*) into cnt from pg_trigger t join pg_proc p on p.oid=t.tgfoid join pg_namespace n on n.oid=p.pronamespace
   where not t.tgisinternal and n.nspname='public' and p.proname='calcular_categoria_inscripcion';
   if cnt<>1 then raise exception '091: calcular_categoria_inscripcion trigger count=%',cnt; end if;
-  select count(*) into cnt from pg_trigger t join pg_proc p on p.oid=t.tgfoid join pg_namespace n on n.oid=p.pronamespace
+  -- set_updated_at is intentionally reusable: new tables may add more triggers.
+  -- Contract the invariant (all usages point to the hardened public.set_updated_at),
+  -- not a frozen application-wide trigger count.
+  select count(*) into cnt
+  from pg_trigger t
+  join pg_proc p on p.oid=t.tgfoid
+  join pg_namespace n on n.oid=p.pronamespace
   where not t.tgisinternal and n.nspname='public' and p.proname='set_updated_at';
-  if cnt<>30 then raise exception '091: set_updated_at trigger count=% expected 30',cnt; end if;
+  if cnt<1 then raise exception '091: set_updated_at has no active trigger usages'; end if;
+
+  if exists (
+    select 1
+    from pg_trigger t
+    join pg_proc p on p.oid=t.tgfoid
+    join pg_namespace n on n.oid=p.pronamespace
+    where not t.tgisinternal
+      and p.proname='set_updated_at'
+      and (n.nspname<>'public' or pg_get_function_identity_arguments(p.oid)<>'')
+  ) then
+    raise exception '091: a set_updated_at trigger does not reference hardened public.set_updated_at()';
+  end if;
   select count(*) into cnt from pg_trigger t join pg_proc p on p.oid=t.tgfoid join pg_namespace n on n.oid=p.pronamespace
   where not t.tgisinternal and n.nspname='public' and p.proname='validar_tutor_menor_inscripcion';
   if cnt<>1 then raise exception '091: validar_tutor_menor_inscripcion trigger count=%',cnt; end if;
