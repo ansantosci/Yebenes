@@ -390,7 +390,7 @@ DO $$ declare t text; begin
     'equipacion_pedido_lineas','equipacion_pedidos','equipacion_dorsales','equipacion_necesidades',
     'equipacion_tallas_excepcion','equipacion_tallas_persona','equipacion_personas_temporada',
     'equipacion_stock','equipacion_pack_articulos',
-    'equipacion_packs','equipacion_proveedores','equipacion_config_temporada','equipacion_articulos',
+    'equipacion_packs','equipacion_proveedor_temporadas','equipacion_proveedores','equipacion_config_temporada','equipacion_articulos','marcas',
     'notificaciones_salida','historico_citas_rrmm','citas_reconocimiento_medico','reconocimientos_medicos',
     'documentos_federativos','requisitos_federativos_inscripcion','pagos_inscripcion','situacion_economica_inscripcion',
     'historico_estados_temporada','historico_estados_inscripcion','asignaciones_jugador_equipo','inscripciones','representaciones_jugador',
