@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.2';
+const APP_VERSION='96.4.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -59,6 +59,37 @@ function renderListPagination(key,total,totalAll,rerender){
 }
 
 const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();
+
+// V96.4.3: familia de componentes de ventana. Toda nueva ventana compone sobre ModalUI.
+const ModalUI={
+  enhance(dialog,{size='default'}={}){
+    if(!dialog)return dialog;
+    dialog.classList.add('app-modal');
+    dialog.dataset.modalSize=size;
+    dialog.querySelector('.modal-head')?.classList.add('app-modal__head');
+    dialog.querySelectorAll('.modal-tabs').forEach(x=>x.classList.add('app-modal__tabs'));
+    dialog.querySelectorAll('.form-section-title').forEach(x=>x.classList.add('app-form-section'));
+    dialog.querySelectorAll('.form-grid').forEach(x=>x.classList.add('app-form-grid'));
+    dialog.querySelectorAll('.modal-actions').forEach(x=>x.classList.add('app-modal__actions'));
+    return dialog;
+  },
+  bindTabs(root,{tabSelector='[data-modal-tab]',panelSelector='[data-modal-panel]',active='active'}={}){
+    if(!root)return;
+    const tabs=[...root.querySelectorAll(tabSelector)],panels=[...root.querySelectorAll(panelSelector)];
+    const select=key=>{tabs.forEach(t=>{const on=t.dataset.modalTab===key;t.classList.toggle(active,on);t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1});panels.forEach(p=>{p.hidden=p.dataset.modalPanel!==key})};
+    if(root.dataset.modalTabsBound!=='1'){tabs.forEach(t=>t.addEventListener('click',()=>root._modalSelectTab?.(t.dataset.modalTab)));root.dataset.modalTabsBound='1'}
+    root._modalSelectTab=select;
+    return select;
+  },
+  setStatus(el,{tone='neutral',title='',message=''}={}){
+    if(!el)return;
+    el.className=`app-status-panel app-status-panel--${tone}`;
+    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
+  },
+  setActionEnabled(button,enabled,reason=''){
+    if(!button)return;button.disabled=!enabled;button.setAttribute('aria-disabled',String(!enabled));button.title=!enabled&&reason?reason:'';
+  }
+};
 
 function renderEnvironmentBadge(){
   const badge=document.getElementById('environmentBadge');
@@ -2835,8 +2866,8 @@ function openPlayerForEdit(id){const p=familyAccessPlayers().find(x=>x.id===id);
 function openChangeTutor(){if(currentRole!=='admin')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const eligible=users.filter(u=>hasRole(u,'family')&&u.active);$('#tutorUserSelect').innerHTML='<option value="">Seleccionar tutor registrado</option>'+eligible.map(u=>`<option value="${u.id}">${esc(u.name)} · ${esc(u.email)}</option>`).join('');$('#changeTutorForm').reset();$('#changeTutorModal').showModal()}
 function openSelfRepresentation(){if(currentRole!=='admin')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const pu=currentPlayerUser(p),d=daysTo18(p),a=ageOn(p.birth);const f=$('#selfRepresentationForm');f.reset();if(pu)f.elements.email.value=pu.email;$('#selfRepresentationHint').textContent=a>=18?'El jugador ya es mayor de edad: la cuenta se activará ahora y la representación ordinaria del tutor finalizará.':`La cuenta quedará preparada y se activará al cumplir 18 años${d!==null?` (en ${d} días)`:''}.`;$('#selfRepresentationModal').showModal()}
 
-function setTeamConfigTab(tab){$$('[data-team-config-tab]').forEach(b=>b.classList.toggle('active',b.dataset.teamConfigTab===tab));$$('[data-team-config-panel]').forEach(p=>p.hidden=p.dataset.teamConfigPanel!==tab)}
-function fillTeamRffmPane(teamId){const t=dbTeams.find(x=>x.id===teamId),x=rffmIntegrationFor(teamId),f=$('#teamRffmForm');if(!t||!f)return;selectedRffmTeamId=teamId;f.reset();f.elements.rffm_season_id.value=x?.config?.season_id||'22';f.elements.competition_id.value=x?.competition_id||'';f.elements.group_id.value=x?.group_id||'';f.elements.game_type.value=x?.game_type||(t.modality==='F11'?'1':t.modality==='F7'?'2':'4');f.elements.external_team_id.value=x?.external_team_id||'';f.elements.activo.value=x?.activo===false?'no':'yes';$('#teamRffmValidationHint').textContent=x?.ultima_validacion_at?`Última prueba: ${new Date(x.ultima_validacion_at).toLocaleString('es-ES')} · ${x.ultima_validacion_ok?'Correcta':'Error'}${x.ultima_validacion_mensaje?' · '+x.ultima_validacion_mensaje:''}`:'Todavía no se ha probado esta configuración.';const out=$('#teamRffmResult');if(out)out.innerHTML=''}
+function setTeamConfigTab(tab){const modal=$('#teamModal');if(modal?._modalSelectTab){modal._modalSelectTab(tab);return}$$('[data-team-config-tab]').forEach(b=>b.classList.toggle('active',b.dataset.teamConfigTab===tab));$$('[data-team-config-panel]').forEach(p=>p.hidden=p.dataset.teamConfigPanel!==tab)}
+function fillTeamRffmPane(teamId){const t=dbTeams.find(x=>x.id===teamId),x=rffmIntegrationFor(teamId),f=$('#teamRffmForm');if(!t||!f)return;selectedRffmTeamId=teamId;f.reset();f.elements.rffm_season_id.value=x?.config?.season_id||'22';f.elements.competition_id.value=x?.competition_id||'';f.elements.group_id.value=x?.group_id||'';f.elements.game_type.value=x?.game_type||(t.modality==='F11'?'1':t.modality==='F7'?'2':'4');f.elements.external_team_id.value=x?.external_team_id||'';f.elements.activo.value=x?.activo===false?'no':'yes';const status=$('#teamRffmValidationStatus');if(x?.ultima_validacion_ok===true)ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`Última comprobación: ${new Date(x.ultima_validacion_at).toLocaleString('es-ES')}${x.ultima_validacion_mensaje?' · '+x.ultima_validacion_mensaje:''}`});else if(x?.ultima_validacion_ok===false)ModalUI.setStatus(status,{tone:'danger',title:'Error de conexión',message:x.ultima_validacion_mensaje||'Revisa los parámetros RFFM y vuelve a probar.'});else ModalUI.setStatus(status,{tone:'warning',title:'Pendiente de comprobar',message:'Guarda la configuración y utiliza “Probar conexión” antes de consultar resultados.'});ModalUI.setActionEnabled($('#consultTeamRffm'),x?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');const out=$('#teamRffmResult');if(out)out.innerHTML=''}
 function renderTeamRffmResult(teamId){const out=$('#teamRffmResult');if(!out)return;const d=rffmResultsByTeam.get(teamId);out.innerHTML=!d?'':d.error?`<div class="info-card">${esc(d.error)}</div>`:`<article class="rffm-result-card">${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}</article>`}
 function openTeamEdit(id){
   editingTeamId=id;
@@ -2854,7 +2885,7 @@ function openTeamEdit(id){
   if(closeTeam)closeTeam.onclick=()=>teamModal?.close();
   if(cancelTeam)cancelTeam.onclick=()=>teamModal?.close();
   if(teamForm)teamForm.onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
-  setTeamConfigTab('club');fillTeamRffmPane(id);
+  ModalUI.enhance(teamModal,{size:'wide'});ModalUI.bindTabs(teamModal,{tabSelector:'[data-modal-tab]',panelSelector:'[data-modal-panel]'});setTeamConfigTab('club');fillTeamRffmPane(id);
   teamModal?.showModal()
 }
 function fillTeamCategorySelect(){const s=$('#teamCategorySelect'),source=dbStructureLoaded?dbCategories:categories;s.innerHTML=source.filter(c=>c.active).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}
@@ -3000,7 +3031,7 @@ function scrollActiveListToStart(view){
 }
 $$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamConfigTab(b.dataset.teamConfigTab)));
 $('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();try{await saveRffmConfig(e.currentTarget);await loadSupabaseStructure();renderStructure();fillTeamRffmPane(editingTeamId);alert('Configuración RFFM guardada.')}catch(err){alert(`No se ha podido guardar RFFM: ${err.message||err}`)}});
-$('#testTeamRffm')?.addEventListener('click',async()=>{try{await saveRffmConfig($('#teamRffmForm'));const data=await invokeRffm({action:'validate',team_id:editingTeamId});await loadSupabaseStructure();renderStructure();fillTeamRffmPane(editingTeamId);$('#teamRffmValidationHint').textContent=`Conexión correcta · ${data.teamName||'equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;}catch(err){$('#teamRffmValidationHint').textContent=`Error de validación: ${err.message||err}`;}});
+$('#testTeamRffm')?.addEventListener('click',async()=>{const status=$('#teamRffmValidationStatus');ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros guardados…'});try{await saveRffmConfig($('#teamRffmForm'));const data=await invokeRffm({action:'validate',team_id:editingTeamId});await loadSupabaseStructure();renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'Error de conexión',message:String(err.message||err)});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}});
 $('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;await loadRffmTeam(editingTeamId,true);renderTeamRffmResult(editingTeamId)});
 $('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();$('#rffmResultsModal')?.showModal()});
 $('#closeRffmResults')?.addEventListener('click',()=>$('#rffmResultsModal')?.close());
