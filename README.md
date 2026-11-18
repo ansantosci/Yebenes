@@ -1,4 +1,4 @@
-### V96.4.3 — Estructura unificada y RFFM en la ficha del equipo
+### V96.4.4 — Estructura unificada y RFFM en la ficha del equipo
 
 - Elimina el segundo listado permanente de equipos RFFM en Estructura.
 - Añade estado RFFM al listado canónico de equipos.
@@ -1579,10 +1579,16 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No se guardan URLs arbitrarias ni secretos RFFM.
 
 
-## V96.4.3 — Modal Component Foundation
+## V96.4.4 — Modal Component Foundation
 
 - Se formaliza `ModalUI` como capa común de ventanas sobre los `<dialog>` existentes.
 - Primitives: contenedor/cabecera, tabs, secciones de formulario, grid/campos, panel de estado y acciones.
 - La ficha de Equipo (Club + Federación/RFFM) es la primera migración completa.
 - Regla arquitectónica: ninguna funcionalidad nueva debe crear una estética/modal ad hoc; debe componer sobre esta familia.
 - `Consultar resultados` permanece deshabilitado hasta una validación RFFM correcta.
+
+
+### V96.4.4 — RFFM idempotente y diagnóstico
+- Guardado RFFM por UPSERT sobre equipo+proveedor; doble clic seguro y feedback integrado en StatusPanel.
+- Probar conexión persiste primero los valores visibles y fuerza una consulta nueva.
+- Errores de Edge Function se muestran con detalle funcional en el componente, sin alert nativo.
