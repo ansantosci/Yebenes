@@ -587,34 +587,16 @@ begin
    perform private.equipacion_reservar_asignacion_lote(asgid,lotid,1);
  end if;
 
- -- Supplier-covered training pack: select an ACTUAL confirmed demand row for cam-ent / XS.
- -- Order TEST-P-002 is cursado with 4 XS units pending and no XS stock/receipts, so 084 must
- -- derive pedido_proveedor from: stock libre (0) < demanda (1) and stock + proveedor (4) >= demanda.
- -- Select from equipacion_demanda_logistica itself so the fixture cannot drift from confirmed-size
- -- exceptions or need-confirmation rules.
- select d.necesidad_id,d.talla into needid,talla
- from public.equipacion_demanda_logistica d
- join public.equipacion_necesidades n on n.id=d.necesidad_id
- join private.test_dataset_entities dn
-   on dn.dataset_id='TEST-S' and dn.table_name='equipacion_necesidades' and dn.entity_id=n.id
- where n.pack_id=private.test_uuid('equip:pack:full')
-   and d.articulo_id=private.test_uuid('equip:art:cam-ent')
-   and d.talla='XS'
-   and not exists (
-     select 1
-     from public.equipacion_asignaciones ea
-     where ea.necesidad_id=d.necesidad_id
-       and ea.articulo_id=d.articulo_id
-       and ea.talla=d.talla
-       and ea.estado<>'cancelada'
-   )
- order by d.necesidad_id
- limit 1;
+ -- Player 3 match pack: PENDING SUPPLIER through the existing open order, no free stock.
+ select n.id,tp.talla_general into needid,talla
+ from public.equipacion_necesidades n
+ join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
+ where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
+             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 2 limit 1);
  if needid is not null then
-   aid:=private.test_uuid('equip:art:cam-ent'); asgid:=private.test_uuid('matrix:supplier:asg');
+   aid:=private.test_uuid('equip:art:cam-par'); asgid:=private.test_uuid('matrix:supplier:asg');
    insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
-   values(asgid,needid,aid,talla,1,'propuesta','manual')
-   on conflict(id) do update set necesidad_id=excluded.necesidad_id,articulo_id=excluded.articulo_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
+   values(asgid,needid,aid,'S',1,'propuesta','manual') on conflict(id) do update set talla='S',estado='propuesta',reservado_at=null;
  end if;
 
  -- Player 4 already supplies the COMPLETED training pack + pending separate match pack.
@@ -642,6 +624,7 @@ on conflict do nothing;
 
 -- Matrix assertions: at least one delivered, prepared, available and supplier-covered assignment.
 do $$
+declare r record;
 begin
  if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='entregada')
  then raise exception 'EQUIPACIONES reparto matrix: delivered case missing'; end if;
@@ -649,8 +632,40 @@ begin
  then raise exception 'EQUIPACIONES reparto matrix: prepared case missing'; end if;
  if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='disponible')
  then raise exception 'EQUIPACIONES reparto matrix: available case missing'; end if;
- if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='pedido_proveedor')
- then raise exception 'EQUIPACIONES reparto matrix: supplier case missing'; end if;
+ if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='pedido_proveedor') then
+   raise notice 'MATRIX SUPPLIER DIAG: no pedido_proveedor rows. Operational rows with supplier/XS/matrix assignment follow:';
+   for r in
+     select eo.necesidad_id,eo.articulo_id,eo.articulo_nombre,eo.talla,eo.asignacion_id,eo.estado_asignacion,
+            eo.cantidad_necesaria,eo.cantidad_reservada,eo.cantidad_entregada,eo.stock_disponible,
+            eo.stock_fisico,eo.pendiente_proveedor,eo.estado_operativo
+     from public.equipacion_estado_operativo eo
+     where eo.temporada_id=(select id from public.temporadas where estado='activa' limit 1)
+       and (eo.asignacion_id=private.test_uuid('matrix:supplier:asg') or eo.talla='XS' or eo.pendiente_proveedor>0)
+     order by eo.articulo_nombre,eo.talla,eo.necesidad_id
+   loop
+     raise notice 'MATRIX SUPPLIER ROW need=% art=% (%) talla=% asg=% asg_state=% need_qty=% reserved=% delivered=% stock_free=% stock_phys=% supplier_pending=% op=%',
+       r.necesidad_id,r.articulo_id,r.articulo_nombre,r.talla,r.asignacion_id,r.estado_asignacion,
+       r.cantidad_necesaria,r.cantidad_reservada,r.cantidad_entregada,r.stock_disponible,
+       r.stock_fisico,r.pendiente_proveedor,r.estado_operativo;
+   end loop;
+   for r in
+     select pe.codigo pedido,pe.estado,pl.articulo_id,a.nombre articulo,pl.talla,pl.cantidad_pedida,
+            coalesce(sum(rl.cantidad_aceptada),0)::integer aceptada,
+            (pl.cantidad_pedida-coalesce(sum(rl.cantidad_aceptada),0))::integer pendiente
+     from public.equipacion_pedidos pe
+     join public.equipacion_pedido_lineas pl on pl.pedido_id=pe.id
+     join public.equipacion_articulos a on a.id=pl.articulo_id
+     left join public.equipacion_recepcion_lineas rl on rl.pedido_linea_id=pl.id
+     where pe.temporada_id=(select id from public.temporadas where estado='activa' limit 1)
+       and (pl.talla='XS' or pl.articulo_id=private.test_uuid('equip:art:cam-ent'))
+     group by pe.codigo,pe.estado,pl.id,pl.articulo_id,a.nombre,pl.talla,pl.cantidad_pedida
+     order by pe.codigo,a.nombre,pl.talla
+   loop
+     raise notice 'MATRIX SUPPLIER ORDER pedido=% state=% art=% (%) talla=% ordered=% accepted=% pending=%',
+       r.pedido,r.estado,r.articulo_id,r.articulo,r.talla,r.cantidad_pedida,r.aceptada,r.pendiente;
+   end loop;
+   raise exception 'EQUIPACIONES reparto matrix: supplier case missing';
+ end if;
 end $$;
 
 
