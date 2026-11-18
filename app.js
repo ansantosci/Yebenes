@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.8';
+const APP_VERSION='96.4.9';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2865,9 +2865,21 @@ async function testRffmCurrent(){
 }
 function rffmMatchHtml(m,title){if(!m)return `<div class="rffm-empty">${title}: sin datos.</div>`;return `<div class="rffm-fixture"><div class="rffm-fixture-meta"><b>${title}</b><span>J${esc(m.jornada||'?')} · ${esc(m.date||'')}${m.time?' · '+esc(m.time):''}</span></div><div class="rffm-fixture-row"><span>${esc(m.home||'')}</span><strong>${m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:'VS'}</strong><span>${esc(m.away||'')}</span></div>${m.place?`<div class="rffm-place">${esc(m.place)}</div>`:''}</div>`}
 function rffmClassificationHtml(c){if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';return `<div class="rffm-standing"><b>${esc(c.position)}.º</b><span>${c.points!=null?esc(c.points)+' pts':''}${c.played!=null?' · '+esc(c.played)+' PJ':''}</span></div>${(c.context||[]).map(r=>`<div class="rffm-mini-row ${Number(r.position)===Number(c.position)?'current':''}"><span>${esc(r.position)}.º</span><span class="team">${esc(r.team||'')}</span><span>${r.played??''} PJ</span><span><b>${r.points??''}</b></span></div>`).join('')}`}
-function renderRffmResults(){const out=$('#rffmResultsContent');if(!out)return;const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true).filter(t=>rffmIntegrationFor(t.id)?.activo);out.innerHTML=teams.map(t=>{const d=rffmResultsByTeam.get(t.id);return `<article class="rffm-result-card"><header><div><strong>${esc(t.name)}</strong><span>${esc(dbCategoryName(t.categoryId))} · ${esc(t.modality||'')}</span></div>${rffmConfigState(rffmIntegrationFor(t.id))}</header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}`}</article>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>'}
+function renderRffmResults(){
+  const out=$('#rffmResultsContent');if(!out)return;
+  const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true).filter(t=>rffmIntegrationFor(t.id)?.activo);
+  out.innerHTML=teams.map(t=>{const d=rffmResultsByTeam.get(t.id),loading=d?.loading===true;return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div><strong>${esc(t.name)}</strong><span>${esc(dbCategoryName(t.categoryId))} · ${esc(t.modality||'')}</span></div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${loading?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}`}</article>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>';
+  $$('.rffm-card-refresh',out).forEach(b=>b.onclick=()=>loadRffmTeam(b.dataset.team,true));
+}
 async function loadRffmTeam(teamId,force=false){rffmResultsByTeam.set(teamId,{loading:true});renderRffmResults();try{const data=await invokeRffm({action:'team',team_id:teamId,force});rffmResultsByTeam.set(teamId,data)}catch(err){rffmResultsByTeam.set(teamId,{error:String(err?.message||err)})}renderRffmResults()}
-async function loadAllRffm(){const ids=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo).map(t=>t.id);$('#rffmStructureStatus').textContent=`Actualizando ${ids.length} equipos…`;await Promise.all(ids.map(id=>loadRffmTeam(id,true)));$('#rffmStructureStatus').textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`}
+async function loadAllRffm(){
+  const ids=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo).map(t=>t.id),status=$('#rffmStructureStatus'),button=$('#rffmRefreshAll');
+  if(button?.disabled)return;if(button)button.disabled=true;
+  let next=0,done=0;const concurrency=Math.min(3,ids.length||1);
+  if(status)status.textContent=`Actualizando 0/${ids.length} equipos…`;
+  async function worker(){while(next<ids.length){const id=ids[next++];await loadRffmTeam(id,true);done++;if(status)status.textContent=`Actualizando ${done}/${ids.length} equipos…`;}}
+  try{await Promise.all(Array.from({length:concurrency},worker));if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{if(button)button.disabled=false;}
+}
 function exportRffmPdf(){window.print()}
 
 function renderStructure(){

@@ -1,4 +1,12 @@
-### V96.4.8 — ModalUI busy conserva los datos del formulario
+### V96.4.9 — Resultados RFFM sobre ModalUI y TEST-S sin equipo ECONOMIA 067 C
+
+- Migra `Resultados del club` a la familia `ModalUI`: cabecera común, body como único scroll y acciones en footer.
+- Cada tarjeta de equipo incorpora `Actualizar`; permite reintentar una sola consulta RFFM sin refrescar todo el club.
+- `Actualizar todos` limita la concurrencia a 3 equipos y muestra progreso, evitando la ráfaga simultánea de todas las integraciones.
+- TEST-S ECONOMIA deja de crear el equipo auxiliar `ECONOMIA 067 C / E067C`: el caso 067 reutiliza dos equipos canónicos de la misma categoría para validar el cambio de cuota.
+- No modifica Edge Function, backend productivo ni mappings RFFM 2026/27.
+
+### V96.4.7 — ModalUI busy conserva los datos del formulario
 
 - Corrige la regresión detectada en V96.4.6 al Guardar/Probar RFFM: el estado `busy` ya no deshabilita `input`, `select` ni `textarea` antes de construir `FormData`.
 - `ModalUI.setBusy()` continúa bloqueando botones para impedir doble clic y conserva/restaura su estado previo.
