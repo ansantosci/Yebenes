@@ -1,3 +1,12 @@
+### V96.4.2 — Estructura unificada y RFFM en la ficha del equipo
+
+- Elimina el segundo listado permanente de equipos RFFM en Estructura.
+- Añade estado RFFM al listado canónico de equipos.
+- La ficha del equipo incorpora pestañas `Configuración del club` y `Federación · RFFM`.
+- La pestaña RFFM permite guardar, probar conexión y consultar resultados del equipo.
+- `Resultados RFFM` abre la visión agregada del club y mantiene la exportación PDF.
+- No modifica 095, 096, la Edge Function `rffm-resultados` ni el workflow de despliegue corregido.
+
 ### V96.4.1 — Configuración de artículos/packs, proveedores, pedidos y recepciones
 
 - Nueva Configuración de Equipaciones: Artículos, Packs, Proveedores, Marcas y Tallajes.
