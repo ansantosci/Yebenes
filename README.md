@@ -1,10 +1,13 @@
-### V96.4.0 — Proveedores, marcas, pedidos, recepciones y stock existente
+### V96.4.1 — Configuración de artículos/packs, proveedores, pedidos y recepciones
 
-- Gestión activa/inactiva de proveedores y marcas desde Equipaciones.
-- Alta trazable de stock ya existente con origen, vigencia, marca y proveedor opcional.
-- Nuevo pedido desde compra sugerida, edición de borrador y líneas manuales/personalizadas.
+- Nueva Configuración de Equipaciones: Artículos, Packs, Proveedores, Marcas y Tallajes.
+- Los artículos son referencias físicas/comerciales reutilizables entre temporadas, con marca, modelo/colección, referencia de fabricante opcional y sistema de tallaje.
+- Los packs se configuran libremente por temporada y seleccionan referencias de artículo existentes; no existe una lista fija de prendas.
+- Gestión activa/inactiva de proveedores y marcas, con proveedor habilitado/principal por temporada.
+- Alta trazable de stock ya existente con origen, vigencia, marca y proveedor opcional; las tallas proceden del catálogo 095 del artículo.
+- Nuevo pedido desde demanda/compra sugerida únicamente para artículos configurados en packs activos, con edición de borrador y líneas manuales/personalizadas.
 - Cursado de pedido y recepciones parciales con cantidades recibidas/aceptadas e incidencias.
-- Carga diferida de catálogos y detalle de pedidos para no ampliar la carga inicial del módulo.
+- Carga diferida de configuración, catálogos y detalle de pedidos para no ampliar innecesariamente la carga inicial del módulo.
 
 ### V96.3.2 — Preparación desde demanda operativa 084
 - Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
@@ -1557,3 +1560,11 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No schema or frontend behavior change in this hardening patch.
 
 - Contract 087 corrected to the effective signatures: 079 private direct delivery, 083 private multiple delivery, 082 public wrapper, 086 demand delivery.
+
+
+### V96.4.1 - RFFM por equipo desde Estructura
+- La entidad Equipo/temporada es la identidad canónica; se elimina el catálogo paralelo hardcodeado.
+- Configuración RFFM por equipo mediante backend 096: competición, grupo, tipo de juego e ID externo opcional.
+- Probar conexión registra la última validación.
+- Resultados, último/próximo partido y clasificación se consultan mediante Edge Function `rffm-resultados`.
+- No se guardan URLs arbitrarias ni secretos RFFM.

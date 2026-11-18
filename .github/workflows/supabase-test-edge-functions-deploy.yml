@@ -84,6 +84,7 @@ jobs:
           test -s supabase/functions/gestionar-acceso/index.ts
           test -s supabase/functions/mantenimiento-programado/index.ts
           test -s supabase/functions/procesar-notificaciones/index.ts
+          test -s supabase/functions/rffm-resultados/index.ts
           echo 'Edge Function sources validated.'
 
       - name: Deploy gestionar-acceso
@@ -103,6 +104,12 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_REF: ${{ steps.project.outputs.project_ref }}
         run: supabase functions deploy procesar-notificaciones --project-ref "$PROJECT_REF" --no-verify-jwt
+
+      - name: Deploy rffm-resultados
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ steps.project.outputs.project_ref }}
+        run: supabase functions deploy rffm-resultados --project-ref "$PROJECT_REF"
 
       - name: Deployment completed
         run: |

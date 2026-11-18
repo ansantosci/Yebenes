@@ -8,7 +8,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-window.YEBENES_APP_VERSION = '96.4.0';
+window.YEBENES_APP_VERSION = '96.4.1';
     (async function checkRemoteVersion(){
       try {
         const response = await fetch(`version.json?ts=${Date.now()}`, {cache: 'no-store'});
@@ -31,7 +31,7 @@ window.YEBENES_APP_VERSION = '96.4.0';
   </script>
   <title>Los Yébenes San Bruno · Gestión de inscripciones</title>
   <link rel="manifest" href="manifest.webmanifest" />
-<link rel="stylesheet" href="styles.css?v=96.4.0" />
+<link rel="stylesheet" href="styles.css?v=96.4.1" />
   <link rel="icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
   <link rel="apple-touch-icon" href="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" />
 </head>
@@ -45,7 +45,7 @@ window.YEBENES_APP_VERSION = '96.4.0';
     </div>
   </div>
   <div id="authScreen" class="auth-screen hidden">
-<div class="public-masthead" aria-label="C.D. Los Yébenes San Bruno"><div class="public-brand"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span class="public-season-label">2026/2027</span></span></div></div><div class="public-motto"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=96.4.0" alt="De Madrid al cielo · Comunidad de Madrid" /></div></div>
+<div class="public-masthead" aria-label="C.D. Los Yébenes San Bruno"><div class="public-brand"><img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" /><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada <span class="public-season-label">2026/2027</span></span></div></div><div class="public-motto"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=96.4.1" alt="De Madrid al cielo · Comunidad de Madrid" /></div></div>
     <div class="auth-card">
       <div class="auth-brand">
         <img src="https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png" alt="Escudo C.D. Los Yébenes San Bruno" />
@@ -114,7 +114,7 @@ window.YEBENES_APP_VERSION = '96.4.0';
         <div class="club-motto-row" aria-hidden="true"><span id="clubMotto">De Madrid al cielo</span></div>
         <div class="season season-context-row"><span id="seasonContextStatic">Temporada <span id="currentSeasonLabel">2026/2027</span></span><label id="seasonContextControl" class="season-context-control hidden"><span class="sr-only">Temporada de trabajo</span><select id="seasonContextSelect" aria-label="Temporada de trabajo"></select><span id="seasonContextBadge" class="season-context-badge"></span></label><span class="season-role-separator">·</span> <span id="currentRoleLabel"></span></div>
       </div>
-<div class="topbar-skyline"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=96.4.0" alt="De Madrid al cielo · Comunidad de Madrid" /></div><button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
+<div class="topbar-skyline"><img class="madrid-identity-art" src="assets/madrid-motto-community.png?v=96.4.1" alt="De Madrid al cielo · Comunidad de Madrid" /></div><button class="role-switch-button" id="roleSwitchButton" type="button" title="Cambiar perfil">⇄</button><button class="icon-button" id="logoutButton" title="Cerrar sesión">↪</button>
     </header>
 
     <main>
@@ -194,6 +194,7 @@ window.YEBENES_APP_VERSION = '96.4.0';
             <button class="entity-tab" data-equipment-tab="stock">Stock</button>
             <button class="entity-tab" data-equipment-tab="orders">Pedidos</button>
             <button class="entity-tab" data-equipment-tab="deliveries">Preparación y entregas</button>
+            <button class="entity-tab" data-equipment-tab="config">Configuración</button>
           </nav>
           <div id="equipmentContent" class="equipment-content"><div class="info-card">Selecciona Equipaciones para consultar los datos de la temporada.</div></div>
         </section>
@@ -270,6 +271,11 @@ window.YEBENES_APP_VERSION = '96.4.0';
         <section class="section">
           <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Equipos</span><h2>Equipos · <span id="structureSeasonName">temporada</span></h2><div class="meta" id="structureSeasonState"></div><div class="meta section-note">La configuración deportiva y económica se gestiona desde una única ficha de equipo. Pulsa sobre un equipo para consultar o modificar sus datos.</div></div><button class="primary small" id="openTeamModal">+ Nuevo equipo</button></div>
           <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Categoría</th><th>Modalidad</th><th>Jugadores</th><th>Entrenadores</th><th>Inscripción</th><th>Fracc.</th><th>Pago ficha</th><th>Estado</th></tr></thead><tbody id="structureTeamsTable"></tbody></table></div>
+        </section>
+        <section class="section" id="rffmStructureSection">
+          <div class="section-head stacked-mobile"><div><span class="eyebrow dark">Federación · RFFM</span><h2>Calendario, resultados y clasificación</h2><div class="meta">La temporada y los equipos de Estructura son la fuente canónica. Configura aquí los identificadores RFFM de cada equipo.</div></div><div class="rffm-toolbar-actions"><span class="meta" id="rffmStructureStatus">Pendiente de carga</span><button class="secondary small" type="button" id="rffmRefreshAll">Actualizar resultados</button><button class="primary small" type="button" id="rffmExportPdf">Exportar PDF</button></div></div>
+          <div id="rffmTeamConfigList" class="rffm-config-list"></div>
+          <div id="rffmResultsContent" class="rffm-content"></div>
         </section>
         <section class="section compact"><div class="info-card"><strong>Modelo histórico</strong><p>Los jugadores y entrenadores no pertenecen permanentemente a un equipo. Las asignaciones se guardan con temporada y periodo de vigencia. La configuración económica pertenece igualmente al equipo de una temporada concreta.</p></div></section>
       </section>
@@ -407,7 +413,9 @@ window.YEBENES_APP_VERSION = '96.4.0';
 
   <dialog id="economicConfigModal"><form id="economicConfigForm"><div class="modal-head"><div><span class="eyebrow dark">Configuración económica</span><h2 id="economicConfigTitle">Equipo</h2></div><button type="button" class="icon-button" id="closeEconomicConfigModal">✕</button></div><div class="form-grid"><label>Importe inscripción (€)<input name="amount" type="number" min="0" step="0.01" required /></label><label>Admite fraccionamiento Cluber<select name="installments"><option value="yes">Sí</option><option value="no">No</option></select></label><label>Pago requerido para ficha<select name="required"><option value="yes">Sí</option><option value="no">No</option></select></label><label class="span-2">Observaciones<textarea name="notes" rows="3" placeholder="Condiciones o notas internas"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelEconomicConfig">Cancelar</button><button type="submit" class="primary">Guardar configuración</button></div></form></dialog>
 
-  <dialog id="teamModal"><form id="teamForm"><div class="modal-head"><div><span class="eyebrow dark">Equipo</span><h2 id="teamModalTitle">Nuevo equipo</h2><div class="meta" id="teamModalSeason"></div></div><button type="button" class="icon-button" id="closeTeamModal">✕</button></div><div class="form-grid"><div class="span-2 form-section-title"><strong>Datos deportivos</strong><span>Identidad y clasificación del equipo.</span></div><label class="span-2">Nombre del equipo<input name="name" required placeholder="Prebenjamín A" /></label><label>Categoría<select name="categoryId" id="teamCategorySelect" required></select></label><label>Código<input name="code" placeholder="PRE-A" /></label><label>Modalidad<select name="modality"><option value="">—</option><option value="F7">F7</option><option value="F11">F11</option></select></label><label>Género<select name="gender"><option value="">—</option><option value="masculino">Masculino</option><option value="femenino">Femenino</option><option value="mixto">Mixto</option></select></label><label>Estado<select name="active"><option value="yes">Activo</option><option value="no">Inactivo</option></select></label><div class="span-2 form-section-title"><strong>Configuración económica</strong><span>Condiciones de inscripción aplicables a este equipo durante la temporada.</span></div><label>Importe inscripción (€)<input name="amount" type="number" min="0" step="0.01" placeholder="Sin configurar" /></label><label>Admite fraccionamiento Cluber<select name="installments"><option value="yes">Sí</option><option value="no">No</option></select></label><label>Pago requerido para ficha<select name="required"><option value="yes">Sí</option><option value="no">No</option></select></label><label class="span-2">Observaciones económicas<textarea name="notes" rows="3" placeholder="Condiciones o notas internas"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelTeam">Cancelar</button><button type="submit" class="primary">Guardar equipo</button></div></form></dialog>
+  <dialog id="rffmConfigModal"><form id="rffmConfigForm"><div class="modal-head"><div><span class="eyebrow dark">Federación · RFFM</span><h2 id="rffmConfigTitle">Configurar equipo</h2><div class="meta" id="rffmConfigSeason"></div></div><button type="button" class="icon-button" id="closeRffmConfig">✕</button></div><div class="form-grid"><label>Temporada RFFM<input name="rffm_season_id" required inputmode="numeric" placeholder="22" /></label><label>Competición RFFM<input name="competition_id" required inputmode="numeric" placeholder="26738167" /></label><label>Grupo RFFM<input name="group_id" required inputmode="numeric" placeholder="26738176" /></label><label>Tipo de juego<select name="game_type" required><option value="1">1 · F11</option><option value="2">2 · F7</option><option value="4">4 · F5</option></select></label><label>ID equipo RFFM (opcional)<input name="external_team_id" inputmode="numeric" placeholder="Si RFFM lo proporciona" /></label><label>Estado<select name="activo"><option value="yes">Activo</option><option value="no">Inactivo</option></select></label><div class="span-2 info-card compact"><strong>Validación</strong><p id="rffmValidationHint">Guarda los parámetros y utiliza “Probar conexión”. Solo una prueba correcta marca la configuración como verificada.</p></div></div><div class="modal-actions"><button type="button" class="secondary" id="testRffmConfig">Probar conexión</button><button type="button" class="secondary" id="cancelRffmConfig">Cancelar</button><button type="submit" class="primary">Guardar configuración</button></div></form></dialog>
+
+<dialog id="teamModal"><form id="teamForm"><div class="modal-head"><div><span class="eyebrow dark">Equipo</span><h2 id="teamModalTitle">Nuevo equipo</h2><div class="meta" id="teamModalSeason"></div></div><button type="button" class="icon-button" id="closeTeamModal">✕</button></div><div class="form-grid"><div class="span-2 form-section-title"><strong>Datos deportivos</strong><span>Identidad y clasificación del equipo.</span></div><label class="span-2">Nombre del equipo<input name="name" required placeholder="Prebenjamín A" /></label><label>Categoría<select name="categoryId" id="teamCategorySelect" required></select></label><label>Código<input name="code" placeholder="PRE-A" /></label><label>Modalidad<select name="modality"><option value="">—</option><option value="F7">F7</option><option value="F11">F11</option></select></label><label>Género<select name="gender"><option value="">—</option><option value="masculino">Masculino</option><option value="femenino">Femenino</option><option value="mixto">Mixto</option></select></label><label>Estado<select name="active"><option value="yes">Activo</option><option value="no">Inactivo</option></select></label><div class="span-2 form-section-title"><strong>Configuración económica</strong><span>Condiciones de inscripción aplicables a este equipo durante la temporada.</span></div><label>Importe inscripción (€)<input name="amount" type="number" min="0" step="0.01" placeholder="Sin configurar" /></label><label>Admite fraccionamiento Cluber<select name="installments"><option value="yes">Sí</option><option value="no">No</option></select></label><label>Pago requerido para ficha<select name="required"><option value="yes">Sí</option><option value="no">No</option></select></label><label class="span-2">Observaciones económicas<textarea name="notes" rows="3" placeholder="Condiciones o notas internas"></textarea></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelTeam">Cancelar</button><button type="submit" class="primary">Guardar equipo</button></div></form></dialog>
 
   <dialog id="seasonModal"><form id="seasonForm"><div class="modal-head"><div><span class="eyebrow dark">Temporadas</span><h2>Nueva temporada</h2></div><button type="button" class="icon-button" id="closeSeasonModal">✕</button></div><div class="form-grid"><label class="span-2">Nombre<input name="name" required placeholder="2027/2028" /></label><label>Fecha inicio<input name="startDate" type="date" required /></label><label>Fecha fin<input name="endDate" type="date" required /></label></div><div class="modal-actions"><button type="button" class="secondary" id="cancelSeason">Cancelar</button><button type="submit" class="primary">Crear temporada</button></div></form></dialog>
 
@@ -439,7 +447,7 @@ window.YEBENES_APP_VERSION = '96.4.0';
         : 'demo';
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=96.4.0"></script>
-<script src="app.js?v=96.4.0"></script>
+<script src="config.js?v=96.4.1"></script>
+<script src="app.js?v=96.4.1"></script>
 </body>
 </html>
