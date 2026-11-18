@@ -598,6 +598,13 @@ begin
  where n.pack_id=private.test_uuid('equip:pack:partido')
    and tp.talla_general='S'
    and n.id=private.test_uuid('equip:need:match:'||n.jugador_id::text)
+   and not exists (
+     select 1
+     from public.equipacion_asignaciones ea
+     where ea.necesidad_id=n.id
+       and ea.articulo_id=private.test_uuid('equip:art:cam-par')
+       and ea.talla=tp.talla_general
+   )
  order by n.id
  limit 1;
  if needid is not null then
