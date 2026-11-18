@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.4';
+const APP_VERSION='96.4.5';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -66,6 +66,8 @@ const ModalUI={
     if(!dialog)return dialog;
     dialog.classList.add('app-modal');
     dialog.dataset.modalSize=size;
+    const body=dialog.querySelector('.app-modal__body');
+    if(body)body.classList.add('modal-ui__body');
     dialog.querySelector('.modal-head')?.classList.add('app-modal__head');
     dialog.querySelectorAll('.modal-tabs').forEach(x=>x.classList.add('app-modal__tabs'));
     dialog.querySelectorAll('.form-section-title').forEach(x=>x.classList.add('app-form-section'));
@@ -88,8 +90,22 @@ const ModalUI={
   },
   setActionEnabled(button,enabled,reason=''){
     if(!button)return;button.disabled=!enabled;button.setAttribute('aria-disabled',String(!enabled));button.title=!enabled&&reason?reason:'';
+  },
+  setBusy(root,busy,{label='Procesando…'}={}){
+    if(!root)return;
+    root.dataset.modalBusy=busy?'1':'0';
+    root.querySelectorAll('button,input,select,textarea').forEach(el=>{
+      if(el.matches('[data-busy-keep]'))return;
+      if(busy){el.dataset.wasDisabled=el.disabled?'1':'0';el.disabled=true}else if(el.dataset.wasDisabled==='0'){el.disabled=false;delete el.dataset.wasDisabled}else delete el.dataset.wasDisabled;
+    });
+    const primary=root.querySelector('[data-busy-label]');
+    if(primary){if(busy){primary.dataset.idleLabel=primary.textContent;primary.textContent=label}else if(primary.dataset.idleLabel){primary.textContent=primary.dataset.idleLabel;delete primary.dataset.idleLabel}}
   }
 };
+function withTimeout(promise,ms,message='La operación ha tardado demasiado. Vuelve a intentarlo.'){
+  let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{const e=new Error(message);e.code='TIMEOUT';reject(e)},ms)});
+  return Promise.race([Promise.resolve(promise).finally(()=>clearTimeout(timer)),timeout]);
+}
 
 function renderEnvironmentBadge(){
   const badge=document.getElementById('environmentBadge');
@@ -2793,7 +2809,7 @@ function rffmIntegrationFor(teamId){return dbFederationIntegrations.find(x=>x.eq
 function rffmConfigState(x){if(!x)return '<span class="status pending">Sin configurar</span>';if(x.ultima_validacion_ok===true)return '<span class="status complete">Verificado</span>';if(x.ultima_validacion_ok===false)return '<span class="status returned">Error</span>';return '<span class="status pending">Sin verificar</span>'}
 function rffmGameTypeLabel(v){return ({'1':'F11','2':'F7','4':'F5'}[String(v)]||String(v||'—'))}
 async function invokeRffm(body){
-  const {data,error}=await sb.functions.invoke('rffm-resultados',{body});
+  const {data,error}=await withTimeout(sb.functions.invoke('rffm-resultados',{body}),15000,'No se ha podido contactar con RFFM en 15 segundos. Puedes volver a intentarlo.');
   if(error){
     let detail='';
     try{const ctx=error.context;if(ctx&&typeof ctx.json==='function'){const payload=await ctx.json();detail=payload?.message||payload?.error||payload?.code||''}}catch{}
@@ -2817,11 +2833,19 @@ function openRffmConfig(teamId){
   f.elements.rffm_season_id.value=x?.config?.season_id||'22';f.elements.competition_id.value=x?.competition_id||'';f.elements.group_id.value=x?.group_id||'';f.elements.game_type.value=x?.game_type||(t.modality==='F11'?'1':t.modality==='F7'?'2':'4');f.elements.external_team_id.value=x?.external_team_id||'';f.elements.activo.value=x?.activo===false?'no':'yes';
   $('#rffmValidationHint').textContent=x?.ultima_validacion_at?`Última prueba: ${new Date(x.ultima_validacion_at).toLocaleString('es-ES')} · ${x.ultima_validacion_ok?'Correcta':'Error'}${x.ultima_validacion_mensaje?' · '+x.ultima_validacion_mensaje:''}`:'Todavía no se ha probado esta configuración.';$('#rffmConfigModal').showModal();
 }
-async function saveRffmConfig(form,{test=false,button=null}={}){
-  if(!selectedRffmTeamId||!['admin','club'].includes(currentRole))return null;const fd=new FormData(form),existing=rffmIntegrationFor(selectedRffmTeamId);const row={equipo_id:selectedRffmTeamId,proveedor:'RFFM',config:{season_id:String(fd.get('rffm_season_id')||'').trim()},competition_id:String(fd.get('competition_id')||'').trim(),group_id:String(fd.get('group_id')||'').trim(),game_type:String(fd.get('game_type')||'').trim(),external_team_id:String(fd.get('external_team_id')||'').trim()||null,activo:fd.get('activo')==='yes'};
+async function saveRffmConfig(form,{test=false}={}){
+  if(!selectedRffmTeamId||!['admin','club'].includes(currentRole))return null;
+  const fd=new FormData(form),existing=rffmIntegrationFor(selectedRffmTeamId);
+  const row={equipo_id:selectedRffmTeamId,proveedor:'RFFM',config:{season_id:String(fd.get('rffm_season_id')||'').trim()},competition_id:String(fd.get('competition_id')||'').trim(),group_id:String(fd.get('group_id')||'').trim(),game_type:String(fd.get('game_type')||'').trim(),external_team_id:String(fd.get('external_team_id')||'').trim()||null,activo:fd.get('activo')==='yes'};
   if(!row.config.season_id||!row.competition_id||!row.group_id||!row.game_type)throw new Error('Completa temporada RFFM, competición, grupo y tipo de juego.');
-  let saved;if(existing){const {data,error}=await sb.from('equipo_integraciones_federacion').update({...row,ultima_validacion_at:test?new Date().toISOString():null,ultima_validacion_ok:test?null:null,ultima_validacion_mensaje:test?'Validación en curso':null}).eq('id',existing.id).select().single();if(error)throw error;saved=data}else{const {data,error}=await sb.from('equipo_integraciones_federacion').insert(row).select().single();if(error)throw error;saved=data}
-  await loadSupabaseStructure();return saved;
+  const query=existing
+    ? sb.from('equipo_integraciones_federacion').update({...row,ultima_validacion_at:test?new Date().toISOString():null,ultima_validacion_ok:null,ultima_validacion_mensaje:test?'Validación en curso':null}).eq('id',existing.id).select().single()
+    : sb.from('equipo_integraciones_federacion').insert(row).select().single();
+  const {data,error}=await withTimeout(query,10000,'No se ha podido guardar la configuración RFFM en 10 segundos. Puedes volver a intentarlo.');
+  if(error)throw error;
+  const idx=dbFederationIntegrations.findIndex(x=>x.equipo_id===selectedRffmTeamId&&x.proveedor==='RFFM');
+  if(idx>=0)dbFederationIntegrations[idx]=data;else dbFederationIntegrations.push(data);
+  return data;
 }
 async function testRffmCurrent(){
   const f=$('#rffmConfigForm');try{await saveRffmConfig(f);const data=await invokeRffm({action:'validate',team_id:selectedRffmTeamId});await loadSupabaseStructure();renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Conexión correcta · ${data.teamName||'equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;}catch(err){await loadSupabaseStructure().catch(()=>{});renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Error de validación: ${err.message||err}`;}
@@ -3039,9 +3063,9 @@ function scrollActiveListToStart(view){
   const id=map[view];if(!id)return;requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'auto',block:'start'}));
 }
 $$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamConfigTab(b.dataset.teamConfigTab)));
-$('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const btn=$('#saveTeamRffm');try{await saveRffmConfig(e.currentTarget,{button:btn});renderStructure();}catch(err){ModalUI.setStatus($('#teamRffmValidationStatus'),{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}});
-$('#testTeamRffm')?.addEventListener('click',async()=>{const status=$('#teamRffmValidationStatus'),btn=$('#testTeamRffm');const old=btn?.textContent;if(btn){btn.disabled=true;btn.textContent='Comprobando…'};try{await saveRffmConfig($('#teamRffmForm'));ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});await loadSupabaseStructure();renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'Error de conexión',message:String(err.message||err)});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{if(btn){btn.disabled=false;btn.textContent=old||'Probar conexión'}}});
-$('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;await loadRffmTeam(editingTeamId,true);renderTeamRffmResult(editingTeamId)});
+$('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus');if(form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Guardando…'});try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'success',title:'Configuración guardada',message:'Los parámetros RFFM se han guardado correctamente. Puedes probar la conexión.'});renderStructure();}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});await withTimeout(loadSupabaseStructure(),10000,'La conexión se verificó, pero la actualización de datos está tardando demasiado.');renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message:String(err.message||err)});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(form?.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Consultando…'});try{const data=await invokeRffm({action:'team',team_id:editingTeamId,force:true});rffmResultsByTeam.set(editingTeamId,data);renderTeamRffmResult(editingTeamId);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'No se han podido consultar los resultados',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();$('#rffmResultsModal')?.showModal()});
 $('#closeRffmResults')?.addEventListener('click',()=>$('#rffmResultsModal')?.close());
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
