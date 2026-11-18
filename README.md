@@ -1,3 +1,10 @@
+### V96.4.7 — ModalUI busy conserva los datos del formulario
+
+- Corrige la regresión detectada en V96.4.6 al Guardar/Probar RFFM: el estado `busy` ya no deshabilita `input`, `select` ni `textarea` antes de construir `FormData`.
+- `ModalUI.setBusy()` continúa bloqueando botones para impedir doble clic y conserva/restaura su estado previo.
+- No modifica backend, contratos, Edge Function RFFM ni la geometría viewport-safe de V96.4.6.
+- Se mantiene la regla permanente: un `<dialog>` cerrado nunca puede hacerse visible por CSS; ModalUI solo maqueta `.app-modal[open]`.
+
 ### V96.4.6 — Estructura unificada y RFFM en la ficha del equipo
 
 - Elimina el segundo listado permanente de equipos RFFM en Estructura.

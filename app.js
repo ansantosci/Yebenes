@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.6';
+const APP_VERSION='96.4.7';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -94,7 +94,8 @@ const ModalUI={
   setBusy(root,busy,{label='Procesando…'}={}){
     if(!root)return;
     root.dataset.modalBusy=busy?'1':'0';
-    root.querySelectorAll('button,input,select,textarea').forEach(el=>{
+    // Busy blocks actions, but form controls stay enabled so FormData keeps their values.
+    root.querySelectorAll('button').forEach(el=>{
       if(el.matches('[data-busy-keep]'))return;
       if(busy){el.dataset.wasDisabled=el.disabled?'1':'0';el.disabled=true}else if(el.dataset.wasDisabled==='0'){el.disabled=false;delete el.dataset.wasDisabled}else delete el.dataset.wasDisabled;
     });
