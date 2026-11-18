@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.7';
+const APP_VERSION='96.4.8';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2848,6 +2848,18 @@ async function saveRffmConfig(form,{test=false}={}){
   if(idx>=0)dbFederationIntegrations[idx]=data;else dbFederationIntegrations.push(data);
   return data;
 }
+async function persistRffmValidation(teamId,ok,message){
+  if(!teamId||!['admin','club'].includes(currentRole))return null;
+  const existing=rffmIntegrationFor(teamId);
+  if(!existing?.id)throw new Error('Guarda primero la configuración RFFM antes de validarla.');
+  const patch={ultima_validacion_at:new Date().toISOString(),ultima_validacion_ok:!!ok,ultima_validacion_mensaje:String(message||'').trim()||null};
+  const query=sb.from('equipo_integraciones_federacion').update(patch).eq('id',existing.id).select().single();
+  const {data,error}=await withTimeout(query,10000,'La prueba RFFM terminó, pero no se pudo guardar su estado de validación en 10 segundos.');
+  if(error)throw error;
+  const idx=dbFederationIntegrations.findIndex(x=>x.id===existing.id);
+  if(idx>=0)dbFederationIntegrations[idx]=data;
+  return data;
+}
 async function testRffmCurrent(){
   const f=$('#rffmConfigForm');try{await saveRffmConfig(f);const data=await invokeRffm({action:'validate',team_id:selectedRffmTeamId});await loadSupabaseStructure();renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Conexión correcta · ${data.teamName||'equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;}catch(err){await loadSupabaseStructure().catch(()=>{});renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Error de validación: ${err.message||err}`;}
 }
@@ -3065,7 +3077,7 @@ function scrollActiveListToStart(view){
 }
 $$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamConfigTab(b.dataset.teamConfigTab)));
 $('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus');if(form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Guardando…'});try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'success',title:'Configuración guardada',message:'Los parámetros RFFM se han guardado correctamente. Puedes probar la conexión.'});renderStructure();}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
-$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});await withTimeout(loadSupabaseStructure(),10000,'La conexión se verificó, pero la actualización de datos está tardando demasiado.');renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message:String(err.message||err)});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});const message=`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;await persistRffmValidation(editingTeamId,true,message);renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){const message=String(err.message||err);try{if(rffmIntegrationFor(editingTeamId)?.id)await persistRffmValidation(editingTeamId,false,message)}catch(persistErr){console.warn('No se pudo persistir el error de validación RFFM',persistErr)}renderStructure();ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(form?.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Consultando…'});try{const data=await invokeRffm({action:'team',team_id:editingTeamId,force:true});rffmResultsByTeam.set(editingTeamId,data);renderTeamRffmResult(editingTeamId);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'No se han podido consultar los resultados',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();$('#rffmResultsModal')?.showModal()});
 $('#closeRffmResults')?.addEventListener('click',()=>$('#rffmResultsModal')?.close());

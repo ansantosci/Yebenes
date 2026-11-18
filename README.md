@@ -1,4 +1,4 @@
-### V96.4.7 — ModalUI busy conserva los datos del formulario
+### V96.4.8 — ModalUI busy conserva los datos del formulario
 
 - Corrige la regresión detectada en V96.4.6 al Guardar/Probar RFFM: el estado `busy` ya no deshabilita `input`, `select` ni `textarea` antes de construir `FormData`.
 - `ModalUI.setBusy()` continúa bloqueando botones para impedir doble clic y conserva/restaura su estado previo.
@@ -1606,3 +1606,8 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Shell viewport-safe solo en `.app-modal[open]`; cabecera/tabs visibles, body scrollable y acciones sticky.
 - Cierre de ficha Equipo centralizado: X, Cancelar y Escape limpian el equipo seleccionado.
 - RFFM conserva feedback busy, anti-doble clic y timeouts de 10 s (guardado) / 15 s (consulta).
+
+### V96.4.8 — Persistencia de validación RFFM
+- `Probar conexión` persiste ahora el resultado real en `ultima_validacion_at`, `ultima_validacion_ok` y `ultima_validacion_mensaje`.
+- El listado de Estructura refleja inmediatamente `Verificado` o `Error`; guardar/importar configuración continúa sin equivaler a validarla.
+- Se reutilizan UPDATE + RLS Club/Admin existentes en 096; no hay cambio de backend ni de esquema.
