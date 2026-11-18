@@ -1,3 +1,11 @@
+### V96.4.0 — Proveedores, marcas, pedidos, recepciones y stock existente
+
+- Gestión activa/inactiva de proveedores y marcas desde Equipaciones.
+- Alta trazable de stock ya existente con origen, vigencia, marca y proveedor opcional.
+- Nuevo pedido desde compra sugerida, edición de borrador y líneas manuales/personalizadas.
+- Cursado de pedido y recepciones parciales con cantidades recibidas/aceptadas e incidencias.
+- Carga diferida de catálogos y detalle de pedidos para no ampliar la carga inicial del módulo.
+
 ### V96.3.2 — Preparación desde demanda operativa 084
 - Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
 - Backend 086 materializa de forma controlada las asignaciones faltantes y compone atómicamente esa materialización con 085 para preparación FIFO. Si falla una prenda, se revierte también la materialización de la selección.
