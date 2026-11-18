@@ -60,6 +60,18 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 values('TEST-S','equipacion_articulos',private.test_uuid('equip:art:cam-personalizada')) on conflict do nothing;
 update public.equipacion_articulos set marca_id=private.test_uuid('equip:brand:current') where codigo like 'TEST-EQ-%';
 
+-- Matrix v2.2 + 095: commercial metadata and one deterministic article-size restriction.
+update public.equipacion_articulos
+set modelo=case when codigo='TEST-EQ-CAM-PER' then 'TEST-S Personalizada 2026/27' else coalesce(modelo,'TEST-S Coleccion actual') end,
+    referencia_fabricante=case when codigo='TEST-EQ-CAM-PER' then 'TEST-S-REF-CAM-PER' else referencia_fabricante end
+where codigo like 'TEST-EQ-%';
+insert into public.equipacion_articulo_tallas(articulo_id,talla_id,activa)
+select private.test_uuid('equip:art:cam-personalizada'),tv.id,true
+from public.equipacion_tallaje_valores tv
+join public.equipacion_sistemas_tallaje st on st.id=tv.sistema_tallaje_id
+where st.codigo='ROPA' and tv.codigo='L'
+on conflict(articulo_id,talla_id) do update set activa=true;
+
 -- Packs.
 with s as (select id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
@@ -824,6 +836,14 @@ begin
      and l.marca_id=private.test_uuid('equip:brand:historic') and l.temporada_origen_id=private.test_uuid('equip:season:historic')
      and l.temporada_origen_id<>v.temporada_id and v.temporada_id=tid and v.estado='no_valido') then
    raise exception 'EQUIPACIONES Matrix v2.2: historic invalid stock missing'; end if;
+
+ -- 095 catalog metadata: existing Matrix clothing is ROPA and personalized reference is explicitly L-only.
+ if not exists(select 1 from public.equipacion_articulos a join public.equipacion_sistemas_tallaje st on st.id=a.sistema_tallaje_id
+   where a.id=private.test_uuid('equip:art:cam-personalizada') and st.codigo='ROPA' and a.modelo='TEST-S Personalizada 2026/27' and a.referencia_fabricante='TEST-S-REF-CAM-PER') then
+   raise exception 'EQUIPACIONES Matrix v2.2: 095 article commercial metadata missing'; end if;
+ if not private.equipacion_articulo_admite_talla(private.test_uuid('equip:art:cam-personalizada'),'L')
+    or private.equipacion_articulo_admite_talla(private.test_uuid('equip:art:cam-personalizada'),'M') then
+   raise exception 'EQUIPACIONES Matrix v2.2: 095 article size restriction invalid'; end if;
 
  -- Two different existing TEST-S players from different teams may share L/#8 in the same personalized order.
  art:=private.test_uuid('equip:art:cam-personalizada');
