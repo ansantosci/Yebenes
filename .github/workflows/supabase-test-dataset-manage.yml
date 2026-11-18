@@ -64,7 +64,9 @@ jobs:
           test -n "$TEST_DB_URL"
           test -s supabase/test-support/00-test-infrastructure.sql
           test -s supabase/seed/test-data/01-reset-test-s.sql
+          test -s supabase/seed/test-data/05-align-2026-27-structure.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
+          test -s supabase/seed/test-base-rffm-2026-27.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
@@ -87,7 +89,9 @@ jobs:
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/05-align-2026-27-structure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-base-rffm-2026-27.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then
