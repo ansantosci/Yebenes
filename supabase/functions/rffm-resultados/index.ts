@@ -17,7 +17,76 @@ function logoUrl(path:any){const p=String(path||'').trim();return p.startsWith('
 async function getPageProps(url:string){const r=await fetch(url,{headers:HEADERS});if(!r.ok)throw new Error(`RFFM HTTP ${r.status}`);const html=await r.text();const m=html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);if(!m)throw new Error('RFFM no devolvió datos de competición');const data=JSON.parse(m[1]);return data?.props?.pageProps||{}}
 function cfgUrl(cfg:any,path:string,extra=''){const season=String(cfg?.config?.season_id||'22');return `${BASE}${path}?competicion=${encodeURIComponent(cfg.competition_id)}&grupo=${encodeURIComponent(cfg.group_id)}&temporada=${encodeURIComponent(season)}&tipojuego=${encodeURIComponent(cfg.game_type)}${extra}`}
 async function parseRound(cfg:any,jornada:number){const url=cfgUrl(cfg,'/competicion/resultados-y-jornadas',`&jornada=${jornada}`), pp=await getPageProps(url), results=pp?.results||{}, out:any[]=[];for(const p of results?.partidos||[]){const home=p.Nombre_equipo_local||'',away=p.Nombre_equipo_visitante||'';const homeIs=teamMatches(home,p.CodEquipo_local,cfg.external_team_id),awayIs=teamMatches(away,p.CodEquipo_visitante,cfg.external_team_id);if(!homeIs&&!awayIs)continue;let score=null;if(p.Goles_casa!==null&&p.Goles_casa!==''&&p.Goles_visitante!==null&&p.Goles_visitante!=='')score=[String(p.Goles_casa),String(p.Goles_visitante)];out.push({jornada,date:p.fecha,time:p.hora,score,home,away,teamName:homeIs?home:away,opponent:homeIs?away:home,place:String(p.campojuego||'').trim(),teamId:homeIs?p.CodEquipo_local:p.CodEquipo_visitante,homeLogo:logoUrl(p.url_img_local),awayLogo:logoUrl(p.url_img_visitante),matchId:p.codacta})}return {matches:out,results}}
-async function classification(cfg:any){const pp=await getPageProps(cfgUrl(cfg,'/competicion/clasificaciones')),rows:any[]=[];const seen=new Set<string>();for(const d of walk(pp)){const name=pick(d,'nombre_equipo','equipo','nombre','teamName');const pos=num(pick(d,'posicion','puesto','orden','clasificacion'));const pts=num(pick(d,'puntos','ptos','Pts','puntos_totales'));const played=num(pick(d,'jugados','partidos_jugados','PJ','pj'));if(typeof name!=='string'||pos===null||(pts===null&&played===null))continue;const tid=pick(d,'codigo_equipo','CodigoEquipo','CodEquipo','cod_equipo','id_equipo','equipo_id');const key=`${pos}|${tid||canonical(name)}`;if(seen.has(key))continue;seen.add(key);const lp=pick(d,'url_img','url_imagen','url_img_equipo','imagen','escudo','logo','url_logo');rows.push({position:pos,team:name,teamId:tid?String(tid):null,points:pts,played,logo:logoUrl(lp)})}rows.sort((a,b)=>a.position-b.position);const idx=rows.findIndex(r=>teamMatches(r.team,r.teamId,cfg.external_team_id));if(idx<0)return {url:cfgUrl(cfg,'/competicion/clasificaciones')};const cur=rows[idx];let start=Math.max(0,idx-2);if(rows.length>=5)start=Math.min(start,rows.length-5);return {url:cfgUrl(cfg,'/competicion/clasificaciones'),position:cur.position,points:cur.points,played:cur.played,context:rows.slice(start,start+5)}}
+async function classification(cfg:any){
+  const url=cfgUrl(cfg,'/competicion/clasificaciones');
+  const page=await getPageProps(url);
+
+  // Faithful TypeScript port of yebenes_rffm_web_v27/server.py::parse_classification.
+  const intNum=(v:any)=>{const n=Number.parseInt(String(v??'').trim(),10);return Number.isFinite(n)?n:null};
+  const teamName=(d:any)=>{
+    const direct=pick(d,'nombre_equipo','Nombre_equipo','equipo','Equipo','nombre','Nombre','teamName');
+    if(typeof direct==='string'&&direct.trim())return direct.trim();
+    for(const [k,v] of Object.entries(d||{})){
+      const kl=String(k).toLowerCase();
+      if(typeof v==='string'&&kl.includes('equipo')&&(kl.includes('nombre')||kl==='equipo'))return v.trim();
+    }
+    return null;
+  };
+  const teamId=(d:any)=>{
+    const direct=pick(d,'codigo_equipo','CodigoEquipo','CodEquipo','cod_equipo','id_equipo','equipo_id');
+    if(direct!==null&&direct!==undefined)return String(direct);
+    for(const [k,v] of Object.entries(d||{})){
+      const kl=String(k).toLowerCase();
+      if(kl.includes('equipo')&&(kl.includes('cod')||kl.startsWith('id'))&&v!==null&&v!==undefined)return String(v);
+    }
+    return '';
+  };
+  const logoPath=(d:any)=>{
+    const direct=pick(d,'url_img','url_imagen','url_img_equipo','imagen','escudo','logo','url_logo');
+    if(typeof direct==='string'&&direct.trim())return direct.trim();
+    for(const [k,v] of Object.entries(d||{})){
+      const kl=String(k).toLowerCase();
+      if(typeof v==='string'&&(kl.includes('img')||kl.includes('imagen')||kl.includes('escudo')||kl.includes('logo'))&&(/\/pnfg\//i.test(v)||/\.(png|jpe?g|webp|jfif)$/i.test(v)))return v.trim();
+    }
+    return '';
+  };
+  const normLoose=(v:any)=>norm(v).replace(/[-_]/g,' ').replace(/[^A-Z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+
+  const rows:any[]=[];
+  const seen=new Set<string>();
+  for(const d of walk(page)){
+    if(!d||typeof d!=='object'||Array.isArray(d))continue;
+    const name=teamName(d);
+    const pos=intNum(pick(d,'posicion','puesto','Posicion','orden','clasificacion'));
+    const pts=intNum(pick(d,'puntos','Puntos','ptos','Pts','puntos_totales'));
+    const played=intNum(pick(d,'jugados','Jugados','partidos_jugados','PJ','pj'));
+    if(!name||pos===null||(pts===null&&played===null))continue;
+    const tid=teamId(d);
+    const key=`${pos}|${tid||normLoose(name)}`;
+    if(seen.has(key))continue;
+    seen.add(key);
+    const lp=logoPath(d);
+    rows.push({position:pos,team:name,teamId:tid||null,points:pts,played,logo:lp?logoUrl(lp):null});
+  }
+  rows.sort((a,b)=>a.position-b.position);
+
+  const configuredId=String(cfg?.external_team_id||'');
+  let currentIdx:number|null=null;
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    if((configuredId&&r.teamId===configuredId)||teamMatches(r.team,r.teamId,cfg.external_team_id)){currentIdx=i;break}
+  }
+
+  const result:any={url};
+  if(currentIdx!==null){
+    const cur=rows[currentIdx];
+    result.position=cur.position;result.points=cur.points;result.played=cur.played;
+    let start=Math.max(0,currentIdx-2);
+    if(rows.length>=5)start=Math.min(start,rows.length-5);
+    result.context=rows.slice(start,start+5);
+  }
+  return result;
+}
 async function teamData(cfg:any){const probe=await getPageProps(cfgUrl(cfg,'/competicion/resultados-y-jornadas')),results=probe?.results||{};const jornadas:any[]=[];for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){const n=Number(j.codjornada);if(Number.isFinite(n))jornadas.push({n,date:dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'))})}const today=new Date(),past=jornadas.filter(x=>!x.date||x.date<=today).slice(-3),future=jornadas.filter(x=>x.date&&x.date>today).slice(0,3),targets=[...new Set([...past,...future].map(x=>x.n))];let matches:any[]=[];for(const j of targets){try{matches.push(...(await parseRound(cfg,j)).matches)}catch{}}if(!matches.length){for(const j of jornadas.slice(0,40)){try{matches.push(...(await parseRound(cfg,j.n)).matches)}catch{}if(matches.length>=2)break}}const unique:any[]=[];const sig=new Set<string>();for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,classification:await classification(cfg),teamName:(completed.at(-1)||upcoming[0])?.teamName||null}}
 
 function fail(status:number,code:string,phase:string,message:string,details:any=null){return Response.json({ok:false,error:message,message,code,phase,details},{status})}
