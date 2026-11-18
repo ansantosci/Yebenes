@@ -17,9 +17,39 @@ begin
     raise exception 'RFFM 2026/27 guard: canonical season is missing or does not match 2026/2027';
   end if;
 
-  select count(*) into v_count from public.equipos where temporada_id=v_season_id and activo;
+  -- Validar las 23 correspondencias explicitas de v27, no la cardinalidad global de equipos.
+  -- TEST-S puede contener equipos auxiliares de otros escenarios (p. ej. ECONOMIA).
+  select count(*) into v_count
+  from public.equipos
+  where temporada_id=v_season_id
+    and activo
+    and id = any(array[
+      'f951e14a-dc0e-43fd-8f58-36cb68aa378b'::uuid,
+      '93e08be0-cab1-4003-81b2-52d1cb4116f5'::uuid,
+      'ef3577eb-dd74-455a-9202-2aa813ec0800'::uuid,
+      '7776e2ac-9bb7-4008-8401-40ea8d471d2c'::uuid,
+      '7492314d-9a6f-4c8c-ad50-c5ac830ec23d'::uuid,
+      '03f79079-4523-4803-8af9-b8c3cb4513aa'::uuid,
+      '7a48e397-b059-4eab-aab0-1d4395c9093d'::uuid,
+      '9c42c5ca-b331-4a68-a175-eec82e723a30'::uuid,
+      'b70a6dee-7b26-40f4-a924-92c6df39e472'::uuid,
+      '9b6ee4c4-0dec-4a7c-b647-a6f97667f896'::uuid,
+      '566f2474-9d3e-44d3-9a23-40079e8e3f04'::uuid,
+      '3317e7ac-ae6c-4bf1-8605-cacae92fa8ca'::uuid,
+      '4cf8a784-fead-4208-b4a3-2b7c5db5477c'::uuid,
+      '56b6183d-a492-493c-b764-51e67846493b'::uuid,
+      'e21f6c94-fadd-4412-8058-2970bc5a480e'::uuid,
+      'd0b8b571-5891-4cfe-9c16-8722144c8f08'::uuid,
+      'de597922-5e76-415f-8824-9bef995c4fb1'::uuid,
+      '95bd3687-2606-4573-b1a2-3fb62f0447fd'::uuid,
+      '56546387-63e6-4cf1-87a5-9c2ff1af17e1'::uuid,
+      '6a93f6ba-eda4-49a1-87c1-e12df4fad3cb'::uuid,
+      'ecc0f268-c155-46f2-a04c-bb3d5d910b55'::uuid,
+      'ce5c092d-f058-4ea8-b061-b01019b181f7'::uuid,
+      '4e419c93-e881-4e83-908e-4597563950ff'::uuid
+    ]::uuid[]);
   if v_count <> 23 then
-    raise exception 'RFFM 2026/27 guard: expected 23 active canonical teams, found %', v_count;
+    raise exception 'RFFM 2026/27 guard: expected the 23 explicit v27 teams to exist and be active, found %', v_count;
   end if;
 
   if not exists (
@@ -105,9 +135,36 @@ begin
   from public.equipo_integraciones_federacion i
   join public.equipos e on e.id=i.equipo_id
   where e.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac'::uuid
-    and i.proveedor='RFFM' and i.activo and i.config->>'season_id'='22';
+    and i.proveedor='RFFM'
+    and i.activo
+    and i.config->>'season_id'='22'
+    and i.equipo_id = any(array[
+      'f951e14a-dc0e-43fd-8f58-36cb68aa378b'::uuid,
+      '93e08be0-cab1-4003-81b2-52d1cb4116f5'::uuid,
+      'ef3577eb-dd74-455a-9202-2aa813ec0800'::uuid,
+      '7776e2ac-9bb7-4008-8401-40ea8d471d2c'::uuid,
+      '7492314d-9a6f-4c8c-ad50-c5ac830ec23d'::uuid,
+      '03f79079-4523-4803-8af9-b8c3cb4513aa'::uuid,
+      '7a48e397-b059-4eab-aab0-1d4395c9093d'::uuid,
+      '9c42c5ca-b331-4a68-a175-eec82e723a30'::uuid,
+      'b70a6dee-7b26-40f4-a924-92c6df39e472'::uuid,
+      '9b6ee4c4-0dec-4a7c-b647-a6f97667f896'::uuid,
+      '566f2474-9d3e-44d3-9a23-40079e8e3f04'::uuid,
+      '3317e7ac-ae6c-4bf1-8605-cacae92fa8ca'::uuid,
+      '4cf8a784-fead-4208-b4a3-2b7c5db5477c'::uuid,
+      '56b6183d-a492-493c-b764-51e67846493b'::uuid,
+      'e21f6c94-fadd-4412-8058-2970bc5a480e'::uuid,
+      'd0b8b571-5891-4cfe-9c16-8722144c8f08'::uuid,
+      'de597922-5e76-415f-8824-9bef995c4fb1'::uuid,
+      '95bd3687-2606-4573-b1a2-3fb62f0447fd'::uuid,
+      '56546387-63e6-4cf1-87a5-9c2ff1af17e1'::uuid,
+      '6a93f6ba-eda4-49a1-87c1-e12df4fad3cb'::uuid,
+      'ecc0f268-c155-46f2-a04c-bb3d5d910b55'::uuid,
+      'ce5c092d-f058-4ea8-b061-b01019b181f7'::uuid,
+      '4e419c93-e881-4e83-908e-4597563950ff'::uuid
+    ]::uuid[]);
   if v_count <> 23 then
-    raise exception 'RFFM 2026/27 validation: expected 23 active mappings, found %',v_count;
+    raise exception 'RFFM 2026/27 validation: expected 23 explicit v27 mappings, found %',v_count;
   end if;
 end $$;
 
