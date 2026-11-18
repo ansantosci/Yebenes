@@ -587,16 +587,23 @@ begin
    perform private.equipacion_reservar_asignacion_lote(asgid,lotid,1);
  end if;
 
- -- Player 3 match pack: PENDING SUPPLIER through the existing open order, no free stock.
+ -- Supplier-covered match pack: choose explicitly a TEST-S match need whose confirmed size is S,
+ -- because the synthetic open supplier order below covers article cam-par in size S.
+ -- Do not depend on the incidental UUID/order position of a particular player.
  select n.id,tp.talla_general into needid,talla
  from public.equipacion_necesidades n
  join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
- where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
-             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 2 limit 1);
+ join private.test_dataset_entities dn
+   on dn.dataset_id='TEST-S' and dn.table_name='equipacion_necesidades' and dn.entity_id=n.id
+ where n.pack_id=private.test_uuid('equip:pack:partido')
+   and tp.talla_general='S'
+   and n.id=private.test_uuid('equip:need:match:'||n.jugador_id::text)
+ order by n.id
+ limit 1;
  if needid is not null then
    aid:=private.test_uuid('equip:art:cam-par'); asgid:=private.test_uuid('matrix:supplier:asg');
    insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
-   values(asgid,needid,aid,'S',1,'propuesta','manual') on conflict(id) do update set talla='S',estado='propuesta',reservado_at=null;
+   values(asgid,needid,aid,talla,1,'propuesta','manual') on conflict(id) do update set talla=excluded.talla,estado='propuesta',reservado_at=null;
  end if;
 
  -- Player 4 already supplies the COMPLETED training pack + pending separate match pack.
