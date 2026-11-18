@@ -1,4 +1,4 @@
-### V96.4.5 — Estructura unificada y RFFM en la ficha del equipo
+### V96.4.6 — Estructura unificada y RFFM en la ficha del equipo
 
 - Elimina el segundo listado permanente de equipos RFFM en Estructura.
 - Añade estado RFFM al listado canónico de equipos.
@@ -1579,7 +1579,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No se guardan URLs arbitrarias ni secretos RFFM.
 
 
-## V96.4.5 — Modal Component Foundation
+## V96.4.6 — Modal Component Foundation
 
 - Se formaliza `ModalUI` como capa común de ventanas sobre los `<dialog>` existentes.
 - Primitives: contenedor/cabecera, tabs, secciones de formulario, grid/campos, panel de estado y acciones.
@@ -1588,7 +1588,14 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - `Consultar resultados` permanece deshabilitado hasta una validación RFFM correcta.
 
 
-### V96.4.5 — RFFM idempotente y diagnóstico
+### V96.4.6 — RFFM idempotente y diagnóstico
 - Guardado RFFM por UPSERT sobre equipo+proveedor; doble clic seguro y feedback integrado en StatusPanel.
 - Probar conexión persiste primero los valores visibles y fuerza una consulta nueva.
 - Errores de Edge Function se muestran con detalle funcional en el componente, sin alert nativo.
+
+
+### V96.4.6
+- Rechaza la geometría de ModalUI de V96.4.5: un dialog cerrado nunca recibe display.
+- Shell viewport-safe solo en `.app-modal[open]`; cabecera/tabs visibles, body scrollable y acciones sticky.
+- Cierre de ficha Equipo centralizado: X, Cancelar y Escape limpian el equipo seleccionado.
+- RFFM conserva feedback busy, anti-doble clic y timeouts de 10 s (guardado) / 15 s (consulta).

@@ -1184,13 +1184,11 @@ button.ghost.small:hover{background:#f0f7fb}
 .team-entity-modal #teamRffmResult{margin-top:2px}.team-entity-modal .rffm-result-card{box-shadow:none;background:#f9fbfc}
 @media(max-width:720px){.app-modal,.app-modal[data-modal-size="wide"]{width:calc(100vw - 12px);max-height:calc(100dvh - 12px);border-radius:16px}.app-modal__head{padding:16px 16px 12px}.app-modal__tabs{padding:10px 16px 0}.app-modal__body{padding:14px 16px 18px;max-height:calc(100dvh - 135px)}.app-form-grid{grid-template-columns:1fr}.app-form-grid .span-2{grid-column:auto}.app-modal__actions{margin:18px -16px -18px;padding:12px 16px;display:grid;grid-template-columns:1fr}.app-modal__actions>*{width:100%}}
 
-/* V96.4.5 · ModalUI shell estable: solo el cuerpo hace scroll; las acciones permanecen visibles. */
-.app-modal{display:flex;flex-direction:column;padding:0;max-height:min(92dvh,920px)}
-.app-modal__head,.app-modal__tabs{flex:0 0 auto;position:relative;top:auto}
-.app-modal__body,.modal-ui__body{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;padding:18px 24px 0}
-.app-modal__panel{min-height:100%}.app-modal__panel form{min-height:100%;display:flex;flex-direction:column}
-.app-modal__panel .app-form-grid{flex:1 0 auto}
-.app-modal__actions{position:sticky;bottom:0;flex:0 0 auto;margin:20px -24px 0;padding:14px 24px;background:#fff;border-top:1px solid #edf1f4;box-shadow:0 -8px 18px rgba(15,43,64,.05);z-index:10}
-.app-modal[data-modal-busy="1"]{cursor:progress}
-.app-modal form[data-modal-busy="1"] .app-modal__actions{cursor:progress}
-@media(max-width:720px){.app-modal__body,.modal-ui__body{max-height:none;padding:14px 16px 0}.app-modal__actions{margin:18px -16px 0;padding:12px 16px}}
+
+/* V96.4.6 · ModalUI viewport-safe. IMPORTANT: layout display only while dialog[open]. */
+.app-modal[open]{display:grid;grid-template-rows:auto auto minmax(0,1fr);padding:0;max-height:calc(100dvh - 32px);margin:auto;overflow:hidden}
+.app-modal[open] .app-modal__head,.app-modal[open] .app-modal__tabs{position:relative;top:auto;flex:none}
+.app-modal[open] .app-modal__body{min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;padding:18px 24px 24px}
+.app-modal[open] .app-modal__actions{position:sticky;bottom:-24px;margin:20px -24px -24px;padding:14px 24px;background:#fff;border-top:1px solid #edf1f4;box-shadow:0 -8px 18px rgba(15,43,64,.05);z-index:10}
+.app-modal form[data-modal-busy="1"]{cursor:progress}
+@media(max-width:720px){.app-modal[open]{max-height:calc(100dvh - 12px);margin:auto}.app-modal[open] .app-modal__body{padding:14px 16px 18px}.app-modal[open] .app-modal__actions{bottom:-18px;margin:18px -16px -18px;padding:12px 16px}}
