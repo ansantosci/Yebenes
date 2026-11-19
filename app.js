@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.14';
+const APP_VERSION='96.4.12';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2899,15 +2899,13 @@ let rffmBulkRefreshing=false;
 const rffmScorerPhotoCache=new Map();
 const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
 function normalizeRffmText(value){
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/[^A-Z0-9]+/g,' ')
     .trim();
 }
-
-
 function rffmFederationCategoryLabel(team){
   const raw=normalizeRffmText(dbCategoryName(team?.categoryId)||'');
   if(/VETERAN/.test(raw)||/VET/.test(normalizeRffmText(team?.code||'')))return 'VETERANOS';
@@ -2970,20 +2968,37 @@ async function loadAllRffm(){
   rffmBulkRefreshing=true;renderRffmResults();
   try{for(let i=0;i<ids.length;i++){if(status)status.textContent=`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`;if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;await loadRffmTeam(ids[i],true,{deferRender:true});}if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
 }
-async function exportRffmPdf(){
-  await hydrateRffmScorerPhotos();
-  const source=$('#rffmResultsContent');if(!source){window.print();return}
-  document.getElementById('rffmPrintPages')?.remove();
-  const host=document.createElement('div');host.id='rffmPrintPages';host.className='rffm-print-pages';document.body.appendChild(host);
-  const groups=[...source.querySelectorAll('.rffm-category-group')];
-  const makePage=(head)=>{const page=document.createElement('section');page.className='rffm-print-page';page.innerHTML=`<img class="rffm-print-watermark" src="./logo.png?v=96.4.14" alt="" aria-hidden="true"><div class="rffm-print-page-content"></div>`;const content=page.querySelector('.rffm-print-page-content');if(head)content.appendChild(head.cloneNode(true));host.appendChild(page);return content};
-  groups.forEach(group=>{const head=group.querySelector('.rffm-category-head'),cards=[...group.querySelectorAll('.rffm-result-card')];let content=makePage(head);for(const card of cards){const clone=card.cloneNode(true);content.appendChild(clone);if(content.scrollHeight>content.clientHeight&&content.querySelectorAll('.rffm-result-card').length>1){clone.remove();content=makePage(head);content.appendChild(clone)}}});
-  document.documentElement.classList.add('rffm-print-paged');
-  const cleanup=()=>{document.documentElement.classList.remove('rffm-print-paged');host.remove();window.removeEventListener('afterprint',cleanup)};window.addEventListener('afterprint',cleanup);
-  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-  window.print();setTimeout(cleanup,1800)
+function rffmPdfClassificationHtml(c){
+  if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';
+  const rows=c.all||c.context||[];
+  return `<div class="rffm-standing"><b>${esc(c.position)}.º</b><span>${c.points!=null?esc(c.points)+' pts':''}${c.played!=null?' · '+esc(c.played)+' PJ':''}</span></div><div class="rffm-mini-head"><span>POS</span><span>EQUIPO</span><span>PJ</span><span>PTS</span></div>${rows.map(r=>`<div class="rffm-mini-row ${Number(r.position)===Number(c.position)?'current':''}"><span>${esc(r.position)}.º</span><span class="team">${rffmLogoHtml(r.logo,r.team)}<span>${esc(r.team||'')}</span></span><span>${r.played??''}</span><span><b>${r.points??''}</b></span></div>`).join('')}`;
 }
-
+function rffmPdfTeamHtml(t,d){
+  const official=d?.teamName||d?.classification?.teamName||'',competition=d?.competitionName||'';
+  return `<article class="rffm-result-card rffm-pdf-team-card"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${official?`<span class="rffm-official-team">${esc(official)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div></header>${d?.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmPdfClassificationHtml(d?.classification)}${rffmMatchHtml(d?.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d?.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d?.scorers)}`}</article>`;
+}
+function parseRffmPdfDate(m){
+  const raw=String(m?.date||'');const x=raw.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);if(!x)return null;
+  const tm=String(m?.time||'00:00').match(/(\d{1,2}):(\d{2})/);return new Date(+x[3],+x[2]-1,+x[1],tm?+tm[1]:0,tm?+tm[2]:0);
+}
+function rffmSchedulePageHtml(teams){
+  const items=teams.map(t=>({t,d:rffmResultsByTeam.get(t.id)||{}})).filter(x=>x.d?.nextMatch).map(x=>({...x,dt:parseRffmPdfDate(x.d.nextMatch)})).filter(x=>x.dt&&[5,6,0].includes(x.dt.getDay())).sort((a,b)=>a.dt-b.dt);
+  if(!items.length)return '';
+  const months=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const days=[[5,'VIERNES'],[6,'SÁBADO'],[0,'DOMINGO']];
+  const blocks=days.map(([dow,label])=>{const rows=items.filter(x=>x.dt.getDay()===dow);if(!rows.length)return '';const dt=rows[0].dt;return `<section class="rffm-schedule-day"><h2>${label}, ${dt.getDate()} DE ${months[dt.getMonth()]} ${dt.getFullYear()}</h2><div class="rffm-schedule-head"><span>HORA</span><span>EQUIPO LOCAL</span><span>EQUIPO VISITANTE</span><span>CAMPO</span></div>${rows.map(({d,dt})=>{const m=d.nextMatch;const strong=n=>normalizeRffmText(n).includes('YEBENES')?`<strong>${esc(n)}</strong>`:esc(n);return `<div class="rffm-schedule-row"><span>${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}</span><span>${strong(m.home||'')}</span><span>${strong(m.away||'')}</span><span>${esc(m.place||'')}</span></div>`}).join('')}</section>`}).join('');
+  return `<section class="rffm-pdf-page rffm-pdf-schedule-page"><div class="rffm-schedule-poster"><header><img src="./logo.png?v=96.4.15" alt=""><div><h1>C.D. LOS YÉBENES<br>SAN BRUNO</h1><p>HORARIOS DE PARTIDOS</p></div></header>${blocks}</div></section>`;
+}
+async function exportRffmPdf(){
+  const groups=rffmCategoryGroups(),teams=groups.flatMap(g=>g.teams),oldTitle=document.title,now=new Date();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  document.title=`Los_Yebenes_Resultados_${y}-${m}-${d}`;
+  document.getElementById('rffmPrintReport')?.remove();
+  const report=document.createElement('div');report.id='rffmPrintReport';report.className='rffm-print-report';
+  for(const g of groups)for(const t of g.teams){const data=rffmResultsByTeam.get(t.id)||{};const page=document.createElement('section');page.className='rffm-pdf-page rffm-pdf-team-page';page.innerHTML=`<img class="rffm-pdf-watermark" src="./logo.png?v=96.4.15" alt="" aria-hidden="true"><div class="rffm-pdf-page-inner"><header class="rffm-pdf-category">${esc(g.label)}</header>${rffmPdfTeamHtml(t,data)}</div>`;report.appendChild(page)}
+  report.insertAdjacentHTML('beforeend',rffmSchedulePageHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
+  try{await hydrateRffmScorerPhotos(report);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.print()}finally{document.documentElement.classList.remove('rffm-pdf-mode');report.remove();document.title=oldTitle}
+}
 
 function renderStructure(){
   if(!$('#seasonsTable'))return;

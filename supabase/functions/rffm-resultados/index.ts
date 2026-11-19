@@ -84,6 +84,7 @@ async function classification(cfg:any){
     let start=Math.max(0,currentIdx-2);
     if(rows.length>=5)start=Math.min(start,rows.length-5);
     result.context=rows.slice(start,start+5);
+    result.all=rows;
   }
   return result;
 }
