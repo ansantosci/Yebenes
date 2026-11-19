@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.13';
+const APP_VERSION='96.4.14';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2970,7 +2970,19 @@ async function loadAllRffm(){
   rffmBulkRefreshing=true;renderRffmResults();
   try{for(let i=0;i<ids.length;i++){if(status)status.textContent=`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`;if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;await loadRffmTeam(ids[i],true,{deferRender:true});}if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
 }
-function exportRffmPdf(){document.body.classList.add('printing-rffm');hydrateRffmScorerPhotos().finally(()=>{const cleanup=()=>{document.body.classList.remove('printing-rffm');window.removeEventListener('afterprint',cleanup)};window.addEventListener('afterprint',cleanup);window.print();setTimeout(cleanup,1500)})}
+async function exportRffmPdf(){
+  await hydrateRffmScorerPhotos();
+  const source=$('#rffmResultsContent');if(!source){window.print();return}
+  document.getElementById('rffmPrintPages')?.remove();
+  const host=document.createElement('div');host.id='rffmPrintPages';host.className='rffm-print-pages';document.body.appendChild(host);
+  const groups=[...source.querySelectorAll('.rffm-category-group')];
+  const makePage=(head)=>{const page=document.createElement('section');page.className='rffm-print-page';page.innerHTML=`<img class="rffm-print-watermark" src="./logo.png?v=96.4.14" alt="" aria-hidden="true"><div class="rffm-print-page-content"></div>`;const content=page.querySelector('.rffm-print-page-content');if(head)content.appendChild(head.cloneNode(true));host.appendChild(page);return content};
+  groups.forEach(group=>{const head=group.querySelector('.rffm-category-head'),cards=[...group.querySelectorAll('.rffm-result-card')];let content=makePage(head);for(const card of cards){const clone=card.cloneNode(true);content.appendChild(clone);if(content.scrollHeight>content.clientHeight&&content.querySelectorAll('.rffm-result-card').length>1){clone.remove();content=makePage(head);content.appendChild(clone)}}});
+  document.documentElement.classList.add('rffm-print-paged');
+  const cleanup=()=>{document.documentElement.classList.remove('rffm-print-paged');host.remove();window.removeEventListener('afterprint',cleanup)};window.addEventListener('afterprint',cleanup);
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  window.print();setTimeout(cleanup,1800)
+}
 
 
 function renderStructure(){
