@@ -3178,7 +3178,7 @@ function mountRffmResultsModal(){
   const identity=dialog.querySelector('.app-modal__identity .meta');if(identity)identity.id='rffmStructureStatus';
 }
 mountRffmResultsModal();
-$('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();ModalUI.open($('#rffmResultsModal'))});
+$('#openRffmResults')?.addEventListener('click',()=>{const dialog=$('#rffmResultsModal');ModalUI.open(dialog);try{renderRffmResults()}catch(err){console.error('Render Resultados RFFM',err);const out=$('#rffmResultsContent');if(out)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar el contenido de resultados.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}});
 $('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
 $('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
