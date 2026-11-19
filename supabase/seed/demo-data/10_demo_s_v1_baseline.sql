@@ -267,18 +267,23 @@ on conflict do nothing;
 -- Four deterministic synthetic senior players also act as coaches.
 with dual_players as (
   select j.persona_id,row_number() over(order by e.codigo,j.id) n
-  from public.jugadores j join public.inscripciones i on i.jugador_id=j.id
+  from public.jugadores j
+  join private.demo_dataset_entities own on own.dataset_id='DEMO-S' and own.table_name='jugadores' and own.entity_id=j.id
+  join public.inscripciones i on i.jugador_id=j.id
   join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null
   join public.equipos e on e.id=aje.equipo_id join public.temporadas t on t.id=i.temporada_id
   where t.estado='activa' and e.codigo in ('SEN-A','SEN-B','SEN-F') and j.activo
+    and not exists(select 1 from public.entrenadores c where c.persona_id=j.persona_id)
   order by e.codigo,j.id limit 4
 )
 insert into public.entrenadores(id,persona_id,activo,curso_delegado)
 select private.demo_uuid('dual-coach:'||n),persona_id,true,false from dual_players
 on conflict(id) do update set persona_id=excluded.persona_id,activo=true;
 insert into private.demo_dataset_entities(dataset_id,table_name,entity_id)
-select 'DEMO-S','entrenadores',private.demo_uuid('dual-coach:'||n)
-from generate_series(1,4)n on conflict do nothing;
+select 'DEMO-S','entrenadores',c.id
+from public.entrenadores c
+where c.id in (select private.demo_uuid('dual-coach:'||n) from generate_series(1,4)n)
+on conflict do nothing;
 
 -- Coaching population: 28 deterministic coach-only Personas.
 -- Coaches 1-23 are the principal coach of each active team; 24-27 add secondary/specialist coverage;
