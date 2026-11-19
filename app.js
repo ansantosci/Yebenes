@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.19';
+const APP_VERSION='96.4.20';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2996,7 +2996,40 @@ function rffmSchedulePageHtml(teams){
 }
 
 
+
+let rffmPreparedPdfReport=null;
+let rffmPreparedPdfOldTitle='';
+let rffmPdfPreparing=false;
+
+function rffmExportButton(){
+  return [...document.querySelectorAll('button')].find(b=>/exportar pdf|pdf preparado|preparando pdf/i.test(b.textContent||''))||null;
+}
+async function preloadRffmPdfImages(root,onProgress){
+  const urls=[...new Set([...root.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(src=>/^https?:\/\//i.test(src)))];
+  let done=0;
+  const loadOne=url=>new Promise(resolve=>{
+    const img=new Image();let settled=false;
+    const finish=()=>{if(settled)return;settled=true;done++;onProgress?.(done,urls.length);resolve()};
+    img.onload=async()=>{try{if(typeof img.decode==='function')await img.decode()}catch{}finish()};
+    img.onerror=finish;img.src=url;
+  });
+  await Promise.race([Promise.all(urls.map(loadOne)),new Promise(resolve=>setTimeout(resolve,8000))]);
+  return {done,total:urls.length};
+}
+function resetPreparedRffmPdf(){
+  document.documentElement.classList.remove('rffm-pdf-mode');
+  rffmPreparedPdfReport?.remove();rffmPreparedPdfReport=null;
+  if(rffmPreparedPdfOldTitle){document.title=rffmPreparedPdfOldTitle;rffmPreparedPdfOldTitle=''}
+  const btn=rffmExportButton();if(btn){btn.disabled=false;btn.textContent='Exportar PDF'}
+}
+function printPreparedRffmPdf(){
+  if(!rffmPreparedPdfReport)return;
+  window.print();
+  setTimeout(resetPreparedRffmPdf,500);
+}
+
 async function exportRffmPdf(){
+  if(rffmPreparedPdfReport&&!rffmPdfPreparing){printPreparedRffmPdf();return;}
   const groups=rffmCategoryGroups(),teams=groups.flatMap(g=>g.teams),oldTitle=document.title,now=new Date();
   const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
   document.title=`Los_Yebenes_Resultados_${y}-${m}-${d}`;
@@ -3004,7 +3037,19 @@ async function exportRffmPdf(){
   const report=document.createElement('div');report.id='rffmPrintReport';report.className='rffm-print-report';
   for(const g of groups)for(const t of g.teams){const data=rffmResultsByTeam.get(t.id)||{};const page=document.createElement('section');page.className='rffm-pdf-page rffm-pdf-team-page';page.innerHTML=`<div class="rffm-pdf-page-inner"><header class="rffm-pdf-brand"><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada 2026/2027 · Resultados RFFM</span></div></header><header class="rffm-pdf-category">${esc(g.label)}</header>${rffmPdfTeamHtml(t,data)}</div>`;report.appendChild(page)}
   report.insertAdjacentHTML('beforeend',rffmSchedulePageHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
-  try{await hydrateRffmScorerPhotos(report);report.querySelectorAll('img').forEach(img=>{img.loading='eager'});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.print()}finally{document.documentElement.classList.remove('rffm-pdf-mode');report.remove();document.title=oldTitle}
+  try{
+    rffmPdfPreparing=true;rffmPreparedPdfReport=report;rffmPreparedPdfOldTitle=oldTitle;
+    const btn=rffmExportButton();
+    if(btn){btn.disabled=true;btn.textContent='Preparando PDF…'}
+    await hydrateRffmScorerPhotos(report);
+    report.querySelectorAll('img').forEach(img=>{img.loading='eager'});
+    await preloadRffmPdfImages(report,(done,total)=>{if(btn)btn.textContent=`Preparando PDF… ${done}/${total}`});
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    rffmPdfPreparing=false;
+    if(btn){btn.disabled=false;btn.textContent='PDF preparado · Exportar'}
+  }catch(err){
+    rffmPdfPreparing=false;resetPreparedRffmPdf();throw err;
+  }
 }
 
 function renderStructure(){

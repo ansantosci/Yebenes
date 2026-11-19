@@ -1062,13 +1062,13 @@ html body #clubSidebar #clubNav.sidebar-club-nav > .nav-item span {
 
 
 /* V96.2.0 - identidad visual ambiental y confirmacion propia de Reparto */
-body{position:relative;background-color:#f5f7fa;background-image:linear-gradient(rgba(245,247,250,.94),rgba(245,247,250,.94)),url("assets/club-fabric-background.webp?v=96.4.19");background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:fixed}
+body{position:relative;background-color:#f5f7fa;background-image:linear-gradient(rgba(245,247,250,.94),rgba(245,247,250,.94)),url("assets/club-fabric-background.webp?v=96.4.20");background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:fixed}
 .app-confirm-modal{width:min(520px,calc(100% - 28px))}
 .app-confirm-shell{padding:20px}
 .app-confirm-message{white-space:pre-line;line-height:1.55;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
 .app-confirm-modal[data-tone="warning"] .app-confirm-message{background:#fff7ed;border-color:#fed7aa;color:#7c2d12}
 .app-confirm-modal .modal-actions{margin-top:18px}
-@media(max-width:760px){body{background-image:linear-gradient(rgba(245,247,250,.97),rgba(245,247,250,.97)),url("assets/club-fabric-background.webp?v=96.4.19");background-attachment:scroll}.app-confirm-shell{padding:16px}}
+@media(max-width:760px){body{background-image:linear-gradient(rgba(245,247,250,.97),rgba(245,247,250,.97)),url("assets/club-fabric-background.webp?v=96.4.20");background-attachment:scroll}.app-confirm-shell{padding:16px}}
 
 /* V96.2.1 - Equipaciones mobile navigation polish */
 @media(max-width:720px){
@@ -1215,12 +1215,12 @@ button.ghost.small:hover{background:#f0f7fb}
 .app-modal.modal-ui-shell[data-modal-busy="1"]>.app-modal__actions{cursor:progress}
 @media(max-width:720px){.app-modal.modal-ui-shell[open]{max-height:calc(100dvh - 12px)}.app-modal.modal-ui-shell[open]>.app-modal__body{padding:14px 16px 18px}.app-modal.modal-ui-shell[open]>.app-modal__actions{padding:12px 16px;display:grid;grid-template-columns:1fr}.app-modal.modal-ui-shell[open]>.app-modal__actions>*{width:100%}}
 
-/* V96.4.19 · ResultsView federation order, scorers and club watermark */
-.rffm-results-modal .app-modal__body{background-image:linear-gradient(rgba(255,255,255,.91),rgba(255,255,255,.91)),url("assets/club-fabric-background.webp?v=96.4.19");background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:local}
+/* V96.4.20 · ResultsView federation order, scorers and club watermark */
+.rffm-results-modal .app-modal__body{background-image:linear-gradient(rgba(255,255,255,.91),rgba(255,255,255,.91)),url("assets/club-fabric-background.webp?v=96.4.20");background-size:cover;background-position:center;background-repeat:no-repeat;background-attachment:local}
 .rffm-team-identity{min-width:0}.rffm-official-team{font-weight:750;color:#334b5e!important;margin-top:2px}.rffm-scorers{border-top:1px solid #e5e7eb;margin-top:9px;padding-top:8px}.rffm-scorers-title{font-size:.62rem;font-weight:900;letter-spacing:.05em;color:#627384;margin-bottom:6px}.rffm-scorers-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.rffm-scorer{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:7px;align-items:center;border:1px solid #e7edf2;border-radius:10px;background:rgba(255,255,255,.86);padding:6px}.rffm-scorer-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#eef3f7;color:#657889;font-size:1rem}.rffm-scorer-avatar img{width:100%;height:100%;object-fit:cover}.rffm-scorer-copy{min-width:0}.rffm-scorer-copy strong,.rffm-scorer-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rffm-scorer-copy strong{font-size:.67rem}.rffm-scorer-copy small{font-size:.61rem;color:var(--muted);margin-top:2px}.rffm-scorer-rank{font-size:.72rem;color:var(--blue)}
 @media(max-width:620px){.rffm-scorers-grid{grid-template-columns:1fr}}
 @media print{
- .printing-rffm #rffmResultsModal{background-image:linear-gradient(rgba(255,255,255,.88),rgba(255,255,255,.88)),url("assets/club-fabric-background.webp?v=96.4.19")!important;background-size:100% 277mm!important;background-position:center top!important;background-repeat:repeat-y!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .printing-rffm #rffmResultsModal{background-image:linear-gradient(rgba(255,255,255,.88),rgba(255,255,255,.88)),url("assets/club-fabric-background.webp?v=96.4.20")!important;background-size:100% 277mm!important;background-position:center top!important;background-repeat:repeat-y!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .printing-rffm .rffm-category-group:not(:last-child){break-after:page;page-break-after:always}
  .printing-rffm .rffm-category-group{margin-bottom:0}.printing-rffm .rffm-category-head{margin-top:0}
  .printing-rffm .rffm-official-team{font-size:7pt!important}.printing-rffm .rffm-scorers{margin-top:2mm;padding-top:2mm}.printing-rffm .rffm-scorers-title{font-size:6pt}.printing-rffm .rffm-scorers-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:2mm}.printing-rffm .rffm-scorer{grid-template-columns:9mm minmax(0,1fr) auto;padding:1.2mm;border-radius:4px;background:rgba(255,255,255,.84)!important}.printing-rffm .rffm-scorer-avatar{width:8mm;height:8mm}.printing-rffm .rffm-scorer-copy strong{font-size:6.5pt}.printing-rffm .rffm-scorer-copy small,.printing-rffm .rffm-scorer-rank{font-size:6pt}
@@ -1237,7 +1237,7 @@ button.ghost.small:hover{background:#f0f7fb}
     width: 118mm;
     height: 118mm;
     transform: translate(-50%, -50%);
-    background: url("./logo.png?v=96.4.19") center / contain no-repeat;
+    background: url("./logo.png?v=96.4.20") center / contain no-repeat;
     opacity: 0.10;
     pointer-events: none;
     z-index: 0;
@@ -1268,7 +1268,7 @@ button.ghost.small:hover{background:#f0f7fb}
 }
 
 
-/* V96.4.19 — PDF header aligned with the legacy Python report; no watermark. */
+/* V96.4.20 — PDF header aligned with the legacy Python report; no watermark. */
 @media print{
  html.rffm-pdf-mode .rffm-pdf-watermark{display:none!important}
  html.rffm-pdf-mode .rffm-pdf-page{height:277mm!important;min-height:277mm!important;max-height:277mm!important;overflow:hidden!important;box-sizing:border-box!important}
@@ -1293,7 +1293,7 @@ button.ghost.small:hover{background:#f0f7fb}
  html.rffm-pdf-mode .rffm-schedule-row .our-team{font-weight:900!important;text-transform:uppercase!important;color:#0b2444!important}
 }
 
-/* V96.4.19 — print pagination fix: no environment strip, no forced A4 overflow. */
+/* V96.4.20 — print pagination fix: no environment strip, no forced A4 overflow. */
 @media print{
   html.rffm-pdf-mode body:before{display:none!important;content:none!important}
   html.rffm-pdf-mode .rffm-pdf-team-page{
@@ -1310,7 +1310,7 @@ button.ghost.small:hover{background:#f0f7fb}
   }
 }
 
-/* V96.4.19 — final RFFM PDF polish */
+/* V96.4.20 — final RFFM PDF polish */
 @media print{
   html.rffm-pdf-mode .rffm-pdf-brand{
     background:#0755a0!important;
@@ -1334,3 +1334,5 @@ button.ghost.small:hover{background:#f0f7fb}
     text-transform:uppercase;
   }
 }
+
+@media screen{button:disabled{cursor:wait}}
