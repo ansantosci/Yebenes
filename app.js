@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.12';
+const APP_VERSION='96.4.13';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2899,13 +2899,15 @@ let rffmBulkRefreshing=false;
 const rffmScorerPhotoCache=new Map();
 const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
 function normalizeRffmText(value){
-  return String(value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g,'')
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g,' ')
+    .replace(/[^A-Z0-9]+/g, " ")
     .trim();
 }
+
+
 function rffmFederationCategoryLabel(team){
   const raw=normalizeRffmText(dbCategoryName(team?.categoryId)||'');
   if(/VETERAN/.test(raw)||/VET/.test(normalizeRffmText(team?.code||'')))return 'VETERANOS';

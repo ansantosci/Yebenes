@@ -128,7 +128,17 @@ function scorerPenalties(d:any){
 }
 async function scorers(cfg:any,jornada:number|null=null){
   try{
-    const url=cfgUrl(cfg,'/competicion/goleadores',jornada?`&jornada=${jornada}`:''),page=await getPageProps(url),rows:any[]=[],seen=new Set<string>();
+    const url=cfgUrl(cfg,'/competicion/goleadores',jornada?`&jornada=${jornada}`:'');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),3500);
+    let page:any;
+    try{
+      const r=await fetch(url,{headers:HEADERS,signal:controller.signal});
+      if(!r.ok)throw new Error(`RFFM HTTP ${r.status}`);
+      const html=await r.text(),m=html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+      if(!m)throw new Error('RFFM no devolvió datos de goleadores');
+      page=JSON.parse(m[1])?.props?.pageProps||{};
+    }finally{clearTimeout(timer)}
+    const rows:any[]=[],seen=new Set<string>();
     for(const d of walk(page)){
       if(!d||typeof d!=='object'||Array.isArray(d))continue;
       const player=scorerName(d),team=scorerTeam(d),goals=scorerGoals(d);
