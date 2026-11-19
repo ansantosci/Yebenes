@@ -1,68 +1,48 @@
 -- Authenticated family coverage for TEST-S. ACCESS identities survive dataset resets.
 begin;
 -- Every minor already has one active representation created by the baseline before inscription.
--- Reassign selected dataset-owned representations to authenticated ACCESS tutors instead of
--- inserting a second active representation (forbidden by representacion_activa_jugador_uq).
-with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'INF-B',1),(6,'CAD-A',1),(6,'CAD-F',1)), resolved as (
- select fc.n,eligible.jugador_id,a.persona_id tutor_id
- from family_case fc
- join lateral (
-   select q.jugador_id
-   from (
-     select j.id jugador_id,row_number() over(order by j.id) eligible_slot
-     from public.equipos e
-     join public.asignaciones_jugador_equipo aje on aje.equipo_id=e.id and aje.fecha_hasta is null
-     join public.inscripciones i on i.id=aje.inscripcion_id
-     join public.jugadores j on j.id=i.jugador_id and j.activo
-     join public.personas p on p.id=j.persona_id
-     join private.test_dataset_entities own on own.dataset_id='TEST-S' and own.table_name='jugadores' and own.entity_id=j.id
-     join public.representaciones_jugador r on r.jugador_id=j.id and r.fecha_hasta is null
-     where e.codigo=fc.team_code
-       and date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
-       and not exists(select 1 from private.test_access_identities ax where ax.persona_id=p.id)
-   ) q where q.eligible_slot=fc.slot
- ) eligible on true
- join private.test_access_identities a on a.key='tutor_family_'||fc.n
-), active_repr as (
- select r.id,r.jugador_id,x.tutor_id
- from public.representaciones_jugador r
- join resolved x on x.jugador_id=r.jugador_id
- where r.fecha_hasta is null
+-- Materialize eligible dataset minors once, then resolve the 13 authenticated-family targets.
+create temporary table tmp_authenticated_family_targets on commit drop as
+with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'INF-B',1),(6,'CAD-A',1),(6,'CAD-F',1)),
+eligible as materialized (
+  select e.codigo team_code,j.id jugador_id,r.id representacion_id,
+         row_number() over(partition by e.id order by j.id) eligible_slot
+  from public.equipos e
+  join public.asignaciones_jugador_equipo aje on aje.equipo_id=e.id and aje.fecha_hasta is null
+  join public.inscripciones i on i.id=aje.inscripcion_id
+  join public.jugadores j on j.id=i.jugador_id and j.activo
+  join public.personas p on p.id=j.persona_id
+  join private.test_dataset_entities own on own.dataset_id='TEST-S' and own.table_name='jugadores' and own.entity_id=j.id
+  join public.representaciones_jugador r on r.jugador_id=j.id and r.fecha_hasta is null
+  where date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
+    and not exists(select 1 from private.test_access_identities ax where ax.persona_id=p.id)
 )
+select fc.n,fc.team_code,fc.slot,e.jugador_id,e.representacion_id,a.persona_id tutor_id
+from family_case fc
+join eligible e on e.team_code=fc.team_code and e.eligible_slot=fc.slot
+join private.test_access_identities a on a.key='tutor_family_'||fc.n;
+
+do $$
+declare actual integer;
+begin
+ select count(*) into actual from tmp_authenticated_family_targets;
+ if actual<>13 then raise exception 'Family matrix: expected 13 eligible dataset-minor targets, got %',actual; end if;
+end $$;
+
 update public.representaciones_jugador r
 set representante_persona_id=x.tutor_id,
     motivo_alta='TEST-S authenticated family'
-from active_repr x
-where r.id=x.id;
+from tmp_authenticated_family_targets x
+where r.id=x.representacion_id;
 
 do $$
-declare expected integer := 13; actual integer;
+declare actual integer;
 begin
- with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'INF-B',1),(6,'CAD-A',1),(6,'CAD-F',1)), expected_links as (
-      select fc.n,eligible.jugador_id,a.persona_id tutor_id
-    from family_case fc
-    join lateral (
-      select q.jugador_id
-      from (
-        select j.id jugador_id,row_number() over(order by j.id) eligible_slot
-        from public.equipos e
-        join public.asignaciones_jugador_equipo aje on aje.equipo_id=e.id and aje.fecha_hasta is null
-        join public.inscripciones i on i.id=aje.inscripcion_id
-        join public.jugadores j on j.id=i.jugador_id and j.activo
-        join public.personas p on p.id=j.persona_id
-        join private.test_dataset_entities own on own.dataset_id='TEST-S' and own.table_name='jugadores' and own.entity_id=j.id
-        join public.representaciones_jugador r on r.jugador_id=j.id and r.fecha_hasta is null
-        where e.codigo=fc.team_code
-          and date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
-          and not exists(select 1 from private.test_access_identities ax where ax.persona_id=p.id)
-      ) q where q.eligible_slot=fc.slot
-    ) eligible on true
-    join private.test_access_identities a on a.key='tutor_family_'||fc.n
- )
  select count(*) into actual
- from expected_links x join public.representaciones_jugador r
-   on r.jugador_id=x.jugador_id and r.representante_persona_id=x.tutor_id and r.fecha_hasta is null;
- if actual<>expected then raise exception 'Family matrix: expected exactly % authenticated target representations, got %',expected,actual; end if;
+ from tmp_authenticated_family_targets x
+ join public.representaciones_jugador r on r.id=x.representacion_id
+ where r.jugador_id=x.jugador_id and r.representante_persona_id=x.tutor_id and r.fecha_hasta is null;
+ if actual<>13 then raise exception 'Family matrix: expected exactly 13 authenticated target representations, got %',actual; end if;
 end $$;
 
 -- Tutor family 6 is also a coach.
