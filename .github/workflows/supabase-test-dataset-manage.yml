@@ -63,6 +63,7 @@ jobs:
           set -euo pipefail
           test -n "$TEST_DB_URL"
           test -s supabase/test-support/00-test-infrastructure.sql
+          test -s scripts/render-demo-dataset.mjs
           test -s supabase/seed/test-data/01-reset-test-s.sql
           test -s supabase/seed/common/05-align-2026-27-structure.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
@@ -80,6 +81,25 @@ jobs:
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
             test -s supabase/seed/test-data/scenarios/completo-v1.sql
           fi
+      - name: Recover TEST database from any DEMO rehearsal residue
+        if: ${{ inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          has_demo=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select case when exists(select 1 from private.demo_datasets where id='DEMO-S') or exists(select 1 from private.demo_dataset_entities where dataset_id='DEMO-S') then 1 else 0 end")
+          if [ "$has_demo" = "1" ]; then
+            echo "DEMO-S rehearsal residue detected on TEST; cleaning it before TEST-S rebuild."
+            mkdir -p .generated/test-recovery
+            node scripts/render-demo-dataset.mjs --kind reset --input supabase/seed/test-data/01-reset-test-s.sql --output .generated/test-recovery/01-reset-demo-s.sql
+            ! grep -E "private\.test_(dataset_entities|datasets|uuid)|'TEST-S'|private\.test_set_reception_delete_guard" .generated/test-recovery/01-reset-demo-s.sql
+            psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/test-recovery/01-reset-demo-s.sql
+          else
+            echo "No DEMO-S rehearsal residue detected on TEST."
+          fi
+          remaining=$(psql "$TEST_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select (select count(*) from private.demo_datasets where id='DEMO-S') + (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S')")
+          [ "$remaining" = "0" ] || { echo "ERROR: DEMO-S rehearsal residue remains on TEST after cleanup: $remaining rows" >&2; exit 1; }
       - name: Reset and load TEST-S v1
         if: ${{ inputs.action == 'RESET' }}
         env:
