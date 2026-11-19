@@ -93,6 +93,11 @@ if (kind === 'reset') {
     .replaceAll('tutor01@test.invalid', 'tutor01@demo.invalid');
 
   if (input.endsWith('completo-v1.sql')) {
+    // Cross-module bridge must select a pack compatible with player needs; never rely on creation order.
+    if (!sql.includes("p.destinatario in ('jugador','ambos')")) {
+      throw new Error('COMPLETO renderer: cross-module pack selection is not recipient-safe');
+    }
+
     // DEMO may contain permanent historical players. Matrix v2 owns only DEMO-S players.
     const matrixNeedle = `from public.jugadores j\njoin public.inscripciones i on i.jugador_id=j.id`;
     const matrixReplacement = `from public.jugadores j\njoin private.demo_dataset_entities matrix_owner on matrix_owner.dataset_id='DEMO-S' and matrix_owner.table_name='jugadores' and matrix_owner.entity_id=j.id\njoin public.inscripciones i on i.jugador_id=j.id`;
@@ -110,7 +115,7 @@ if (kind === 'reset') {
     sql = sql.replace(negativeNeedle, negativeReplacement);
 
     const totalNeedle = `if total<>167 then raise exception 'MATRIX v2: expected 167 canonical active players after retiring historical E067C, got %',total; end if;`;
-    const totalReplacement = `if total<115 then raise exception 'MATRIX v2 DEMO: expected at least the 115 baseline active players in the matrix, got %',total; end if;`;
+    const totalReplacement = `if total<115 then raise exception 'MATRIX v2 DEMO: expected at least 115 dataset-owned active players in the matrix, got %',total; end if;`;
     if (!sql.includes(totalNeedle)) throw new Error('COMPLETO renderer: total assertion anchor not found');
     sql = sql.replace(totalNeedle, totalReplacement);
 

@@ -89,7 +89,10 @@ with target as (
 ), pack as (
   select p.id from public.equipacion_packs p
   join target t on t.temporada_id=p.temporada_id
-  order by p.created_at,p.id limit 1
+  where p.destinatario in ('jugador','ambos')
+    and p.activo
+  order by case when p.destinatario='jugador' then 0 else 1 end,p.created_at,p.id
+  limit 1
 )
 insert into public.equipacion_necesidades(
  id,persona_id,temporada_id,faceta,jugador_id,pack_id,estado,origen,comunicada_at)
