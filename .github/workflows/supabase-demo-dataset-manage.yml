@@ -22,11 +22,13 @@ on:
         description: For DEMO only, type MANAGE_DEMO_DATA
         required: false
         type: string
-
+      rehearsal_confirmation:
+        description: For TEST rehearsal only, type REHEARSE_DEMO_ON_TEST
+        required: false
+        type: string
 
 permissions:
   contents: read
-
 concurrency:
   group: yebenes-demo-dataset-${{ inputs.target }}
   cancel-in-progress: false
@@ -41,13 +43,13 @@ jobs:
           set -euo pipefail
           ref='${{ inputs.source_ref }}'
           target='${{ inputs.target }}'
-          confirm='${{ inputs.demo_confirmation }}'
           if [ "$target" = 'TEST' ]; then
             case "$ref" in develop|test) ;; *) echo 'TEST dataset rehearsal requires develop or test.' >&2; exit 1;; esac
+            [ '${{ inputs.rehearsal_confirmation }}' = 'REHEARSE_DEMO_ON_TEST' ] || { echo 'Type REHEARSE_DEMO_ON_TEST to exercise DEMO-S on TEST.' >&2; exit 1; }
           else
             [ "$ref" = 'main' ] || { echo 'DEMO dataset requires source_ref=main.' >&2; exit 1; }
             if [ '${{ inputs.action }}' = 'RESET_AND_LOAD' ]; then
-              [ "$confirm" = 'MANAGE_DEMO_DATA' ] || { echo 'DEMO RESET requires MANAGE_DEMO_DATA confirmation.' >&2; exit 1; }
+              [ '${{ inputs.demo_confirmation }}' = 'MANAGE_DEMO_DATA' ] || { echo 'DEMO RESET requires MANAGE_DEMO_DATA confirmation.' >&2; exit 1; }
             fi
           fi
       - name: Checkout selected source branch
@@ -61,26 +63,14 @@ jobs:
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
         run: |
-          if command -v psql >/dev/null 2>&1; then
-            echo "PostgreSQL client already available: $(psql --version)"
-            exit 0
-          fi
-          
+          if command -v psql >/dev/null 2>&1; then psql --version; exit 0; fi
           for attempt in 1 2 3 4; do
             echo "Installing PostgreSQL client (attempt $attempt/4)..."
-            if sudo apt-get -o Acquire::Retries=3 update && \
-               sudo apt-get -o Acquire::Retries=3 install -y postgresql-client; then
-              break
-            fi
-            if [ "$attempt" -eq 4 ]; then
-              echo "ERROR: unable to install PostgreSQL client after 4 attempts." >&2
-              exit 1
-            fi
+            if sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y postgresql-client; then break; fi
+            [ "$attempt" -lt 4 ] || { echo 'ERROR: unable to install PostgreSQL client.' >&2; exit 1; }
             sleep $((attempt * 10))
           done
-          
-          command -v psql >/dev/null 2>&1 || { echo "ERROR: psql is still unavailable after installation." >&2; exit 1; }
-          psql --version
+          command -v psql >/dev/null 2>&1
       - name: Select target database
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         id: db
@@ -93,28 +83,92 @@ jobs:
           if [ '${{ inputs.target }}' = 'TEST' ]; then DB_URL="$TEST_DB_URL"; else DB_URL="$DEMO_DB_URL"; fi
           [ -n "$DB_URL" ] || { echo 'Database URL secret is empty.' >&2; exit 1; }
           echo "db_url=$DB_URL" >> "$GITHUB_OUTPUT"
-      - name: Validate scripts and registry
+      - name: Validate canonical dataset sources
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
         env:
           DB_URL: ${{ steps.db.outputs.db_url }}
         run: |
           set -euo pipefail
-          test -s supabase/seed/demo-data/01_reset_demo_s.sql
+          test -s scripts/render-demo-dataset.mjs
+          test -s supabase/seed/test-data/01-reset-test-s.sql
           test -s supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
           test -s supabase/seed/demo-data/20_demo_access_operational_matrix.sql
+          test -s supabase/seed/common/05-align-2026-27-structure.sql
+          test -s supabase/seed/common/10-rffm-2026-27.sql
+          test -s supabase/seed/test-data/scenarios/economia-v1.sql
+          test -s supabase/seed/test-data/scenarios/equipaciones-v1.sql
+          test -s supabase/seed/test-data/scenarios/notifications-v1.sql
+          test -s supabase/seed/test-data/scenarios/completo-v1.sql
           psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select to_regclass('private.demo_datasets'), to_regclass('private.demo_dataset_entities');" | grep -q 'private.demo_datasets.*private.demo_dataset_entities'
-      - name: Reset and load DEMO S v1
+      - name: Render canonical TEST teardown and scenarios for DEMO namespace
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .generated/demo-dataset
+          node scripts/render-demo-dataset.mjs --kind reset --input supabase/seed/test-data/01-reset-test-s.sql --output .generated/demo-dataset/01-reset-demo-s.sql
+          node scripts/render-demo-dataset.mjs --kind parity --input supabase/seed/test-data/10-test-s-v1-baseline.sql --output .generated/demo-dataset/15-test-baseline-parity.sql
+          for scenario in economia-v1 equipaciones-v1 notifications-v1 completo-v1; do
+            node scripts/render-demo-dataset.mjs --kind scenario --input "supabase/seed/test-data/scenarios/${scenario}.sql" --output ".generated/demo-dataset/${scenario}.sql"
+          done
+          ! grep -R -E "private\.test_(dataset_entities|datasets|uuid)|'TEST-S'|private\.test_set_reception_delete_guard" .generated/demo-dataset
+      - name: Snapshot protected login identities
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
         env:
           DB_URL: ${{ steps.db.outputs.db_url }}
         run: |
           set -euo pipefail
-          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/01_reset_demo_s.sql
+          psql "$DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 \
+            -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-before.txt
+          echo "Protected Auth mappings before reset: $(wc -l < protected-auth-before.txt)"
+          test -s protected-auth-before.txt
+      - name: Clear TEST-S before DEMO rehearsal
+        if: ${{ inputs.action == 'RESET_AND_LOAD' && inputs.target == 'TEST' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
+      - name: Reset and load DEMO-S COMPLETO
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/01-reset-demo-s.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/15-test-baseline-parity.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql
-      - name: Validate DEMO S safety and coverage
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/economia-v1.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/equipaciones-v1.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/notifications-v1.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/completo-v1.sql
+      - name: Verify protected login identities survived unchanged
+        if: ${{ always() && inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          test -s protected-auth-before.txt
+          psql "$DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 \
+            -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-after.txt
+          missing=$(comm -23 <(sort protected-auth-before.txt) <(sort protected-auth-after.txt) || true)
+          if [ -n "$missing" ]; then
+            echo 'Protected login mappings missing or changed:' >&2
+            echo "$missing" >&2
+            exit 1
+          fi
+          echo "Protected Auth mappings preserved. New mappings are allowed."
+      - name: Validate DEMO-S richness, RFFM and safety
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
         env:
@@ -122,38 +176,32 @@ jobs:
         run: |
           set -euo pipefail
           psql "$DB_URL" -X -A -F ',' -v ON_ERROR_STOP=1 <<'SQL'
-          select 'dataset', id, version, scenario from private.demo_datasets where id = 'DEMO-S';
-          select 'players', count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'jugadores' and e.entity_id = j.id;
-          select 'coaches', count(*) from public.entrenadores c join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'entrenadores' and e.entity_id = c.id;
-          select 'principal_team_coverage', count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join public.equipos eq on eq.id = a.equipo_id join public.temporadas t on t.id = eq.temporada_id where t.estado = 'activa' and a.funcion = 'first' and a.cancelada_at is null and a.fecha_desde <= date '2027-06-30' and coalesce(a.fecha_hasta, date '9999-12-31') >= date '2026-09-01';
-          select 'families', count(*) from public.personas p join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and e.entity_id = p.id where p.nombre = 'Familia DEMO';
-          select 'demo_access_linked', count(p.auth_user_id)
-          from private.demo_access_identities a join public.personas p on p.id = a.persona_id;
+          select 'dataset',id,version,scenario from private.demo_datasets where id='DEMO-S';
+          select 'players',count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id='DEMO-S' and e.table_name='jugadores' and e.entity_id=j.id;
+          select 'coaches',count(*) from public.entrenadores c join private.demo_dataset_entities e on e.dataset_id='DEMO-S' and e.table_name='entrenadores' and e.entity_id=c.id;
+          select 'economy_charges',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='economia_cargos';
+          select 'equipment_needs',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='equipacion_necesidades';
+          select 'equipment_orders',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='equipacion_pedidos';
+          select 'notifications',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='notificaciones_salida';
+          select 'active_participations',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='persona_participaciones_temporada';
+          select 'team_schedules',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='horarios_equipo';
+          select 'future_multifacet',count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='personas' and entity_id in (private.demo_uuid('particip:carlos'),private.demo_uuid('particip:pablo'),private.demo_uuid('particip:lucia'));
+          select 'rffm',count(*) from public.equipo_integraciones_federacion i join public.equipos e on e.id=i.equipo_id where i.proveedor='RFFM' and i.activo and i.config->>'season_id'='22' and e.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac'::uuid;
           do $$
           begin
-            if exists (
-              select 1
-              from private.demo_dataset_entities e
-              join public.personas p on p.id = e.entity_id
-              where e.dataset_id = 'DEMO-S' and e.table_name = 'personas' and p.auth_user_id is not null
-            ) then
-              raise exception 'DEMO-S safety contract failed: a synthetic Persona has an Auth identity';
-            end if;
-            if not exists (select 1 from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
-              raise exception 'DEMO-S coverage failed: no active team exists';
-            end if;
-            if (select count(*) from public.jugadores j join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'jugadores' and e.entity_id = j.id) <> 115 then
-              raise exception 'DEMO-S coverage failed: expected 115 synthetic players';
-            end if;
-            if (select count(*) from public.entrenadores c join private.demo_dataset_entities e on e.dataset_id = 'DEMO-S' and e.table_name = 'entrenadores' and e.entity_id = c.id) <> 28 then
-              raise exception 'DEMO-S coverage failed: expected 28 synthetic coaches';
-            end if;
-            if (select count(distinct a.equipo_id) from public.asignaciones_entrenador_equipo a join public.equipos eq on eq.id = a.equipo_id join public.temporadas t on t.id = eq.temporada_id where t.estado = 'activa' and a.funcion = 'first' and a.cancelada_at is null and a.fecha_desde <= date '2027-06-30' and coalesce(a.fecha_hasta, date '9999-12-31') >= date '2026-09-01') <> (select count(*) from public.equipos e join public.temporadas t on t.id = e.temporada_id where t.estado = 'activa') then
-              raise exception 'DEMO-S coverage failed: every active team must have an effective principal coach';
-            end if;
-            if exists (select 1 from private.demo_access_identities)
-               and (select count(*) from private.demo_access_identities) <> 6 then
-              raise exception 'DEMO-ACCESS safety contract failed: incomplete identity registry';
-            end if;
+            if (select scenario from private.demo_datasets where id='DEMO-S') <> 'COMPLETO' then raise exception 'DEMO-S expected COMPLETO scenario'; end if;
+            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='jugadores') < 115 then raise exception 'DEMO-S expected at least 115 synthetic players'; end if;
+            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='entrenadores') < 28 then raise exception 'DEMO-S expected at least 28 synthetic coaches'; end if;
+            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='horarios_equipo') < 23 then raise exception 'DEMO-S baseline parity missing team schedules'; end if;
+            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='personas' and entity_id in (private.demo_uuid('particip:carlos'),private.demo_uuid('particip:pablo'),private.demo_uuid('particip:lucia'))) <> 3 then raise exception 'DEMO-S baseline parity missing future multifacet fixture'; end if;
+            if not exists (select 1 from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='economia_cargos') then raise exception 'DEMO-S economy coverage missing'; end if;
+            if not exists (select 1 from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='equipacion_necesidades') then raise exception 'DEMO-S equipment coverage missing'; end if;
+            if not exists (select 1 from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='equipacion_pedidos') then raise exception 'DEMO-S equipment order coverage missing'; end if;
+            if not exists (select 1 from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='notificaciones_salida') then raise exception 'DEMO-S notification coverage missing'; end if;
+            if (select count(*) from public.equipo_integraciones_federacion i join public.equipos e on e.id=i.equipo_id where i.proveedor='RFFM' and i.activo and i.config->>'season_id'='22' and e.temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac'::uuid) <> 23 then raise exception 'DEMO-S RFFM coverage expected 23/23'; end if;
+            if exists (select 1 from private.demo_dataset_entities e join public.personas p on p.id=e.entity_id where e.dataset_id='DEMO-S' and e.table_name='personas' and p.auth_user_id is not null) then raise exception 'DEMO-S safety contract failed: dataset-owned Persona has Auth'; end if;
           end $$;
           SQL
+      - name: Rehearsal reminder
+        if: ${{ inputs.action == 'RESET_AND_LOAD' && inputs.target == 'TEST' }}
+        run: echo "DEMO rehearsal succeeded on TEST. Restore TEST afterwards with 02 - Manage synthetic data / TEST / RESET / COMPLETO."

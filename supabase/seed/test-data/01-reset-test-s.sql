@@ -105,6 +105,17 @@ where exists (
   where x.id=al.asignacion_id
 );
 
+delete from public.equipacion_devoluciones dv
+where exists (
+  select 1
+  from public.equipacion_entregas d
+  join public.equipacion_asignaciones x on x.id=d.asignacion_id
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where d.id=dv.entrega_id
+);
+
 delete from public.equipacion_entregas d
 where exists (
   select 1
@@ -186,6 +197,15 @@ where exists (
   from private.test_dataset_entities e
   where e.dataset_id='TEST-S' and e.table_name='equipacion_articulos'
     and e.entity_id=l.articulo_id
+);
+
+-- Change requests reference needs/persons with RESTRICT and can survive interrupted runs.
+delete from public.equipacion_solicitud_cambios sc
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and ((e.table_name='equipacion_necesidades' and e.entity_id=sc.necesidad_id)
+      or (e.table_name='personas' and e.entity_id=sc.persona_id))
 );
 
 -- Trigger-generated stock movements are children of TEST-S logistics rows but may not

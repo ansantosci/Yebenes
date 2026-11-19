@@ -64,9 +64,9 @@ jobs:
           test -n "$TEST_DB_URL"
           test -s supabase/test-support/00-test-infrastructure.sql
           test -s supabase/seed/test-data/01-reset-test-s.sql
-          test -s supabase/seed/test-data/05-align-2026-27-structure.sql
+          test -s supabase/seed/common/05-align-2026-27-structure.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
-          test -s supabase/seed/test-base-rffm-2026-27.sql
+          test -s supabase/seed/common/10-rffm-2026-27.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
@@ -87,11 +87,13 @@ jobs:
         run: |
           set -euo pipefail
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
+          psql "$TEST_DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-before.txt
+          test -s protected-auth-before.txt
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
-          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/05-align-2026-27-structure.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
-          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-base-rffm-2026-27.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then
@@ -104,6 +106,22 @@ jobs:
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/completo-v1.sql
           fi
+      - name: Verify protected TEST login identities survived unchanged
+        if: ${{ always() && inputs.action == 'RESET' }}
+        env:
+          TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s protected-auth-before.txt
+          psql "$TEST_DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-after.txt
+          missing=$(comm -23 <(sort protected-auth-before.txt) <(sort protected-auth-after.txt) || true)
+          if [ -n "$missing" ]; then
+            echo 'Protected TEST login mappings missing or changed:' >&2
+            echo "$missing" >&2
+            exit 1
+          fi
+          echo 'Protected TEST Auth mappings preserved. New mappings are allowed.'
       - name: Validate dataset
         if: ${{ inputs.action == 'RESET' }}
         env:
