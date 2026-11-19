@@ -1,3 +1,63 @@
+# V96.4.12 - RFFM federation hierarchy, scorers and branded ResultsView
+
+- Federation category order from Aficionado down to Debutante, with Veteranos last.
+- Internal team name plus official RFFM team/competition identity.
+- Top-3 RFFM scorers when published, with conservative roster photo matching and generic fallback.
+- Club watermark in ResultsView and every printed category page.
+- PDF page break after each category.
+- ModalUI canonical shell remains unchanged.
+
+# V96.4.11 - ModalUI canonical shell
+
+- ModalUI now owns the complete modal anatomy: header, single scrolling body and persistent actions footer.
+- Features provide content and action declarations instead of hand-building modal chrome.
+- RFFM Results is the first full consumer of the canonical shell; its Refresh all and Export PDF actions cannot be omitted by feature markup.
+- X and Escape converge on ModalUI.close(); closed dialogs remain governed by native <dialog> visibility.
+- Legacy enhance() remains temporarily for existing windows; new windows must use ModalUI.mount().
+
+# V96.4.10 - Resultados RFFM agrupados, refresco secuencial y PDF
+
+- Resultados del club se agrupa por categoría interna, integrando masculino y femenino en la misma sección.
+- `Actualizar todos` consulta equipos secuencialmente; mientras está activo deshabilita refrescos individuales y muestra progreso.
+- El refresco individual se mantiene por equipo cuando no hay actualización global en curso.
+- Exportar PDF reutiliza los datos ya cargados, incorpora escudos devueltos por RFFM y maqueta un informe de impresión inspirado en la herramienta Python histórica.
+- RESET TEST-S retira de forma explícita el fixture histórico `ECONOMIA 067 C / E067C`; el escenario ECONOMIA ya no lo recrea.
+
+### V96.4.9 — Resultados RFFM sobre ModalUI y TEST-S sin equipo ECONOMIA 067 C
+
+- Migra `Resultados del club` a la familia `ModalUI`: cabecera común, body como único scroll y acciones en footer.
+- Cada tarjeta de equipo incorpora `Actualizar`; permite reintentar una sola consulta RFFM sin refrescar todo el club.
+- `Actualizar todos` limita la concurrencia a 3 equipos y muestra progreso, evitando la ráfaga simultánea de todas las integraciones.
+- TEST-S ECONOMIA deja de crear el equipo auxiliar `ECONOMIA 067 C / E067C`: el caso 067 reutiliza dos equipos canónicos de la misma categoría para validar el cambio de cuota.
+- No modifica Edge Function, backend productivo ni mappings RFFM 2026/27.
+
+### V96.4.7 — ModalUI busy conserva los datos del formulario
+
+- Corrige la regresión detectada en V96.4.6 al Guardar/Probar RFFM: el estado `busy` ya no deshabilita `input`, `select` ni `textarea` antes de construir `FormData`.
+- `ModalUI.setBusy()` continúa bloqueando botones para impedir doble clic y conserva/restaura su estado previo.
+- No modifica backend, contratos, Edge Function RFFM ni la geometría viewport-safe de V96.4.6.
+- Se mantiene la regla permanente: un `<dialog>` cerrado nunca puede hacerse visible por CSS; ModalUI solo maqueta `.app-modal[open]`.
+
+### V96.4.6 — Estructura unificada y RFFM en la ficha del equipo
+
+- Elimina el segundo listado permanente de equipos RFFM en Estructura.
+- Añade estado RFFM al listado canónico de equipos.
+- La ficha del equipo incorpora pestañas `Configuración del club` y `Federación · RFFM`.
+- La pestaña RFFM permite guardar, probar conexión y consultar resultados del equipo.
+- `Resultados RFFM` abre la visión agregada del club y mantiene la exportación PDF.
+- No modifica 095, 096, la Edge Function `rffm-resultados` ni el workflow de despliegue corregido.
+
+### V96.4.1 — Configuración de artículos/packs, proveedores, pedidos y recepciones
+
+- Nueva Configuración de Equipaciones: Artículos, Packs, Proveedores, Marcas y Tallajes.
+- Los artículos son referencias físicas/comerciales reutilizables entre temporadas, con marca, modelo/colección, referencia de fabricante opcional y sistema de tallaje.
+- Los packs se configuran libremente por temporada y seleccionan referencias de artículo existentes; no existe una lista fija de prendas.
+- Gestión activa/inactiva de proveedores y marcas, con proveedor habilitado/principal por temporada.
+- Alta trazable de stock ya existente con origen, vigencia, marca y proveedor opcional; las tallas proceden del catálogo 095 del artículo.
+- Nuevo pedido desde demanda/compra sugerida únicamente para artículos configurados en packs activos, con edición de borrador y líneas manuales/personalizadas.
+- Cursado de pedido y recepciones parciales con cantidades recibidas/aceptadas e incidencias.
+- Carga diferida de configuración, catálogos y detalle de pedidos para no ampliar innecesariamente la carga inicial del módulo.
+
 ### V96.3.2 — Preparación desde demanda operativa 084
 - Preparación deja de construirse solo desde `equipacion_asignaciones`: usa `equipacion_estado_operativo` como universo operativo y muestra también demanda aún no materializada (`disponible`, `pedido_proveedor`, `pendiente_compra`).
 - Backend 086 materializa de forma controlada las asignaciones faltantes y compone atómicamente esa materialización con 085 para preparación FIFO. Si falla una prenda, se revierte también la materialización de la selección.
@@ -1549,3 +1609,38 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - No schema or frontend behavior change in this hardening patch.
 
 - Contract 087 corrected to the effective signatures: 079 private direct delivery, 083 private multiple delivery, 082 public wrapper, 086 demand delivery.
+
+
+### V96.4.1 - RFFM por equipo desde Estructura
+- La entidad Equipo/temporada es la identidad canónica; se elimina el catálogo paralelo hardcodeado.
+- Configuración RFFM por equipo mediante backend 096: competición, grupo, tipo de juego e ID externo opcional.
+- Probar conexión registra la última validación.
+- Resultados, último/próximo partido y clasificación se consultan mediante Edge Function `rffm-resultados`.
+- No se guardan URLs arbitrarias ni secretos RFFM.
+
+
+## V96.4.6 — Modal Component Foundation
+
+- Se formaliza `ModalUI` como capa común de ventanas sobre los `<dialog>` existentes.
+- Primitives: contenedor/cabecera, tabs, secciones de formulario, grid/campos, panel de estado y acciones.
+- La ficha de Equipo (Club + Federación/RFFM) es la primera migración completa.
+- Regla arquitectónica: ninguna funcionalidad nueva debe crear una estética/modal ad hoc; debe componer sobre esta familia.
+- `Consultar resultados` permanece deshabilitado hasta una validación RFFM correcta.
+
+
+### V96.4.6 — RFFM idempotente y diagnóstico
+- Guardado RFFM por UPSERT sobre equipo+proveedor; doble clic seguro y feedback integrado en StatusPanel.
+- Probar conexión persiste primero los valores visibles y fuerza una consulta nueva.
+- Errores de Edge Function se muestran con detalle funcional en el componente, sin alert nativo.
+
+
+### V96.4.6
+- Rechaza la geometría de ModalUI de V96.4.5: un dialog cerrado nunca recibe display.
+- Shell viewport-safe solo en `.app-modal[open]`; cabecera/tabs visibles, body scrollable y acciones sticky.
+- Cierre de ficha Equipo centralizado: X, Cancelar y Escape limpian el equipo seleccionado.
+- RFFM conserva feedback busy, anti-doble clic y timeouts de 10 s (guardado) / 15 s (consulta).
+
+### V96.4.8 — Persistencia de validación RFFM
+- `Probar conexión` persiste ahora el resultado real en `ultima_validacion_at`, `ultima_validacion_ok` y `ultima_validacion_mensaje`.
+- El listado de Estructura refleja inmediatamente `Verificado` o `Error`; guardar/importar configuración continúa sin equivaler a validarla.
+- Se reutilizan UPDATE + RLS Club/Admin existentes en 096; no hay cambio de backend ni de esquema.

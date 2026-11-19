@@ -401,6 +401,18 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+-- V96.4.10 FIX: retire the historical ECONOMIA 067 C fixture team transitively.
+-- Old executions may have lost the TEST-S ownership row while leaving the team and its
+-- team-specific fee configuration behind. Clean the restrictive child explicitly first;
+-- other team references are already removed above or use ON DELETE SET NULL/CASCADE.
+delete from public.economia_cuota_equipo_config
+where equipo_id=private.test_uuid('econ067:team:c');
+
+delete from public.equipos
+where codigo='E067C'
+  and nombre='ECONOMIA 067 C'
+  and id=private.test_uuid('econ067:team:c');
+
 select private.test_set_economia_reset_mode(false);
 
 select private.test_set_reception_delete_guard(true);

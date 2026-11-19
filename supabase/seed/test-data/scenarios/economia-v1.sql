@@ -159,7 +159,7 @@ end $$;
 -- 067/068 functional integration on isolated players: hierarchy, unresolved moves and active siblings.
 do $$
 declare
- tid uuid; cat uuid; ea uuid; eb uuid; ec uuid;
+ tid uuid; cat uuid; ea uuid; ec uuid;
  p1 uuid:=private.test_uuid('econ067:p1'); p2 uuid:=private.test_uuid('econ067:p2'); tp uuid:=private.test_uuid('econ067:tutor');
  j1 uuid:=private.test_uuid('econ067:j1'); j2 uuid:=private.test_uuid('econ067:j2');
  i1 uuid:=private.test_uuid('econ067:i1'); i2 uuid:=private.test_uuid('econ067:i2');
@@ -170,13 +170,9 @@ begin
  select ep.temporada_id into tid from econ_people ep where ep.n=1;
  select i.categoria_id into cat from econ_people ep join public.inscripciones i on i.id=ep.inscripcion_id where ep.n=1;
  select e.id into ea from public.equipos e where e.temporada_id=tid and e.categoria_id=cat and e.activo order by e.id limit 1;
- select e.id into eb from public.equipos e where e.temporada_id=tid and e.categoria_id=cat and e.activo and e.id<>ea order by e.id limit 1;
+ select e.id into ec from public.equipos e where e.temporada_id=tid and e.categoria_id=cat and e.activo and e.id<>ea order by e.id limit 1;
  if ea is null then raise exception 'ECONOMIA 067: no active team for baseline category'; end if;
- if eb is null then eb:=ea; end if;
- ec:=private.test_uuid('econ067:team:c');
- insert into public.equipos(id,temporada_id,categoria_id,nombre,codigo,activo)
- values(ec,tid,cat,'ECONOMIA 067 C','E067C',true)
- on conflict(id) do update set activo=true;
+ if ec is null then raise exception 'ECONOMIA 067: second canonical team required for move scenario'; end if;
 
  insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,activo) values
  (p1,'Hermano1','ECONOMIA067',date '2015-01-01',true),
@@ -200,7 +196,6 @@ begin
 
  -- Register roots immediately so interrupted runs remain repairable.
  insert into private.test_dataset_entities(dataset_id,table_name,entity_id) values
- ('TEST-S','equipos',ec),
  ('TEST-S','personas',p1),('TEST-S','personas',p2),('TEST-S','personas',tp),
  ('TEST-S','jugadores',j1),('TEST-S','jugadores',j2),
  ('TEST-S','representaciones_jugador',private.test_uuid('econ067:r1')),('TEST-S','representaciones_jugador',private.test_uuid('econ067:r2')),
@@ -209,7 +204,7 @@ begin
  on conflict do nothing;
 
  -- Remove any fee configuration inherited from the earlier 066 fixture for this category/season.
- delete from public.economia_cuota_equipo_config where temporada_id=tid and equipo_id in (ea,eb,ec);
+ delete from public.economia_cuota_equipo_config where temporada_id=tid and equipo_id in (ea,ec);
  delete from public.economia_cuota_categoria_config where temporada_id=tid and categoria_id=cat;
  delete from public.economia_cuota_temporada_config where temporada_id=tid;
 
