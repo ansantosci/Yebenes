@@ -52,7 +52,7 @@ with teams as (
  from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id
  left join public.reglas_categoria_temporada r on r.temporada_id=e.temporada_id and r.categoria_id=e.categoria_id and r.activo
  where t.estado='activa'
-), p as (select teams.*,g from teams cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g)
+), p as (select teams.*,g from teams cross join lateral generate_series(1,case teams.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g)
 insert into public.personas(id,nombre,primer_apellido,segundo_apellido,fecha_nacimiento,email_contacto,activo)
 select private.test_uuid('player:'||codigo||':'||g), 'Jugador TEST', codigo||' '||lpad(g::text,2,'0'), null,
        make_date(birth_year, case when g=1 then 3 else 9 end, case when g=1 then 10 else 20 end),

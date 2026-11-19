@@ -79,6 +79,7 @@ on conflict do nothing;
 -- Players per team follow modality (F11=20, F7=12, F5=8). Ages follow the category rule.
 with teams as (
   select e.codigo,
+         e.modalidad,
          coalesce(r.anio_nacimiento_hasta, 2000) as birth_year
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
@@ -90,7 +91,7 @@ with teams as (
 ), players as (
   select teams.*, g
   from teams
-  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
+  cross join lateral generate_series(1,case teams.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 )
 insert into public.personas(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, email_contacto, activo)
 select private.demo_uuid('player:' || codigo || ':' || g),
