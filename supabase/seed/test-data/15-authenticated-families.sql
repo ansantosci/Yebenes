@@ -1,20 +1,36 @@
 -- Authenticated family coverage for TEST-S. ACCESS identities survive dataset resets.
 begin;
+-- Every minor already has one active representation created by the baseline before inscription.
+-- Reassign selected dataset-owned representations to authenticated ACCESS tutors instead of
+-- inserting a second active representation (forbidden by representacion_activa_jugador_uq).
 with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'JUV-A',1),(6,'CAD-A',1),(6,'CAD-F',1)), resolved as (
  select fc.n,j.id jugador_id,a.persona_id tutor_id
  from family_case fc join public.equipos e on e.codigo=fc.team_code
  join public.jugadores j on j.persona_id=private.test_uuid('player:'||e.codigo||':'||fc.slot)
  join private.test_access_identities a on a.key='tutor_family_'||fc.n
+), active_repr as (
+ select r.id,r.jugador_id,x.tutor_id
+ from public.representaciones_jugador r
+ join resolved x on x.jugador_id=r.jugador_id
+ where r.fecha_hasta is null
 )
-insert into public.representaciones_jugador(id,jugador_id,representante_persona_id,fecha_desde,motivo_alta)
-select private.test_uuid('auth-family-repr:'||n||':'||jugador_id::text),jugador_id,tutor_id,date '2026-07-01','TEST-S authenticated family'
-from resolved on conflict(id) do update set representante_persona_id=excluded.representante_persona_id,fecha_hasta=null;
+update public.representaciones_jugador r
+set representante_persona_id=x.tutor_id,
+    motivo_alta='TEST-S authenticated family'
+from active_repr x
+where r.id=x.id;
 
-insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
-select 'TEST-S','representaciones_jugador',private.test_uuid('auth-family-repr:'||fc.n||':'||j.id::text)
-from (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'JUV-A',1),(6,'CAD-A',1),(6,'CAD-F',1)) fc(n,team_code,slot) join public.equipos e on e.codigo=fc.team_code
-join public.jugadores j on j.persona_id=private.test_uuid('player:'||e.codigo||':'||fc.slot)
-on conflict do nothing;
+do $$
+declare expected integer := 13; actual integer;
+begin
+ select count(*) into actual
+ from public.representaciones_jugador r
+ join public.jugadores j on j.id=r.jugador_id
+ join public.personas p on p.id=r.representante_persona_id
+ join private.test_access_identities a on a.persona_id=p.id and a.key like 'tutor_family_%'
+ where r.fecha_hasta is null;
+ if actual<expected then raise exception 'Family matrix: expected at least % authenticated active representations, got %',expected,actual; end if;
+end $$;
 
 -- Tutor family 6 is also a coach.
 insert into public.entrenadores(id,persona_id,activo,curso_delegado)
