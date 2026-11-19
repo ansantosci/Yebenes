@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.11';
+const APP_VERSION='96.4.12';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2896,20 +2896,63 @@ function rffmLogoHtml(url,alt=''){return url?`<img class="rffm-team-logo" src="$
 function rffmMatchHtml(m,title){if(!m)return `<div class="rffm-empty">${title}: sin datos.</div>`;return `<div class="rffm-fixture"><div class="rffm-fixture-meta"><b>${title}</b><span>J${esc(m.jornada||'?')} · ${esc(m.date||'')}${m.time?' · '+esc(m.time):''}</span></div><div class="rffm-fixture-row"><span class="rffm-side">${rffmLogoHtml(m.homeLogo,m.home)}<span>${esc(m.home||'')}</span></span><strong>${m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:'VS'}</strong><span class="rffm-side rffm-side--away"><span>${esc(m.away||'')}</span>${rffmLogoHtml(m.awayLogo,m.away)}</span></div>${m.place?`<div class="rffm-place">${esc(m.place)}</div>`:''}</div>`}
 function rffmClassificationHtml(c){if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';return `<div class="rffm-standing"><b>${esc(c.position)}.º</b><span>${c.points!=null?esc(c.points)+' pts':''}${c.played!=null?' · '+esc(c.played)+' PJ':''}</span></div><div class="rffm-mini-head"><span>POS</span><span>EQUIPO</span><span>PJ</span><span>PTS</span></div>${(c.context||[]).map(r=>`<div class="rffm-mini-row ${Number(r.position)===Number(c.position)?'current':''}"><span>${esc(r.position)}.º</span><span class="team">${rffmLogoHtml(r.logo,r.team)}<span>${esc(r.team||'')}</span></span><span>${r.played??''}</span><span><b>${r.points??''}</b></span></div>`).join('')}`}
 let rffmBulkRefreshing=false;
+const rffmScorerPhotoCache=new Map();
+const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
+function rffmFederationCategoryLabel(team){
+  const raw=norm(dbCategoryName(team?.categoryId)||'');
+  if(/VETERAN/.test(raw)||/VET/.test(norm(team?.code||'')))return 'VETERANOS';
+  if(/SENIOR|AFICIONADO/.test(raw))return 'AFICIONADO';
+  if(/JUVENIL/.test(raw))return 'JUVENIL';
+  if(/CADETE/.test(raw))return 'CADETE';
+  if(/INFANTIL/.test(raw))return 'INFANTIL';
+  if(/ALEVIN/.test(raw))return 'ALEVÍN';
+  if(/BENJAMIN/.test(raw)&&!/PREBENJAMIN/.test(raw))return 'BENJAMÍN';
+  if(/PREBENJAMIN/.test(raw))return 'PREBENJAMÍN';
+  if(/CHUPET|DEBUT/.test(raw))return 'DEBUTANTE';
+  return dbCategoryName(team?.categoryId)||'SIN CATEGORÍA';
+}
+function rffmCategoryRank(label){const n=norm(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
 function rffmCategoryGroups(){
-  const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true).filter(t=>rffmIntegrationFor(t.id)?.activo),groups=[];
-  for(const t of teams){const key=String(t.categoryId||''),label=dbCategoryName(t.categoryId)||'Sin categoría';let g=groups.find(x=>x.key===key);if(!g){g={key,label,teams:[]};groups.push(g)}g.teams.push(t)}
-  return groups;
+  const teams=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo),by=new Map();
+  for(const t of teams){const label=rffmFederationCategoryLabel(t),key=norm(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
+  const groups=[...by.values()];
+  for(const g of groups)g.teams.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'}));
+  return groups.sort((a,b)=>rffmCategoryRank(a.label)-rffmCategoryRank(b.label)||a.label.localeCompare(b.label,'es'));
+}
+function rffmPersonKey(value){
+  let s=String(value||'').trim();if(s.includes(',')){const [sur,...rest]=s.split(',');s=`${rest.join(' ')} ${sur}`}
+  return norm(s).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join('|');
+}
+function rffmMatchedPlayer(teamId,scorerName){
+  const key=rffmPersonKey(scorerName);if(!key)return null;
+  const hits=(remoteClubPlayers||[]).filter(p=>p.active&&p.assignment?.equipo_id===teamId&&rffmPersonKey(p.name)===key);
+  return hits.length===1?hits[0]:null;
+}
+async function rffmPlayerPhotoUrl(player){
+  if(!player)return null;if(rffmScorerPhotoCache.has(player.id))return rffmScorerPhotoCache.get(player.id);
+  const req=(player.requirements||[]).find(r=>r.codigo==='foto_jugador'),doc=req?currentFedDoc(player,req):null;
+  if(!doc?.storage_path){rffmScorerPhotoCache.set(player.id,null);return null}
+  try{const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(doc.storage_path,900);if(error)throw error;const url=data?.signedUrl||null;rffmScorerPhotoCache.set(player.id,url);return url}catch{rffmScorerPhotoCache.set(player.id,null);return null}
+}
+function rffmScorersHtml(teamId,scorers){
+  const rows=(scorers||[]).slice(0,3);if(!rows.length)return '';
+  return `<section class="rffm-scorers"><div class="rffm-scorers-title">MÁXIMOS GOLEADORES</div><div class="rffm-scorers-grid">${rows.map((s,i)=>`<div class="rffm-scorer"><span class="rffm-scorer-avatar" data-rffm-scorer-avatar data-team="${esc(teamId)}" data-scorer="${esc(s.player||'')}"><span aria-hidden="true">👤</span></span><span class="rffm-scorer-copy"><strong>${esc(s.player||'')}</strong><small>${esc(s.goals??0)} ${Number(s.goals)===1?'gol':'goles'}${Number(s.penalties)>0?` · ${esc(s.penalties)} pen.`:''}</small></span><b class="rffm-scorer-rank">${i+1}</b></div>`).join('')}</div></section>`;
+}
+async function hydrateRffmScorerPhotos(root=$('#rffmResultsContent')){
+  if(!root)return;const nodes=[...root.querySelectorAll('[data-rffm-scorer-avatar]')];
+  await Promise.all(nodes.map(async node=>{if(node.dataset.photoHydrated==='1')return;node.dataset.photoHydrated='1';const player=rffmMatchedPlayer(node.dataset.team,node.dataset.scorer);const url=await rffmPlayerPhotoUrl(player);if(url){node.innerHTML=`<img src="${esc(url)}" alt="${esc(player?.name||node.dataset.scorer||'Jugador')}" />`;node.classList.add('has-photo');const img=node.querySelector('img');if(img&&!img.complete)await new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,2500)})}}));
 }
 function rffmTeamCardHtml(t){
   const d=rffmResultsByTeam.get(t.id),loading=d?.loading===true,disabled=rffmBulkRefreshing||loading;
-  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div><strong>${esc(t.name)}</strong><span>${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}`}</article>`;
+  const officialTeam=d?.teamName||d?.classification?.teamName||'';const competition=d?.competitionName||'';
+  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
 }
 function renderRffmResults(){
   const out=$('#rffmResultsContent');if(!out)return;const groups=rffmCategoryGroups();
-  out.innerHTML=groups.map(g=>{const mods=[...new Set(g.teams.map(t=>t.modality).filter(Boolean))].join('/');return `<section class="rffm-category-group"><header class="rffm-category-head"><h3>${esc(g.label)}</h3><span>${g.teams.length} ${g.teams.length===1?'equipo':'equipos'}${mods?' · '+esc(mods):''}</span></header><div class="rffm-category-grid">${g.teams.map(rffmTeamCardHtml).join('')}</div></section>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>';
+  out.innerHTML=groups.map(g=>{const mods=[...new Set(g.teams.map(t=>t.modality).filter(Boolean))].join('/');return `<section class="rffm-category-group" data-rffm-category="${esc(g.label)}"><header class="rffm-category-head"><h3>${esc(g.label)}</h3><span>${g.teams.length} ${g.teams.length===1?'equipo':'equipos'}${mods?' · '+esc(mods):''}</span></header><div class="rffm-category-grid">${g.teams.map(rffmTeamCardHtml).join('')}</div></section>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>';
   $$('.rffm-card-refresh',out).forEach(b=>b.onclick=()=>{if(!rffmBulkRefreshing)loadRffmTeam(b.dataset.team,true)});
   const all=$('#rffmRefreshAll');if(all)all.disabled=rffmBulkRefreshing;
+  hydrateRffmScorerPhotos(out);
 }
 async function loadRffmTeam(teamId,force=false,{deferRender=false}={}){rffmResultsByTeam.set(teamId,{loading:true});if(!deferRender)renderRffmResults();try{const data=await invokeRffm({action:'team',team_id:teamId,force});rffmResultsByTeam.set(teamId,data)}catch(err){rffmResultsByTeam.set(teamId,{error:String(err?.message||err)})}renderRffmResults()}
 async function loadAllRffm(){
@@ -2917,7 +2960,8 @@ async function loadAllRffm(){
   rffmBulkRefreshing=true;renderRffmResults();
   try{for(let i=0;i<ids.length;i++){if(status)status.textContent=`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`;if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;await loadRffmTeam(ids[i],true,{deferRender:true});}if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
 }
-function exportRffmPdf(){document.body.classList.add('printing-rffm');const cleanup=()=>{document.body.classList.remove('printing-rffm');window.removeEventListener('afterprint',cleanup)};window.addEventListener('afterprint',cleanup);window.print();setTimeout(cleanup,1500)}
+function exportRffmPdf(){document.body.classList.add('printing-rffm');hydrateRffmScorerPhotos().finally(()=>{const cleanup=()=>{document.body.classList.remove('printing-rffm');window.removeEventListener('afterprint',cleanup)};window.addEventListener('afterprint',cleanup);window.print();setTimeout(cleanup,1500)})}
+
 
 function renderStructure(){
   if(!$('#seasonsTable'))return;

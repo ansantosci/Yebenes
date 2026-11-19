@@ -80,14 +80,81 @@ async function classification(cfg:any){
   const result:any={url};
   if(currentIdx!==null){
     const cur=rows[currentIdx];
-    result.position=cur.position;result.points=cur.points;result.played=cur.played;
+    result.position=cur.position;result.points=cur.points;result.played=cur.played;result.teamName=cur.team;
     let start=Math.max(0,currentIdx-2);
     if(rows.length>=5)start=Math.min(start,rows.length-5);
     result.context=rows.slice(start,start+5);
   }
   return result;
 }
-async function teamData(cfg:any){const probe=await getPageProps(cfgUrl(cfg,'/competicion/resultados-y-jornadas')),results=probe?.results||{};const jornadas:any[]=[];for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){const n=Number(j.codjornada);if(Number.isFinite(n))jornadas.push({n,date:dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'))})}const today=new Date(),past=jornadas.filter(x=>!x.date||x.date<=today).slice(-3),future=jornadas.filter(x=>x.date&&x.date>today).slice(0,3),targets=[...new Set([...past,...future].map(x=>x.n))];let matches:any[]=[];for(const j of targets){try{matches.push(...(await parseRound(cfg,j)).matches)}catch{}}if(!matches.length){for(const j of jornadas.slice(0,40)){try{matches.push(...(await parseRound(cfg,j.n)).matches)}catch{}if(matches.length>=2)break}}const unique:any[]=[];const sig=new Set<string>();for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,classification:await classification(cfg),teamName:(completed.at(-1)||upcoming[0])?.teamName||null}}
+function competitionMeta(page:any){
+  const direct=pick(page?.results||page,'nombre_competicion','NombreCompeticion','competicion_nombre','competicion');
+  if(typeof direct==='string'&&direct.trim())return {competitionName:direct.trim()};
+  const candidates:any[]=[];
+  for(const d of walk(page)){
+    if(!d||typeof d!=='object'||Array.isArray(d))continue;
+    for(const [k,v] of Object.entries(d)){
+      if(typeof v!=='string'||!v.trim())continue;
+      const kl=String(k).toLowerCase();
+      if(kl.includes('competicion')&&(kl.includes('nombre')||kl==='competicion'))candidates.push(v.trim());
+    }
+  }
+  const name=candidates.find(x=>x.length>3&&x.length<120)||null;
+  return {competitionName:name};
+}
+function scorerName(d:any){
+  const direct=pick(d,'jugador','Jugador','nombre_jugador','NombreJugador','nombre','Nombre','deportista');
+  if(typeof direct==='string'&&direct.trim())return direct.trim();
+  for(const [k,v] of Object.entries(d||{})){const kl=String(k).toLowerCase();if(typeof v==='string'&&kl.includes('jugador')&&kl.includes('nombre'))return v.trim()}
+  return null;
+}
+function scorerTeam(d:any){
+  const direct=pick(d,'equipo','Equipo','nombre_equipo','Nombre_equipo','NombreEquipo','team');
+  if(typeof direct==='string'&&direct.trim())return direct.trim();
+  for(const [k,v] of Object.entries(d||{})){const kl=String(k).toLowerCase();if(typeof v==='string'&&kl.includes('equipo')&&(kl.includes('nombre')||kl==='equipo'))return v.trim()}
+  return null;
+}
+function scorerGoals(d:any){
+  const raw=pick(d,'goles','Goles','total_goles','goles_total','num_goles','NumGoles');
+  if(raw!==null&&raw!==undefined){const m=String(raw).match(/\d+/);if(m)return Number(m[0])}
+  for(const [k,v] of Object.entries(d||{})){if(String(k).toLowerCase().includes('gol')){const m=String(v??'').match(/\d+/);if(m)return Number(m[0])}}
+  return null;
+}
+function scorerPenalties(d:any){
+  const raw=pick(d,'penaltis','Penaltis','penalties','goles_penalti','GolesPenalti');
+  if(raw!==null&&raw!==undefined){const m=String(raw).match(/\d+/);if(m)return Number(m[0])}
+  const goalsRaw=pick(d,'goles','Goles','total_goles');
+  const m=String(goalsRaw??'').match(/\((\d+)P\)/i);return m?Number(m[1]):0;
+}
+async function scorers(cfg:any,jornada:number|null=null){
+  try{
+    const url=cfgUrl(cfg,'/competicion/goleadores',jornada?`&jornada=${jornada}`:''),page=await getPageProps(url),rows:any[]=[],seen=new Set<string>();
+    for(const d of walk(page)){
+      if(!d||typeof d!=='object'||Array.isArray(d))continue;
+      const player=scorerName(d),team=scorerTeam(d),goals=scorerGoals(d);
+      if(!player||!team||goals===null||!teamMatches(team,pick(d,'CodEquipo','codigo_equipo','equipo_id'),cfg.external_team_id))continue;
+      const key=`${norm(player)}|${norm(team)}`;if(seen.has(key))continue;seen.add(key);
+      rows.push({player,team,goals,penalties:scorerPenalties(d)});
+    }
+    rows.sort((a,b)=>b.goals-a.goals||a.player.localeCompare(b.player,'es'));
+    return {url,top:rows.slice(0,3)};
+  }catch{return {url:cfgUrl(cfg,'/competicion/goleadores',jornada?`&jornada=${jornada}`:''),top:[]}}
+}
+async function teamData(cfg:any){
+  const probe=await getPageProps(cfgUrl(cfg,'/competicion/resultados-y-jornadas')),results=probe?.results||{},meta=competitionMeta(probe);
+  const jornadas:any[]=[];
+  for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){const n=Number(j.codjornada);if(Number.isFinite(n))jornadas.push({n,date:dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'))})}
+  const today=new Date(),past=jornadas.filter(x=>!x.date||x.date<=today).slice(-3),future=jornadas.filter(x=>x.date&&x.date>today).slice(0,3),targets=[...new Set([...past,...future].map(x=>x.n))];
+  let matches:any[]=[];
+  for(const j of targets){try{matches.push(...(await parseRound(cfg,j)).matches)}catch{}}
+  if(!matches.length){for(const j of jornadas.slice(0,40)){try{matches.push(...(await parseRound(cfg,j.n)).matches)}catch{}if(matches.length>=2)break}}
+  const unique:any[]=[],sig=new Set<string>();for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}
+  const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+  const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+  const latestScorerRound=past.length?past[past.length-1].n:(jornadas.length?jornadas[jornadas.length-1].n:null);
+  const [cls,sc]=await Promise.all([classification(cfg),scorers(cfg,latestScorerRound)]);
+  return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,classification:cls,teamName:(completed.at(-1)||upcoming[0])?.teamName||cls?.teamName||null,competitionName:meta.competitionName||null,scorers:sc.top};
+}
 
 function fail(status:number,code:string,phase:string,message:string,details:any=null){return Response.json({ok:false,error:message,message,code,phase,details},{status})}
 export default {fetch:withSupabase({auth:'user'},async(req,ctx)=>{let phase='request';try{if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED',phase,'Método no permitido');const body=await req.json().catch(()=>({})),teamId=String(body?.team_id||''),action=String(body?.action||'team');if(!teamId)return fail(400,'TEAM_ID_REQUIRED',phase,'team_id obligatorio');phase='config';const {data:cfg,error}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').select('*').eq('equipo_id',teamId).eq('proveedor','RFFM').maybeSingle();if(error)throw error;if(!cfg||!cfg.activo)return fail(404,'RFFM_CONFIG_NOT_ACTIVE',phase,'El equipo no tiene integración RFFM activa');phase='fetch';const key=`${cfg.competition_id}|${cfg.group_id}|${cfg.game_type}|${cfg.external_team_id||''}`,hit=cache.get(key);let data=hit&&Date.now()-hit.at<CACHE_MS&&!body?.force?hit.data:null;if(!data){data=await teamData(cfg);cache.set(key,{at:Date.now(),data})}phase='validate';if(action==='validate'){const ok=Boolean(data.teamName||data.classification?.position);const msg=ok?`Equipo localizado${data.teamName?`: ${data.teamName}`:''}`:'No se ha localizado el equipo en resultados o clasificación';phase='validation-write';const {error:writeError}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').update({ultima_validacion_at:new Date().toISOString(),ultima_validacion_ok:ok,ultima_validacion_mensaje:msg}).eq('id',cfg.id);if(writeError)throw writeError;if(!ok)return fail(422,'TEAM_NOT_FOUND','validation',msg,{competition_id:cfg.competition_id,group_id:cfg.group_id,game_type:cfg.game_type,external_team_id:cfg.external_team_id});return Response.json({ok:true,...data})}return Response.json({ok:true,...data})}catch(e){const message=String((e as any)?.message||e);return fail(500,'RFFM_INTERNAL_ERROR',phase,message)}})}

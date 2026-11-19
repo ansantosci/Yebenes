@@ -1,3 +1,12 @@
+# V96.4.12 - RFFM federation hierarchy, scorers and branded ResultsView
+
+- Federation category order from Aficionado down to Debutante, with Veteranos last.
+- Internal team name plus official RFFM team/competition identity.
+- Top-3 RFFM scorers when published, with conservative roster photo matching and generic fallback.
+- Club watermark in ResultsView and every printed category page.
+- PDF page break after each category.
+- ModalUI canonical shell remains unchanged.
+
 # V96.4.11 - ModalUI canonical shell
 
 - ModalUI now owns the complete modal anatomy: header, single scrolling body and persistent actions footer.
