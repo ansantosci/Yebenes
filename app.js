@@ -2900,7 +2900,16 @@ const rffmScorerPhotoCache=new Map();
 const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
 function rffmFederationCategoryLabel(team){
   const raw=norm(dbCategoryName(team?.categoryId)||'');
-  if(/VETERAN/.test(raw)||/VET/.test(norm(team?.code||'')))return 'VETERANOS';
+function normalizeRffmText(value){
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim();
+}
+
+  if(/VETERAN/.test(raw)||/VET/.test(normalizeRffmText(team?.code||'')))return 'VETERANOS';
   if(/SENIOR|AFICIONADO/.test(raw))return 'AFICIONADO';
   if(/JUVENIL/.test(raw))return 'JUVENIL';
   if(/CADETE/.test(raw))return 'CADETE';
@@ -2911,17 +2920,17 @@ function rffmFederationCategoryLabel(team){
   if(/CHUPET|DEBUT/.test(raw))return 'DEBUTANTE';
   return dbCategoryName(team?.categoryId)||'SIN CATEGORÍA';
 }
-function rffmCategoryRank(label){const n=norm(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
+function rffmCategoryRank(label){const n=normalizeRffmText(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
 function rffmCategoryGroups(){
   const teams=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo),by=new Map();
-  for(const t of teams){const label=rffmFederationCategoryLabel(t),key=norm(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
+  for(const t of teams){const label=rffmFederationCategoryLabel(t),key=normalizeRffmText(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
   const groups=[...by.values()];
   for(const g of groups)g.teams.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'}));
   return groups.sort((a,b)=>rffmCategoryRank(a.label)-rffmCategoryRank(b.label)||a.label.localeCompare(b.label,'es'));
 }
 function rffmPersonKey(value){
   let s=String(value||'').trim();if(s.includes(',')){const [sur,...rest]=s.split(',');s=`${rest.join(' ')} ${sur}`}
-  return norm(s).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join('|');
+  return normalizeRffmText(s).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join('|');
 }
 function rffmMatchedPlayer(teamId,scorerName){
   const key=rffmPersonKey(scorerName);if(!key)return null;
