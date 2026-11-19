@@ -72,7 +72,8 @@ jobs:
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s supabase/seed/test-data/15-authenticated-families.sql
           test -s scripts/bootstrap-test-access.mjs
-          test "$(grep -c "^ ('tutor_family_[1-6]'" supabase/seed/test-access/00-test-access-personas.sql)" -eq 6
+          family_rows=$(sed -n '/insert into private.test_access_identities/,/on conflict/p' supabase/seed/test-access/00-test-access-personas.sql | grep -c "^ ('tutor_family_[1-6]'")
+          if [ "$family_rows" -ne 6 ]; then echo "ERROR: TEST ACCESS registry expected 6 tutor_family rows, actual=$family_rows" >&2; exit 1; fi
           test "$(grep -c "tutor-family-[1-6]\.test@" scripts/bootstrap-test-access.mjs)" -eq 6
           grep -q "insert into private.test_access_identities" supabase/seed/test-access/00-test-access-personas.sql
 
