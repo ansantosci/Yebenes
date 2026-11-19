@@ -37,13 +37,13 @@ begin
  if own_auth<>0 then raise exception 'Family matrix: minors must not have Auth login, got %',own_auth; end if;
  select count(*) into same_team from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_2' where r.fecha_hasta is null;
  if same_team<2 then raise exception 'Family matrix: same-team siblings missing'; end if;
- select count(distinct i.equipo_id) into cross_team from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_3'
- join public.inscripciones i on i.jugador_id=r.jugador_id where r.fecha_hasta is null;
+ select count(distinct aje.equipo_id) into cross_team from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_3'
+ join public.inscripciones i on i.jugador_id=r.jugador_id join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null where r.fecha_hasta is null;
  if cross_team<2 then raise exception 'Family matrix: cross-team siblings missing'; end if;
  select count(*) into three_children from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_4' where r.fecha_hasta is null;
  if three_children<3 then raise exception 'Family matrix: three-child family missing'; end if;
  select count(distinct e.modalidad) into multimodal from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_5'
- join public.inscripciones i on i.jugador_id=r.jugador_id join public.equipos e on e.id=i.equipo_id where r.fecha_hasta is null;
+ join public.inscripciones i on i.jugador_id=r.jugador_id join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null join public.equipos e on e.id=aje.equipo_id where r.fecha_hasta is null;
  if multimodal<3 then raise exception 'Family matrix: F5/F7/F11 family missing'; end if;
  select count(*) into coach_tutor from public.entrenadores c join private.demo_access_identities a on a.persona_id=c.persona_id where a.key='tutor_family_6' and c.activo;
  if coach_tutor<1 then raise exception 'Family matrix: coach+tutor case missing'; end if;

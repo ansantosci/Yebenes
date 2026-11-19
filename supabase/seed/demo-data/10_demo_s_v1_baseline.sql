@@ -268,7 +268,8 @@ on conflict do nothing;
 with dual_players as (
   select j.persona_id,row_number() over(order by e.codigo,j.id) n
   from public.jugadores j join public.inscripciones i on i.jugador_id=j.id
-  join public.equipos e on e.id=i.equipo_id join public.temporadas t on t.id=i.temporada_id
+  join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id and aje.fecha_hasta is null
+  join public.equipos e on e.id=aje.equipo_id join public.temporadas t on t.id=i.temporada_id
   where t.estado='activa' and e.codigo in ('SEN-A','SEN-B','SEN-F') and j.activo
   order by e.codigo,j.id limit 4
 )
