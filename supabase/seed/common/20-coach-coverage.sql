@@ -5,26 +5,47 @@ begin;
 
 -- Ensure every active team has at least two effective active coach assignments.
 with active_teams as (
-  select e.id,e.codigo,row_number() over(order by e.codigo,e.id) rn
-  from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and e.activo
+  select e.id as team_id, e.codigo as team_code,
+         row_number() over(order by e.codigo,e.id) as team_rn
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  where t.estado='activa' and e.activo
 ), active_coaches as (
-  select c.id,row_number() over(order by c.id) rn,count(*) over() cnt
-  from public.entrenadores c where c.activo
+  select c.id as coach_id, row_number() over(order by c.id) as coach_rn
+  from public.entrenadores c
+  where c.activo
 ), missing as (
-  select t.*,greatest(0,2-count(a.id)) missing_count
-  from active_teams t left join public.asignaciones_entrenador_equipo a
-    on a.equipo_id=t.id and a.cancelada_at is null and a.fecha_desde<=date '2027-06-30'
-       and (a.fecha_hasta is null or a.fecha_hasta>=date '2026-09-01')
-  group by t.id,t.codigo,t.rn
+  select t.team_id,t.team_code,t.team_rn, greatest(0,2-count(distinct a.entrenador_id)) as missing_count
+  from active_teams t
+  left join public.asignaciones_entrenador_equipo a
+    on a.equipo_id=t.team_id and a.cancelada_at is null
+   and a.fecha_desde<=date '2027-06-30'
+   and (a.fecha_hasta is null or a.fecha_hasta>=date '2026-09-01')
+  group by t.team_id,t.team_code,t.team_rn
 ), slots as (
-  select m.*,g slot from missing m cross join lateral generate_series(1,m.missing_count) g
+  select m.team_id,m.team_code,m.team_rn,g as slot
+  from missing m
+  cross join lateral generate_series(1,m.missing_count) g
+), candidates as (
+  select s.team_id,s.team_code,s.team_rn,s.slot,c.coach_id,
+         row_number() over(partition by s.team_id,s.slot order by c.coach_rn) as candidate_rn
+  from slots s
+  cross join active_coaches c
+  where not exists (
+    select 1 from public.asignaciones_entrenador_equipo a
+    where a.equipo_id=s.team_id and a.entrenador_id=c.coach_id
+      and a.cancelada_at is null
+      and a.fecha_desde<=date '2027-06-30'
+      and (a.fecha_hasta is null or a.fecha_hasta>=date '2026-09-01')
+  )
 ), chosen as (
-  select s.*,c.id entrenador_id
-  from slots s join active_coaches c on c.rn=1+mod((s.rn*2+s.slot-3),c.cnt)
+  select team_id,team_code,team_rn,slot,coach_id
+  from candidates
+  where candidate_rn=slot
 )
 insert into public.asignaciones_entrenador_equipo(id,entrenador_id,equipo_id,rol,funcion,fecha_desde)
-select md5('canonical-coach-cover:'||ch.equipo_id::text||':'||ch.slot)::uuid,
-       ch.entrenador_id,ch.equipo_id,'Entrenador','second',date '2026-09-01'
+select md5('canonical-coach-cover:'||ch.team_id::text||':'||ch.slot)::uuid,
+       ch.coach_id,ch.team_id,'Entrenador','second',date '2026-09-01'
 from chosen ch
 on conflict(id) do update
 set entrenador_id=excluded.entrenador_id,
