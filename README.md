@@ -1,3 +1,11 @@
+# V96.4.10 - Resultados RFFM agrupados, refresco secuencial y PDF
+
+- Resultados del club se agrupa por categoría interna, integrando masculino y femenino en la misma sección.
+- `Actualizar todos` consulta equipos secuencialmente; mientras está activo deshabilita refrescos individuales y muestra progreso.
+- El refresco individual se mantiene por equipo cuando no hay actualización global en curso.
+- Exportar PDF reutiliza los datos ya cargados, incorpora escudos devueltos por RFFM y maqueta un informe de impresión inspirado en la herramienta Python histórica.
+- RESET TEST-S retira de forma explícita el fixture histórico `ECONOMIA 067 C / E067C`; el escenario ECONOMIA ya no lo recrea.
+
 ### V96.4.9 — Resultados RFFM sobre ModalUI y TEST-S sin equipo ECONOMIA 067 C
 
 - Migra `Resultados del club` a la familia `ModalUI`: cabecera común, body como único scroll y acciones en footer.

@@ -401,6 +401,13 @@ DO $$ declare t text; begin
     execute format('delete from public.%I x where exists (select 1 from private.test_dataset_entities e where e.dataset_id=$1 and e.table_name=$2 and e.entity_id=x.id)',t) using 'TEST-S',t;
   end loop;
 end $$;
+-- V96.4.10: retire the historical ECONOMIA 067 C fixture team.
+-- It was created by the old 067 scenario but equipos was intentionally never part of the generic TEST-S delete list.
+delete from public.equipos
+where codigo='E067C'
+  and nombre='ECONOMIA 067 C'
+  and id=private.test_uuid('econ067:team:c');
+
 select private.test_set_economia_reset_mode(false);
 
 select private.test_set_reception_delete_guard(true);
