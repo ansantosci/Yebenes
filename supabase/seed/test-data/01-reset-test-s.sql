@@ -391,6 +391,17 @@ delete from public.economia_cuota_temporada_config x
 where exists (select 1 from private.test_dataset_entities e
               where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
 
+-- Canonical coach coverage assignments are shared-layer rows. Remove them before
+-- deleting coach facets, including rows left by older versions without registry ownership.
+delete from public.asignaciones_entrenador_equipo a
+where a.id in (
+  select md5('canonical-coach-cover:'||e.id::text||':'||g)::uuid
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2) g
+  where t.estado='activa'
+);
+
 -- remaining registered entities use id as their primary key
 -- persona_participaciones_temporada and historico_participaciones_temporada are intentionally
 -- excluded here: lines above already delete both transitively by TEST-S person. Keeping them

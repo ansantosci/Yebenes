@@ -185,6 +185,7 @@ jobs:
             psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/15-authenticated-families.sql
           fi
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -c "insert into private.demo_dataset_entities(dataset_id,table_name,entity_id) select 'DEMO-S','asignaciones_entrenador_equipo',a.id from public.asignaciones_entrenador_equipo a join public.equipos e on e.id=a.equipo_id join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and a.id in (select md5('canonical-coach-cover:'||e2.id::text||':'||g)::uuid from public.equipos e2 join public.temporadas t2 on t2.id=e2.temporada_id cross join generate_series(1,2) g where t2.estado='activa') on conflict do nothing;"
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/15-test-baseline-parity.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql

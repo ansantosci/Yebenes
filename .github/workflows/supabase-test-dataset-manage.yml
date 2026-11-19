@@ -130,6 +130,7 @@ jobs:
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/15-authenticated-families.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -c "insert into private.test_dataset_entities(dataset_id,table_name,entity_id) select 'TEST-S','asignaciones_entrenador_equipo',a.id from public.asignaciones_entrenador_equipo a join public.equipos e on e.id=a.equipo_id join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and a.id in (select md5('canonical-coach-cover:'||e2.id::text||':'||g)::uuid from public.equipos e2 join public.temporadas t2 on t2.id=e2.temporada_id cross join generate_series(1,2) g where t2.estado='activa') on conflict do nothing;"
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql
