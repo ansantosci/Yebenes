@@ -23,10 +23,17 @@ with active_teams as (
   from slots s join active_coaches c on c.rn=1+mod((s.rn*2+s.slot-3),c.cnt)
 )
 insert into public.asignaciones_entrenador_equipo(id,entrenador_id,equipo_id,rol,funcion,fecha_desde)
-select md5('canonical-coach-cover:'||equipo_id::text||':'||slot)::uuid,entrenador_id,equipo_id,
-       'Entrenador','second',date '2026-09-01'
-from chosen
-on conflict(id) do update set entrenador_id=excluded.entrenador_id,equipo_id=excluded.equipo_id,fecha_hasta=null,cancelada_at=null;
+select md5('canonical-coach-cover:'||ch.equipo_id::text||':'||ch.slot)::uuid,
+       ch.entrenador_id,ch.equipo_id,'Entrenador','second',date '2026-09-01'
+from chosen ch
+on conflict(id) do update
+set entrenador_id=excluded.entrenador_id,
+    equipo_id=excluded.equipo_id,
+    rol=excluded.rol,
+    funcion=excluded.funcion,
+    fecha_desde=excluded.fecha_desde,
+    fecha_hasta=null,
+    cancelada_at=null;
 
 do $$
 declare uncovered integer; dual integer; multiteam integer; unassigned integer;
