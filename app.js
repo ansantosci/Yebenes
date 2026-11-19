@@ -2898,17 +2898,16 @@ function rffmClassificationHtml(c){if(!c?.position)return '<div class="rffm-empt
 let rffmBulkRefreshing=false;
 const rffmScorerPhotoCache=new Map();
 const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
-function rffmFederationCategoryLabel(team){
-  const raw=norm(dbCategoryName(team?.categoryId)||'');
 function normalizeRffmText(value){
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/[^A-Z0-9]+/g,' ')
     .trim();
 }
-
+function rffmFederationCategoryLabel(team){
+  const raw=normalizeRffmText(dbCategoryName(team?.categoryId)||'');
   if(/VETERAN/.test(raw)||/VET/.test(normalizeRffmText(team?.code||'')))return 'VETERANOS';
   if(/SENIOR|AFICIONADO/.test(raw))return 'AFICIONADO';
   if(/JUVENIL/.test(raw))return 'JUVENIL';
