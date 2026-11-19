@@ -60,6 +60,18 @@ insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
 values('TEST-S','equipacion_articulos',private.test_uuid('equip:art:cam-personalizada')) on conflict do nothing;
 update public.equipacion_articulos set marca_id=private.test_uuid('equip:brand:current') where codigo like 'TEST-EQ-%';
 
+-- Matrix v2.2 + 095: commercial metadata and one deterministic article-size restriction.
+update public.equipacion_articulos
+set modelo=case when codigo='TEST-EQ-CAM-PER' then 'TEST-S Personalizada 2026/27' else coalesce(modelo,'TEST-S Coleccion actual') end,
+    referencia_fabricante=case when codigo='TEST-EQ-CAM-PER' then 'TEST-S-REF-CAM-PER' else referencia_fabricante end
+where codigo like 'TEST-EQ-%';
+insert into public.equipacion_articulo_tallas(articulo_id,talla_id,activa)
+select private.test_uuid('equip:art:cam-personalizada'),tv.id,true
+from public.equipacion_tallaje_valores tv
+join public.equipacion_sistemas_tallaje st on st.id=tv.sistema_tallaje_id
+where st.codigo='ROPA' and tv.codigo='L'
+on conflict(articulo_id,talla_id) do update set activa=true;
+
 -- Packs.
 with s as (select id from public.temporadas where estado='activa' limit 1)
 insert into public.equipacion_packs(id,temporada_id,codigo,nombre,destinatario,modalidad,precio,activo)
@@ -202,7 +214,7 @@ insert into public.equipacion_pedido_lineas(id,pedido_id,articulo_id,talla,canti
 (private.test_uuid('equip:ol:1'),private.test_uuid('equip:order:1'),private.test_uuid('equip:art:cam-par'),'S',5,18),
 (private.test_uuid('equip:ol:2'),private.test_uuid('equip:order:1'),private.test_uuid('equip:art:pan-par'),'S',5,12),
 (private.test_uuid('equip:ol:3'),private.test_uuid('equip:order:2'),private.test_uuid('equip:art:cam-ent'),'XS',4,15),
-(private.test_uuid('equip:ol:4'),private.test_uuid('equip:order:2'),private.test_uuid('equip:art:pan-ent'),'XS',4,10)
+(private.test_uuid('equip:ol:4'),private.test_uuid('equip:order:2'),private.test_uuid('equip:art:pan-ent'),'2XS',4,10)
 on conflict(pedido_id,articulo_id,talla) where dorsal is null do update set cantidad_pedida=excluded.cantidad_pedida,precio_unitario=excluded.precio_unitario;
 insert into private.test_dataset_entities(dataset_id,table_name,entity_id) select 'TEST-S','equipacion_pedido_lineas',private.test_uuid('equip:ol:'||g) from generate_series(1,4) g on conflict do nothing;
 
@@ -575,16 +587,34 @@ begin
    perform private.equipacion_reservar_asignacion_lote(asgid,lotid,1);
  end if;
 
- -- Player 3 match pack: PENDING SUPPLIER through the existing open order, no free stock.
- select n.id,tp.talla_general into needid,talla
- from public.equipacion_necesidades n
- join public.equipacion_tallas_persona tp on tp.persona_id=n.persona_id and tp.temporada_id=n.temporada_id
- where n.id=(select private.test_uuid('equip:need:match:'||j.id::text)
-             from public.jugadores j join private.test_dataset_entities e on e.dataset_id='TEST-S' and e.table_name='jugadores' and e.entity_id=j.id order by j.id offset 2 limit 1);
+ -- Supplier-covered training pack: use the ACTUAL Matrix size-exception demand pan-ent / 2XS.
+ -- Order TEST-P-002 is cursado with 4 pan-ent / 2XS units pending and no 2XS stock/receipts, so 084 must
+ -- derive pedido_proveedor from: stock libre (0) < demanda (1) and stock + proveedor (4) >= demanda.
+ -- Select from equipacion_demanda_logistica itself so the fixture cannot drift from confirmed-size
+ -- exceptions or need-confirmation rules.
+ select d.necesidad_id,d.talla into needid,talla
+ from public.equipacion_demanda_logistica d
+ join public.equipacion_necesidades n on n.id=d.necesidad_id
+ join private.test_dataset_entities dn
+   on dn.dataset_id='TEST-S' and dn.table_name='equipacion_necesidades' and dn.entity_id=n.id
+ where n.pack_id=private.test_uuid('equip:pack:full')
+   and d.articulo_id=private.test_uuid('equip:art:pan-ent')
+   and d.talla='2XS'
+   and not exists (
+     select 1
+     from public.equipacion_asignaciones ea
+     where ea.necesidad_id=d.necesidad_id
+       and ea.articulo_id=d.articulo_id
+       and ea.talla=d.talla
+       and ea.estado<>'cancelada'
+   )
+ order by d.necesidad_id
+ limit 1;
  if needid is not null then
-   aid:=private.test_uuid('equip:art:cam-par'); asgid:=private.test_uuid('matrix:supplier:asg');
+   aid:=private.test_uuid('equip:art:pan-ent'); asgid:=private.test_uuid('matrix:supplier:asg');
    insert into public.equipacion_asignaciones(id,necesidad_id,articulo_id,talla,cantidad,estado,origen)
-   values(asgid,needid,aid,'S',1,'propuesta','manual') on conflict(id) do update set talla='S',estado='propuesta',reservado_at=null;
+   values(asgid,needid,aid,talla,1,'propuesta','manual')
+   on conflict(id) do update set necesidad_id=excluded.necesidad_id,articulo_id=excluded.articulo_id,talla=excluded.talla,estado='propuesta',reservado_at=null;
  end if;
 
  -- Player 4 already supplies the COMPLETED training pack + pending separate match pack.
@@ -612,6 +642,7 @@ on conflict do nothing;
 
 -- Matrix assertions: at least one delivered, prepared, available and supplier-covered assignment.
 do $$
+declare r record;
 begin
  if not exists(select 1 from public.equipacion_estado_operativo where temporada_id=(select id from public.temporadas where estado='activa' limit 1) and estado_operativo='entregada')
  then raise exception 'EQUIPACIONES reparto matrix: delivered case missing'; end if;
@@ -824,6 +855,14 @@ begin
      and l.marca_id=private.test_uuid('equip:brand:historic') and l.temporada_origen_id=private.test_uuid('equip:season:historic')
      and l.temporada_origen_id<>v.temporada_id and v.temporada_id=tid and v.estado='no_valido') then
    raise exception 'EQUIPACIONES Matrix v2.2: historic invalid stock missing'; end if;
+
+ -- 095 catalog metadata: existing Matrix clothing is ROPA and personalized reference is explicitly L-only.
+ if not exists(select 1 from public.equipacion_articulos a join public.equipacion_sistemas_tallaje st on st.id=a.sistema_tallaje_id
+   where a.id=private.test_uuid('equip:art:cam-personalizada') and st.codigo='ROPA' and a.modelo='TEST-S Personalizada 2026/27' and a.referencia_fabricante='TEST-S-REF-CAM-PER') then
+   raise exception 'EQUIPACIONES Matrix v2.2: 095 article commercial metadata missing'; end if;
+ if not private.equipacion_articulo_admite_talla(private.test_uuid('equip:art:cam-personalizada'),'L')
+    or private.equipacion_articulo_admite_talla(private.test_uuid('equip:art:cam-personalizada'),'M') then
+   raise exception 'EQUIPACIONES Matrix v2.2: 095 article size restriction invalid'; end if;
 
  -- Two different existing TEST-S players from different teams may share L/#8 in the same personalized order.
  art:=private.test_uuid('equip:art:cam-personalizada');

@@ -84,25 +84,32 @@ jobs:
           test -s supabase/functions/gestionar-acceso/index.ts
           test -s supabase/functions/mantenimiento-programado/index.ts
           test -s supabase/functions/procesar-notificaciones/index.ts
+          test -s supabase/functions/rffm-resultados/index.ts
           echo 'Edge Function sources validated.'
 
       - name: Deploy gestionar-acceso
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_REF: ${{ steps.project.outputs.project_ref }}
-        run: supabase functions deploy gestionar-acceso --project-ref "$PROJECT_REF"
+        run: supabase functions deploy gestionar-acceso --remote="$PROJECT_REF" --yes
 
       - name: Deploy mantenimiento-programado
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_REF: ${{ steps.project.outputs.project_ref }}
-        run: supabase functions deploy mantenimiento-programado --project-ref "$PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy mantenimiento-programado --remote="$PROJECT_REF" --yes --no-verify-jwt
 
       - name: Deploy procesar-notificaciones
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           PROJECT_REF: ${{ steps.project.outputs.project_ref }}
-        run: supabase functions deploy procesar-notificaciones --project-ref "$PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy procesar-notificaciones --remote="$PROJECT_REF" --yes --no-verify-jwt
+
+      - name: Deploy rffm-resultados
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ steps.project.outputs.project_ref }}
+        run: supabase functions deploy rffm-resultados --remote="$PROJECT_REF" --yes
 
       - name: Deployment completed
         run: |

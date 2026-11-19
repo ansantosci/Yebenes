@@ -1,4 +1,4 @@
-const APP_VERSION='96.3.2';
+const APP_VERSION='96.4.21';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -59,6 +59,83 @@ function renderListPagination(key,total,totalAll,rerender){
 }
 
 const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();
+
+// V96.4.3: familia de componentes de ventana. Toda nueva ventana compone sobre ModalUI.
+const ModalUI={
+  enhance(dialog,{size='default'}={}){
+    if(!dialog)return dialog;
+    dialog.classList.add('app-modal');
+    dialog.dataset.modalSize=size;
+    const body=dialog.querySelector('.app-modal__body');
+    if(body)body.classList.add('modal-ui__body');
+    dialog.querySelector('.modal-head')?.classList.add('app-modal__head');
+    dialog.querySelectorAll('.modal-tabs').forEach(x=>x.classList.add('app-modal__tabs'));
+    dialog.querySelectorAll('.form-section-title').forEach(x=>x.classList.add('app-form-section'));
+    dialog.querySelectorAll('.form-grid').forEach(x=>x.classList.add('app-form-grid'));
+    dialog.querySelectorAll('.modal-actions').forEach(x=>x.classList.add('app-modal__actions'));
+    return dialog;
+  },
+  // V96.4.11: canonical modal shell. Features provide content/actions; ModalUI owns anatomy and behavior.
+  mount(dialog,{size='default',eyebrow='',title='',subtitle='',body='',actions=[],closeId='',bodyId='',bodyClass='',actionsClass=''}={}){
+    if(!dialog)return null;
+    dialog.className=`app-modal modal-ui-shell${dialog.classList.contains('rffm-results-modal')?' rffm-results-modal':''}`;
+    dialog.dataset.modalSize=size;
+    const closeButtonId=closeId?` id="${esc(closeId)}"`:'';
+    const bodyAttr=bodyId?` id="${esc(bodyId)}"`:'';
+    const actionHtml=(actions||[]).map(a=>{
+      const cls=[a.primary?'primary':'secondary',a.className||''].filter(Boolean).join(' ');
+      const id=a.id?` id="${esc(a.id)}"`:'';
+      const attrs=a.attrs?` ${a.attrs}`:'';
+      return `<button type="button" class="${esc(cls)}"${id}${attrs}>${esc(a.label||'Acción')}</button>`;
+    }).join('');
+    dialog.innerHTML=`<div class="app-modal__head"><div class="app-modal__identity"><span class="eyebrow dark">${esc(eyebrow)}</span><h2>${esc(title)}</h2>${subtitle?`<div class="meta">${esc(subtitle)}</div>`:''}</div><button type="button" class="icon-button modal-ui-close"${closeButtonId} aria-label="Cerrar">✕</button></div><div class="app-modal__body ${esc(bodyClass)}"${bodyAttr}>${body||''}</div>${actionHtml?`<div class="app-modal__actions modal-ui-actions ${esc(actionsClass)}">${actionHtml}</div>`:''}`;
+    const close=()=>this.close(dialog);
+    dialog.querySelector('.modal-ui-close')?.addEventListener('click',close);
+    if(dialog.dataset.modalShellBound!=='1'){
+      dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
+      dialog.addEventListener('close',()=>{dialog.dataset.modalBusy='0';dialog.querySelectorAll('[data-was-disabled]').forEach(el=>{el.disabled=el.dataset.wasDisabled==='1';delete el.dataset.wasDisabled})});
+      dialog.dataset.modalShellBound='1';
+    }
+    return {dialog,body:dialog.querySelector('.app-modal__body'),actions:dialog.querySelector('.app-modal__actions')};
+  },
+  open(dialog){if(dialog&&!dialog.open)dialog.showModal()},
+  close(dialog){if(dialog?.open)dialog.close()},
+  setProgress(dialog,{label='',busy=true}={}){
+    if(!dialog)return;
+    dialog.dataset.modalBusy=busy?'1':'0';
+    const el=dialog.querySelector('[data-modal-progress]');if(el)el.textContent=label||'';
+  },
+  bindTabs(root,{tabSelector='[data-modal-tab]',panelSelector='[data-modal-panel]',active='active'}={}){
+    if(!root)return;
+    const tabs=[...root.querySelectorAll(tabSelector)],panels=[...root.querySelectorAll(panelSelector)];
+    const select=key=>{tabs.forEach(t=>{const on=t.dataset.modalTab===key;t.classList.toggle(active,on);t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1});panels.forEach(p=>{p.hidden=p.dataset.modalPanel!==key})};
+    if(root.dataset.modalTabsBound!=='1'){tabs.forEach(t=>t.addEventListener('click',()=>root._modalSelectTab?.(t.dataset.modalTab)));root.dataset.modalTabsBound='1'}
+    root._modalSelectTab=select;
+    return select;
+  },
+  setStatus(el,{tone='neutral',title='',message=''}={}){
+    if(!el)return;
+    el.className=`app-status-panel app-status-panel--${tone}`;
+    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
+  },
+  setActionEnabled(button,enabled,reason=''){
+    if(!button)return;button.disabled=!enabled;button.setAttribute('aria-disabled',String(!enabled));button.title=!enabled&&reason?reason:'';
+  },
+  setBusy(root,busy,{label='Procesando…'}={}){
+    if(!root)return;
+    root.dataset.modalBusy=busy?'1':'0';
+    root.querySelectorAll('button').forEach(el=>{
+      if(el.matches('[data-busy-keep]'))return;
+      if(busy){el.dataset.wasDisabled=el.disabled?'1':'0';el.disabled=true}else if(el.dataset.wasDisabled==='0'){el.disabled=false;delete el.dataset.wasDisabled}else delete el.dataset.wasDisabled;
+    });
+    const primary=root.querySelector('[data-busy-label]');
+    if(primary){if(busy){primary.dataset.idleLabel=primary.textContent;primary.textContent=label}else if(primary.dataset.idleLabel){primary.textContent=primary.dataset.idleLabel;delete primary.dataset.idleLabel}}
+  }
+};
+function withTimeout(promise,ms,message='La operación ha tardado demasiado. Vuelve a intentarlo.'){
+  let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>{const e=new Error(message);e.code='TIMEOUT';reject(e)},ms)});
+  return Promise.race([Promise.resolve(promise).finally(()=>clearTimeout(timer)),timeout]);
+}
 
 function renderEnvironmentBadge(){
   const badge=document.getElementById('environmentBadge');
@@ -504,7 +581,7 @@ const seedCoaches=[
 let users=[],players=[],persons=[],seasons=[],categories=[],teams=[],inscriptions=[],representations=[],playerTeams=[],medicals=[],coaches=[],statusHistory=[],audit=[],currentUser=null,currentRole=null,currentSeasonId='s-2026';
 let dbCoachesLoaded=false;
 let clubQuickFilter='all',medicalQuickFilter='all';
-let dbSeasons=[],dbCategories=[],dbTeams=[],dbCategoryRules=[],dbEconomicConfigs=[],dbPersons=[],dbPersonRoles=[],dbRoleCatalog=[],dbStructureLoaded=false;
+let dbSeasons=[],dbCategories=[],dbTeams=[],dbCategoryRules=[],dbEconomicConfigs=[],dbFederationIntegrations=[],dbPersons=[],dbPersonRoles=[],dbRoleCatalog=[],dbStructureLoaded=false;
 let dbCoachFormations=[],dbCoachLicenses=[],dbCoachSeasonRows=[],dbCoachAvailability=[],dbCoachPrivacy=[],dbTeamSchedules=[];
 let remoteClubPlayers=[],selectedRemotePlayerId=null;
 let selectedEconomicTeamId=null,selectedEconomicPlayerId=null,economicReturnPlayerId=null;
@@ -617,20 +694,23 @@ function playerVM(p){const i=inscriptionFor(p.id);const ta=activeTeamAssignment(
 
 async function loadSupabaseStructure(){
   if(!sb||!currentUser)return;
-  const [seasonRes,catRes,teamRes,ruleRes]=await Promise.all([
+  const [seasonRes,catRes,teamRes,ruleRes,fedRes]=await Promise.all([
     sb.from('temporadas').select('id,nombre,anio_inicio,anio_fin,fecha_inicio,fecha_fin,estado').order('anio_inicio',{ascending:false}),
     sb.from('categorias').select('id,codigo,nombre,orden,activo').order('orden',{ascending:true}),
     sb.from('equipos').select('id,temporada_id,categoria_id,nombre,codigo,genero,modalidad,activo').order('nombre',{ascending:true}),
-    sb.from('reglas_categoria_temporada').select('temporada_id,categoria_id,anio_nacimiento_desde,anio_nacimiento_hasta,activo')
+    sb.from('reglas_categoria_temporada').select('temporada_id,categoria_id,anio_nacimiento_desde,anio_nacimiento_hasta,activo'),
+    sb.from('equipo_integraciones_federacion').select('id,equipo_id,proveedor,competition_id,group_id,game_type,external_team_id,config,activo,ultima_validacion_at,ultima_validacion_ok,ultima_validacion_mensaje').eq('proveedor','RFFM')
   ]);
   if(seasonRes.error)throw seasonRes.error;
   if(catRes.error)throw catRes.error;
   if(teamRes.error)throw teamRes.error;
   if(ruleRes.error)throw ruleRes.error;
+  if(fedRes.error)throw fedRes.error;
   dbSeasons=(seasonRes.data||[]).map(x=>({id:x.id,name:x.nombre,startDate:x.fecha_inicio,endDate:x.fecha_fin,status:x.estado,active:x.estado!=='cerrada'}));
   dbCategories=(catRes.data||[]).map(x=>({id:x.id,code:x.codigo,name:x.nombre,order:x.orden,active:x.activo!==false}));
   dbTeams=(teamRes.data||[]).map(x=>({id:x.id,seasonId:x.temporada_id,categoryId:x.categoria_id,name:x.nombre,code:x.codigo,gender:x.genero,modality:x.modalidad,active:x.activo!==false}));
   dbCategoryRules=(ruleRes.data||[]).map(x=>({seasonId:x.temporada_id,categoryId:x.categoria_id,from:x.anio_nacimiento_desde,to:x.anio_nacimiento_hasta,active:x.activo!==false}));
+  dbFederationIntegrations=fedRes.data||[];
   dbStructureLoaded=true;
   renderSeasonContextHeader();
   await loadSupabaseCoaches();
@@ -1623,9 +1703,10 @@ function setConfirmationContext(email='',message=''){const box=$('#confirmationC
 function clearConfirmationContext(){const box=$('#confirmationContext');if(box)box.classList.add('hidden')}
 function showAuth(mode='login'){ hideSessionRestoring();$('#authScreen').classList.remove('hidden');$('#appShell').classList.add('hidden');const login=mode==='login';$('#loginForm').classList.toggle('hidden',!login);$('#familySignupForm').classList.toggle('hidden',login);$('#showLogin').classList.toggle('active',login);$('#showFamilySignup').classList.toggle('active',!login);$('#authSeasonLabel').textContent=currentSeason()?.name||'2026/2027';if(!login)clearConfirmationContext() }
 
-let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[],assignments:[],deliveries:[],seasonPeople:[],stockLots:[],deliverySummary:[],operational:[]};
+let equipmentRows={needs:[],stock:[],purchase:[],orders:[],numbers:[],sizes:[],exceptions:[],packs:[],articles:[],players:[],coaches:[],people:[],teams:[],assignments:[],deliveries:[],seasonPeople:[],stockLots:[],deliverySummary:[],operational:[],providers:null,brands:null,providerSeasons:null,allArticles:null,allPacks:null,packArticles:null,sizingSystems:null,sizingValues:null,articleSizes:null};
+let equipmentOrderDraftLines=[];
 const EQUIPMENT_TAB_KEY='yebenes:equipment:tab';
-const EQUIPMENT_TABS=new Set(['summary','needs','stock','orders','deliveries']);
+const EQUIPMENT_TABS=new Set(['summary','needs','stock','orders','deliveries','config']);
 function storedEquipmentTab(){
   try{const v=localStorage.getItem(EQUIPMENT_TAB_KEY);if(v==='numbers'){localStorage.setItem(EQUIPMENT_TAB_KEY,'deliveries');return 'deliveries'}return EQUIPMENT_TABS.has(v)?v:'summary'}catch{return 'summary'}
 }
@@ -1656,7 +1737,7 @@ async function loadEquipmentData(options={}){
       sb.from('equipacion_tallas_persona').select('*').eq('temporada_id',season),
       sb.from('equipacion_tallas_excepcion').select('*'),
       sb.from('equipacion_packs').select('*').eq('temporada_id',season),
-      sb.from('equipacion_articulos').select('*').eq('activo',true).order('nombre',{ascending:true}),
+      sb.from('equipacion_articulos').select('*').order('nombre',{ascending:true}),
       sb.from('jugadores').select('id,persona_id'),
       sb.from('entrenadores').select('id,persona_id'),
       sb.from('personas').select('id,nombre,primer_apellido,segundo_apellido'),
@@ -1933,6 +2014,151 @@ function renderEquipmentOperations(c,deliveryGroups){
   $$('[data-eq-direct-displace]').forEach(x=>x.addEventListener('click',()=>equipmentDirectDeliverAssignment(x.dataset.eqDirectDisplace,{allowDisplacement:true})));
 }
 
+
+async function equipmentEnsureCatalogs(){
+  if(equipmentRows.providers&&equipmentRows.brands&&equipmentRows.providerSeasons)return;
+  const season=dbContextSeason()?.id;
+  const [pr,br,ps]=await Promise.all([
+    sb.from('equipacion_proveedores').select('*').order('nombre'),
+    sb.from('marcas').select('*').order('nombre'),
+    sb.from('equipacion_proveedor_temporadas').select('*').eq('temporada_id',season).eq('ambito','equipaciones')
+  ]);
+  const bad=[pr,br,ps].find(x=>x.error);if(bad)throw bad.error;
+  equipmentRows.providers=pr.data||[];equipmentRows.brands=br.data||[];equipmentRows.providerSeasons=ps.data||[];
+}
+async function equipmentEnsureConfiguration(){
+  await equipmentEnsureCatalogs();
+  if(equipmentRows.allArticles&&equipmentRows.allPacks&&equipmentRows.packArticles&&equipmentRows.sizingSystems&&equipmentRows.sizingValues&&equipmentRows.articleSizes)return;
+  const season=dbContextSeason()?.id;
+  const [ar,pk,pa,ss,sv,as]=await Promise.all([
+    sb.from('equipacion_articulos').select('*').order('nombre').order('codigo'),
+    sb.from('equipacion_packs').select('*').eq('temporada_id',season).order('nombre'),
+    sb.from('equipacion_pack_articulos').select('*').order('orden'),
+    sb.from('equipacion_sistemas_tallaje').select('*').order('orden'),
+    sb.from('equipacion_tallaje_valores').select('*').order('orden'),
+    sb.from('equipacion_articulo_tallas').select('*')
+  ]);
+  const bad=[ar,pk,pa,ss,sv,as].find(x=>x.error);if(bad)throw bad.error;
+  equipmentRows.allArticles=ar.data||[];equipmentRows.allPacks=pk.data||[];equipmentRows.packArticles=pa.data||[];
+  equipmentRows.sizingSystems=ss.data||[];equipmentRows.sizingValues=sv.data||[];equipmentRows.articleSizes=as.data||[];
+}
+function equipmentResetConfigurationCache(){equipmentRows.providers=null;equipmentRows.brands=null;equipmentRows.providerSeasons=null;equipmentRows.allArticles=null;equipmentRows.allPacks=null;equipmentRows.packArticles=null;equipmentRows.sizingSystems=null;equipmentRows.sizingValues=null;equipmentRows.articleSizes=null}
+function equipmentBrandName(id){return equipmentRows.brands?.find(x=>x.id===id)?.nombre||'Sin marca'}
+function equipmentProviderName(id){return equipmentRows.providers?.find(x=>x.id===id)?.nombre||'Sin proveedor'}
+function equipmentSystemName(id){return equipmentRows.sizingSystems?.find(x=>x.id===id)?.nombre||'—'}
+function equipmentArticleLabel(a){if(!a)return 'Artículo';return [a.nombre,equipmentBrandName(a.marca_id),a.modelo,a.codigo].filter(Boolean).join(' · ')}
+function equipmentAllowedSizes(article){
+  if(!article)return [];
+  const values=(equipmentRows.sizingValues||[]).filter(x=>x.sistema_tallaje_id===article.sistema_tallaje_id&&x.activo);
+  const specific=(equipmentRows.articleSizes||[]).filter(x=>x.articulo_id===article.id&&x.activa);
+  return specific.length?values.filter(v=>specific.some(x=>x.talla_id===v.id)):values;
+}
+function equipmentSizeOptions(article,selected=''){const vals=equipmentAllowedSizes(article);return vals.map(v=>`<option value="${esc(v.codigo)}" ${v.codigo===selected?'selected':''}>${esc(v.nombre)}</option>`).join('')}
+function equipmentDynamicDialog(title,body,{eyebrow='EQUIPACIONES',wide=false}={}){
+  const d=document.createElement('dialog');d.className=`account-access-modal equipment-form-modal${wide?' wide':''}`;
+  d.innerHTML=`<form method="dialog" class="admin-detail"><div class="modal-head"><div><span class="eyebrow dark">${esc(eyebrow)}</span><h2>${esc(title)}</h2></div><button type="button" class="icon-button eq-dialog-close">✕</button></div>${body}</form>`;
+  document.body.appendChild(d);d.querySelector('.eq-dialog-close').onclick=()=>d.close();d.addEventListener('close',()=>d.remove(),{once:true});d.showModal();return d;
+}
+async function equipmentOpenCatalogs(){
+  try{await equipmentEnsureCatalogs()}catch(e){alert(`No se han podido cargar proveedores y marcas: ${e.message||e}`);return}
+  const render=()=>{
+    const providers=equipmentRows.providers||[],brands=equipmentRows.brands||[];
+    const d=equipmentDynamicDialog('Proveedores y marcas',`<p class="meta">Catálogos históricos del Club. Desactivar conserva pedidos, lotes y trazabilidad.</p><div class="equipment-catalog-grid"><section><div class="section-head"><strong>Proveedores</strong><button type="button" class="primary small" id="eqAddProvider">+ Proveedor</button></div><div class="equipment-catalog-list">${providers.map(x=>`<button type="button" class="equipment-catalog-row" data-provider="${x.id}"><span><strong>${esc(x.nombre)}</strong><small>${esc(x.contacto||x.email||x.telefono||'Sin contacto')}</small></span>${equipmentStatusBadge(x.activo?'Activo':'Inactivo',x.activo?'complete':'muted')}</button>`).join('')||'<p class="meta">Sin proveedores.</p>'}</div></section><section><div class="section-head"><strong>Marcas</strong><button type="button" class="primary small" id="eqAddBrand">+ Marca</button></div><div class="equipment-catalog-list">${brands.map(x=>`<button type="button" class="equipment-catalog-row" data-brand="${x.id}"><span><strong>${esc(x.nombre)}</strong><small>${esc(x.observaciones||'')}</small></span>${equipmentStatusBadge(x.activo?'Activa':'Inactiva',x.activo?'complete':'muted')}</button>`).join('')||'<p class="meta">Sin marcas.</p>'}</div></section></div>`,{wide:true});
+    const reopen=async()=>{d.close();equipmentResetConfigurationCache();await equipmentEnsureCatalogs();render()};
+    d.querySelector('#eqAddProvider').onclick=()=>equipmentEditProvider(null,reopen,d);d.querySelector('#eqAddBrand').onclick=()=>equipmentEditBrand(null,reopen,d);
+    d.querySelectorAll('[data-provider]').forEach(b=>b.onclick=()=>equipmentEditProvider(providers.find(x=>x.id===b.dataset.provider),reopen,d));
+    d.querySelectorAll('[data-brand]').forEach(b=>b.onclick=()=>equipmentEditBrand(brands.find(x=>x.id===b.dataset.brand),reopen,d));
+  };render();
+}
+function equipmentEditProvider(row,reopen,parent){
+  const d=equipmentDynamicDialog(row?'Editar proveedor':'Nuevo proveedor',`<div class="form-grid"><label>Nombre<input name="nombre" required value="${esc(row?.nombre||'')}"></label><label>Nombre fiscal<input name="nombre_fiscal" value="${esc(row?.nombre_fiscal||'')}"></label><label>NIF<input name="nif" value="${esc(row?.nif||'')}"></label><label>Contacto<input name="contacto" value="${esc(row?.contacto||'')}"></label><label>Email<input name="email" type="email" value="${esc(row?.email||'')}"></label><label>Teléfono<input name="telefono" value="${esc(row?.telefono||'')}"></label><label>Web<input name="url" value="${esc(row?.url||'')}"></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label><label>Temporada actual<select name="season_enabled"><option value="true">Habilitado</option><option value="false">No habilitado</option></select></label><label>Proveedor principal<select name="principal"><option value="false">No</option><option value="true">Sí</option></select></label></div><label>Observaciones<textarea name="observaciones" rows="3">${esc(row?.observaciones||'')}</textarea></label><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button class="primary" type="submit">Guardar</button></div>`);
+  const rel=equipmentRows.providerSeasons?.find(x=>x.proveedor_id===row?.id);d.querySelector('[name=activo]').value=String(row?.activo??true);d.querySelector('[name=season_enabled]').value=String(rel?.activo??true);d.querySelector('[name=principal]').value=String(rel?.principal??false);d.querySelector('.cancel').onclick=()=>d.close();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget, payload={nombre:f.nombre.value.trim(),nombre_fiscal:f.nombre_fiscal.value.trim()||null,nif:f.nif.value.trim()||null,contacto:f.contacto.value.trim()||null,email:f.email.value.trim()||null,telefono:f.telefono.value.trim()||null,url:f.url.value.trim()||null,activo:f.activo.value==='true',observaciones:f.observaciones.value.trim()||null};let providerId=row?.id;let q=row?sb.from('equipacion_proveedores').update(payload).eq('id',row.id).select('id').single():sb.from('equipacion_proveedores').insert(payload).select('id').single();const {data,error}=await q;if(error){alert(error.message);return}providerId=providerId||data?.id;const season=dbContextSeason()?.id;if(f.principal.value==='true'){const clear=await sb.from('equipacion_proveedor_temporadas').update({principal:false}).eq('temporada_id',season).eq('ambito','equipaciones').neq('proveedor_id',providerId);if(clear.error){alert(clear.error.message);return}}const {error:relError}=await sb.from('equipacion_proveedor_temporadas').upsert({proveedor_id:providerId,temporada_id:season,ambito:'equipaciones',activo:f.season_enabled.value==='true',principal:f.principal.value==='true'},{onConflict:'proveedor_id,temporada_id,ambito'});if(relError){alert(relError.message);return}d.close();parent?.close();await reopen()};
+}
+function equipmentEditBrand(row,reopen,parent){
+  const d=equipmentDynamicDialog(row?'Editar marca':'Nueva marca',`<div class="form-grid"><label>Nombre<input name="nombre" required value="${esc(row?.nombre||'')}"></label><label>Estado<select name="activo"><option value="true">Activa</option><option value="false">Inactiva</option></select></label></div><label>Observaciones<textarea name="observaciones" rows="3">${esc(row?.observaciones||'')}</textarea></label><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button class="primary" type="submit">Guardar</button></div>`);
+  d.querySelector('[name=activo]').value=String(row?.activo??true);d.querySelector('.cancel').onclick=()=>d.close();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,payload={nombre:f.nombre.value.trim(),activo:f.activo.value==='true',observaciones:f.observaciones.value.trim()||null};const q=row?sb.from('marcas').update(payload).eq('id',row.id):sb.from('marcas').insert(payload);const {error}=await q;if(error){alert(error.message);return}d.close();parent?.close();await reopen()};
+}
+function equipmentConfigNav(active){return `<div class="equipment-config-nav">${[['articles','Artículos'],['packs','Packs'],['providers','Proveedores'],['brands','Marcas'],['sizes','Tallajes']].map(([k,l])=>`<button type="button" class="secondary small ${active===k?'active':''}" data-eq-config="${k}">${l}</button>`).join('')}</div>`}
+let equipmentConfigSection='articles';
+async function equipmentRenderConfiguration(c){
+  try{await equipmentEnsureConfiguration()}catch(e){c.innerHTML=`<div class="equipment-load-state error"><strong>No se ha podido cargar Configuración</strong><p>${esc(e.message||e)}</p></div>`;return}
+  const articles=equipmentRows.allArticles||[],packs=equipmentRows.allPacks||[],brands=equipmentRows.brands||[],providers=equipmentRows.providers||[];
+  let body='';
+  if(equipmentConfigSection==='articles') body=`<div class="section-head"><div><strong>Referencias de artículo</strong><div class="meta">Una referencia física puede reutilizarse en varias temporadas. Si cambia modelo/marca, crea otra referencia y conserva la anterior.</div></div><button class="primary small" id="eqAddArticle">+ Artículo</button></div><div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Código</th><th>Marca</th><th>Modelo / colección</th><th>Ref. fabricante</th><th>Tallaje</th><th>Estado</th></tr></thead><tbody>${articles.map(a=>`<tr class="equipment-config-row" data-eq-article="${a.id}"><td><strong>${esc(a.nombre)}</strong>${a.personalizable_dorsal?'<small>Dorsal personalizable</small>':''}</td><td>${esc(a.codigo)}</td><td>${esc(equipmentBrandName(a.marca_id))}</td><td>${esc(a.modelo||'—')}</td><td>${esc(a.referencia_fabricante||'—')}</td><td>${esc(equipmentSystemName(a.sistema_tallaje_id))}</td><td>${equipmentStatusBadge(a.activo?'Activo':'Inactivo',a.activo?'complete':'muted')}</td></tr>`).join('')||'<tr><td colspan="7">Sin artículos.</td></tr>'}</tbody></table></div>`;
+  if(equipmentConfigSection==='packs') body=`<div class="section-head"><div><strong>Packs de ${esc(dbContextSeason()?.name||'temporada')}</strong><div class="meta">La composición pertenece a la temporada. Puede reutilizar referencias de artículos de temporadas anteriores.</div></div><button class="primary small" id="eqAddPack">+ Pack</button></div><div class="equipment-config-cards">${packs.map(p=>{const rows=(equipmentRows.packArticles||[]).filter(x=>x.pack_id===p.id).sort((a,b)=>a.orden-b.orden);return `<button type="button" class="equipment-config-card" data-eq-pack="${p.id}"><span><strong>${esc(p.nombre)}</strong><small>${esc(p.codigo)} · ${esc(p.destinatario)} · ${esc(p.modalidad)}</small><small>${rows.length?rows.map(x=>`${x.cantidad}× ${esc(equipmentArticleLabel(articles.find(a=>a.id===x.articulo_id)))}`).join(' · '):'Sin composición'}</small></span>${equipmentStatusBadge(p.activo?'Activo':'Inactivo',p.activo?'complete':'muted')}</button>`}).join('')||'<p class="meta">Sin packs en esta temporada.</p>'}</div>`;
+  if(equipmentConfigSection==='providers') body=`<div class="section-head"><div><strong>Proveedores</strong><div class="meta">Pueden conservarse inactivos para histórico y habilitarse por temporada.</div></div><button class="primary small" id="eqAddProviderConfig">+ Proveedor</button></div><div class="equipment-catalog-list">${providers.map(x=>{const rel=equipmentRows.providerSeasons?.find(r=>r.proveedor_id===x.id);return `<button type="button" class="equipment-catalog-row" data-provider="${x.id}"><span><strong>${esc(x.nombre)}</strong><small>${rel?.activo?'Habilitado esta temporada':'No habilitado'}${rel?.principal?' · Principal':''}</small></span>${equipmentStatusBadge(x.activo?'Activo':'Inactivo',x.activo?'complete':'muted')}</button>`}).join('')||'<p class="meta">Sin proveedores.</p>'}</div>`;
+  if(equipmentConfigSection==='brands') body=`<div class="section-head"><div><strong>Marcas</strong><div class="meta">La marca pertenece a la referencia física del artículo, no al pack.</div></div><button class="primary small" id="eqAddBrandConfig">+ Marca</button></div><div class="equipment-catalog-list">${brands.map(x=>`<button type="button" class="equipment-catalog-row" data-brand="${x.id}"><span><strong>${esc(x.nombre)}</strong><small>${esc(x.observaciones||'')}</small></span>${equipmentStatusBadge(x.activo?'Activa':'Inactiva',x.activo?'complete':'muted')}</button>`).join('')||'<p class="meta">Sin marcas.</p>'}</div>`;
+  if(equipmentConfigSection==='sizes') body=`<div class="section-head"><div><strong>Sistemas de tallaje</strong><div class="meta">Catálogo transversal. Ropa, balones y artículos sin talla pueden usar escalas distintas.</div></div><button class="primary small" id="eqAddSizingSystem">+ Sistema</button></div><div class="equipment-config-cards">${(equipmentRows.sizingSystems||[]).map(sys=>`<button type="button" class="equipment-config-card" data-eq-system="${sys.id}"><span><strong>${esc(sys.nombre)}</strong><small>${esc(sys.codigo)}</small><small>${(equipmentRows.sizingValues||[]).filter(v=>v.sistema_tallaje_id===sys.id&&v.activo).map(v=>esc(v.nombre)).join(' · ')||'Sin valores'}</small></span>${equipmentStatusBadge(sys.activo?'Activo':'Inactivo',sys.activo?'complete':'muted')}</button>`).join('')}</div>`;
+  c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Modelo de equipaciones</span><h2>Configuración</h2><p class="meta">Define primero artículos y packs; Pedidos consume esta configuración y no inventa la composición.</p></div></div>${equipmentConfigNav(equipmentConfigSection)}<div class="equipment-config-body">${body}</div>`;
+  c.querySelectorAll('[data-eq-config]').forEach(b=>b.onclick=()=>{equipmentConfigSection=b.dataset.eqConfig;equipmentRenderConfiguration(c)});
+  c.querySelector('#eqAddArticle')?.addEventListener('click',()=>equipmentEditArticle(null));c.querySelectorAll('[data-eq-article]').forEach(r=>r.onclick=()=>equipmentEditArticle(articles.find(a=>a.id===r.dataset.eqArticle)));
+  c.querySelector('#eqAddPack')?.addEventListener('click',()=>equipmentEditPack(null));c.querySelectorAll('[data-eq-pack]').forEach(r=>r.onclick=()=>equipmentEditPack(packs.find(p=>p.id===r.dataset.eqPack)));
+  const refresh=async()=>{equipmentResetConfigurationCache();await equipmentRenderConfiguration(c)};
+  c.querySelector('#eqAddProviderConfig')?.addEventListener('click',()=>equipmentEditProvider(null,refresh,null));c.querySelectorAll('[data-provider]').forEach(r=>r.onclick=()=>equipmentEditProvider(providers.find(x=>x.id===r.dataset.provider),refresh,null));
+  c.querySelector('#eqAddBrandConfig')?.addEventListener('click',()=>equipmentEditBrand(null,refresh,null));c.querySelectorAll('[data-brand]').forEach(r=>r.onclick=()=>equipmentEditBrand(brands.find(x=>x.id===r.dataset.brand),refresh,null));
+  c.querySelector('#eqAddSizingSystem')?.addEventListener('click',()=>equipmentEditSizingSystem(null));c.querySelectorAll('[data-eq-system]').forEach(r=>r.onclick=()=>equipmentEditSizingSystem((equipmentRows.sizingSystems||[]).find(x=>x.id===r.dataset.eqSystem)));
+}
+async function equipmentEditArticle(row){
+  await equipmentEnsureConfiguration();const brands=equipmentRows.brands||[],systems=(equipmentRows.sizingSystems||[]).filter(x=>x.activo||x.id===row?.sistema_tallaje_id);
+  const d=equipmentDynamicDialog(row?'Editar artículo':'Nuevo artículo',`<p class="meta">El artículo representa una referencia física/comercial. Si cambia de marca o modelo de forma relevante, crea una nueva referencia.</p><div class="form-grid"><label>Nombre<input name="nombre" required value="${esc(row?.nombre||'')}"></label><label>Código interno<input name="codigo" required value="${esc(row?.codigo||'')}"></label><label>Marca<select name="marca"><option value="">Sin marca</option>${brands.map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.activo?'':' · inactiva'}</option>`).join('')}</select></label><label>Modelo / colección<input name="modelo" value="${esc(row?.modelo||'')}"></label><label>Referencia fabricante (opcional)<input name="referencia" value="${esc(row?.referencia_fabricante||'')}"></label><label>Sistema de tallaje<select name="sistema">${systems.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></label><label>Ámbito<select name="ambito"><option value="jugador">Jugador</option><option value="entrenador">Entrenador</option><option value="ambos">Ambos</option></select></label><label>Variante<select name="variante"><option value="general">General</option><option value="campo">Campo</option><option value="portero">Portero</option></select></label><label>Dorsal<select name="dorsal"><option value="false">No</option><option value="true">Sí, personalizable</option></select></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label></div><div id="eqArticleSizes"></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button class="primary" type="submit">Guardar</button></div>`,{wide:true});
+  d.querySelector('[name=marca]').value=row?.marca_id||'';d.querySelector('[name=sistema]').value=row?.sistema_tallaje_id||systems[0]?.id||'';d.querySelector('[name=ambito]').value=row?.ambito||'ambos';d.querySelector('[name=variante]').value=row?.variante||'general';d.querySelector('[name=dorsal]').value=String(row?.personalizable_dorsal??false);d.querySelector('[name=activo]').value=String(row?.activo??true);
+  const drawSizes=()=>{const sid=d.querySelector('[name=sistema]').value,vals=(equipmentRows.sizingValues||[]).filter(v=>v.sistema_tallaje_id===sid&&v.activo),specific=(row&&sid===row.sistema_tallaje_id)?(equipmentRows.articleSizes||[]).filter(x=>x.articulo_id===row.id&&x.activa):[],restricted=specific.length>0;d.querySelector('#eqArticleSizes').innerHTML=`<div class="equipment-size-config"><label class="check-row"><input type="checkbox" id="eqRestrictSizes" ${restricted?'checked':''}> Restringir tallas disponibles para esta referencia</label><div id="eqSizeChecks" class="equipment-size-checks ${restricted?'':'hidden'}">${vals.map(v=>`<label><input type="checkbox" value="${v.id}" ${specific.some(x=>x.talla_id===v.id)?'checked':''}> ${esc(v.nombre)}</label>`).join('')}</div><p class="meta">Sin restricción, el artículo admite todos los valores activos del sistema.</p></div>`;d.querySelector('#eqRestrictSizes').onchange=e=>d.querySelector('#eqSizeChecks').classList.toggle('hidden',!e.target.checked)};drawSizes();d.querySelector('[name=sistema]').onchange=drawSizes;d.querySelector('.cancel').onclick=()=>d.close();
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,payload={nombre:f.nombre.value.trim(),codigo:f.codigo.value.trim(),tipo_prenda:row?.tipo_prenda||'articulo',ambito:f.ambito.value,variante:f.variante.value,activo:f.activo.value==='true',personalizable_dorsal:f.dorsal.value==='true',marca_id:f.marca.value||null,modelo:f.modelo.value.trim()||null,referencia_fabricante:f.referencia.value.trim()||null,sistema_tallaje_id:f.sistema.value};let id=row?.id;const q=row?sb.from('equipacion_articulos').update(payload).eq('id',row.id).select('id').single():sb.from('equipacion_articulos').insert(payload).select('id').single();const {data,error}=await q;if(error){alert(error.message);return}id=id||data.id;const del=await sb.from('equipacion_articulo_tallas').delete().eq('articulo_id',id);if(del.error){alert(del.error.message);return}if(d.querySelector('#eqRestrictSizes')?.checked){const ids=[...d.querySelectorAll('#eqSizeChecks input:checked')].map(x=>x.value);if(!ids.length){alert('Selecciona al menos una talla o desactiva la restricción.');return}const ins=await sb.from('equipacion_articulo_tallas').insert(ids.map(talla_id=>({articulo_id:id,talla_id,activa:true})));if(ins.error){alert(ins.error.message);return}}d.close();equipmentResetConfigurationCache();await loadEquipmentData({tab:'config'})};
+}
+async function equipmentEditPack(row){
+  await equipmentEnsureConfiguration();const articles=(equipmentRows.allArticles||[]).filter(a=>a.activo),providers=equipmentRows.providers||[];let composition=row?(equipmentRows.packArticles||[]).filter(x=>x.pack_id===row.id).sort((a,b)=>a.orden-b.orden).map(x=>({...x})):[];
+  const d=equipmentDynamicDialog(row?'Editar pack':'Nuevo pack',`<div class="form-grid"><label>Nombre<input name="nombre" required value="${esc(row?.nombre||'')}"></label><label>Código<input name="codigo" required value="${esc(row?.codigo||'')}"></label><label>Destinatario<select name="destinatario"><option value="jugador">Jugador</option><option value="entrenador">Entrenador</option></select></label><label>Modalidad<select name="modalidad"><option value="entrenamiento">Entrenamiento</option><option value="partido_campo">Partido campo</option><option value="partido_portero">Partido portero</option><option value="tecnico">Técnico</option><option value="otro">Otro</option></select></label><label>Precio<input name="precio" type="number" min="0" step="0.01" value="${row?.precio??0}"></label><label>Proveedor recomendado<select name="proveedor"><option value="">Sin proveedor</option>${providers.map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.activo?'':' · inactivo'}</option>`).join('')}</select></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label></div><div class="section-head"><div><strong>Composición</strong><div class="meta">Selecciona referencias de artículo existentes. La misma referencia puede reutilizarse en packs de varias temporadas.</div></div><button type="button" class="secondary small" id="eqAddPackArticle">+ Artículo</button></div><div id="eqPackComposition"></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Guardar pack</button></div>`,{wide:true});
+  d.querySelector('[name=destinatario]').value=row?.destinatario||'jugador';d.querySelector('[name=modalidad]').value=row?.modalidad||'entrenamiento';d.querySelector('[name=proveedor]').value=row?.proveedor_id||'';d.querySelector('[name=activo]').value=String(row?.activo??true);d.querySelector('.cancel').onclick=()=>d.close();
+  const draw=()=>{d.querySelector('#eqPackComposition').innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Cantidad</th><th>Obligatorio</th><th>Orden</th><th></th></tr></thead><tbody>${composition.map((x,i)=>`<tr><td>${esc(equipmentArticleLabel(articles.find(a=>a.id===x.articulo_id)))}</td><td><input data-pack-qty="${i}" type="number" min="1" value="${x.cantidad||1}"></td><td><input data-pack-required="${i}" type="checkbox" ${x.obligatorio!==false?'checked':''}></td><td><input data-pack-order="${i}" type="number" value="${x.orden||100}"></td><td><button type="button" class="icon-button" data-pack-remove="${i}">✕</button></td></tr>`).join('')||'<tr><td colspan="5">Pack sin artículos.</td></tr>'}</tbody></table></div>`;d.querySelectorAll('[data-pack-qty]').forEach(x=>x.onchange=()=>composition[+x.dataset.packQty].cantidad=+x.value);d.querySelectorAll('[data-pack-required]').forEach(x=>x.onchange=()=>composition[+x.dataset.packRequired].obligatorio=x.checked);d.querySelectorAll('[data-pack-order]').forEach(x=>x.onchange=()=>composition[+x.dataset.packOrder].orden=+x.value);d.querySelectorAll('[data-pack-remove]').forEach(x=>x.onclick=()=>{composition.splice(+x.dataset.packRemove,1);draw()})};draw();
+  d.querySelector('#eqAddPackArticle').onclick=()=>{const available=articles.filter(a=>!composition.some(x=>x.articulo_id===a.id));if(!available.length){alert('No hay más artículos activos disponibles.');return}const a=equipmentDynamicDialog('Añadir artículo al pack',`<label>Artículo<select name="articulo">${available.map(x=>`<option value="${x.id}">${esc(equipmentArticleLabel(x))}</option>`).join('')}</select></label><div class="form-grid"><label>Cantidad<input name="cantidad" type="number" min="1" value="1"></label><label>Obligatorio<select name="obligatorio"><option value="true">Sí</option><option value="false">No</option></select></label></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button class="primary" type="submit">Añadir</button></div>`);a.querySelector('.cancel').onclick=()=>a.close();a.querySelector('form').onsubmit=e=>{e.preventDefault();composition.push({articulo_id:e.currentTarget.articulo.value,cantidad:+e.currentTarget.cantidad.value,obligatorio:e.currentTarget.obligatorio.value==='true',orden:(composition.length+1)*10});a.close();draw()}};
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,payload={temporada_id:dbContextSeason().id,nombre:f.nombre.value.trim(),codigo:f.codigo.value.trim(),destinatario:f.destinatario.value,modalidad:f.modalidad.value,precio:Number(f.precio.value||0),proveedor_id:f.proveedor.value||null,activo:f.activo.value==='true'};let id=row?.id;const q=row?sb.from('equipacion_packs').update(payload).eq('id',row.id).select('id').single():sb.from('equipacion_packs').insert(payload).select('id').single();const {data,error}=await q;if(error){alert(error.message);return}id=id||data.id;const del=await sb.from('equipacion_pack_articulos').delete().eq('pack_id',id);if(del.error){alert(del.error.message);return}if(composition.length){const ins=await sb.from('equipacion_pack_articulos').insert(composition.map(x=>({pack_id:id,articulo_id:x.articulo_id,cantidad:Number(x.cantidad||1),obligatorio:x.obligatorio!==false,orden:Number(x.orden||100)})));if(ins.error){alert(ins.error.message);return}}d.close();equipmentResetConfigurationCache();await loadEquipmentData({tab:'config'})};
+}
+async function equipmentEditSizingSystem(row){
+  await equipmentEnsureConfiguration();let values=row?(equipmentRows.sizingValues||[]).filter(x=>x.sistema_tallaje_id===row.id).sort((a,b)=>a.orden-b.orden).map(x=>({...x})):[];
+  const d=equipmentDynamicDialog(row?'Editar tallaje':'Nuevo sistema de tallaje',`<div class="form-grid"><label>Nombre<input name="nombre" required value="${esc(row?.nombre||'')}"></label><label>Código<input name="codigo" required value="${esc(row?.codigo||'')}"></label><label>Orden<input name="orden" type="number" value="${row?.orden??100}"></label><label>Estado<select name="activo"><option value="true">Activo</option><option value="false">Inactivo</option></select></label></div><div class="section-head"><strong>Valores</strong><button type="button" class="secondary small" id="eqAddSizeValue">+ Valor</button></div><div id="eqSizingValues"></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Guardar</button></div>`,{wide:true});d.querySelector('[name=activo]').value=String(row?.activo??true);d.querySelector('.cancel').onclick=()=>d.close();
+  const draw=()=>{d.querySelector('#eqSizingValues').innerHTML=values.map((v,i)=>`<div class="equipment-size-value"><input data-sv-code="${i}" placeholder="Código" value="${esc(v.codigo||'')}"><input data-sv-name="${i}" placeholder="Nombre" value="${esc(v.nombre||'')}"><input data-sv-order="${i}" type="number" value="${v.orden??100}"><label><input data-sv-active="${i}" type="checkbox" ${v.activo!==false?'checked':''}> Activo</label>${v.id?'':'<button type="button" class="icon-button" data-sv-remove="'+i+'">✕</button>'}</div>`).join('')||'<p class="meta">Sin valores.</p>';d.querySelectorAll('[data-sv-code]').forEach(x=>x.oninput=()=>values[+x.dataset.svCode].codigo=x.value);d.querySelectorAll('[data-sv-name]').forEach(x=>x.oninput=()=>values[+x.dataset.svName].nombre=x.value);d.querySelectorAll('[data-sv-order]').forEach(x=>x.oninput=()=>values[+x.dataset.svOrder].orden=+x.value);d.querySelectorAll('[data-sv-active]').forEach(x=>x.onchange=()=>values[+x.dataset.svActive].activo=x.checked);d.querySelectorAll('[data-sv-remove]').forEach(x=>x.onclick=()=>{values.splice(+x.dataset.svRemove,1);draw()})};draw();d.querySelector('#eqAddSizeValue').onclick=()=>{values.push({codigo:'',nombre:'',orden:(values.length+1)*10,activo:true});draw()};
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget;if(values.some(v=>!String(v.codigo||'').trim()||!String(v.nombre||'').trim())){alert('Completa código y nombre de todos los valores.');return}let id=row?.id;const payload={nombre:f.nombre.value.trim(),codigo:f.codigo.value.trim(),orden:Number(f.orden.value||100),activo:f.activo.value==='true'};const q=row?sb.from('equipacion_sistemas_tallaje').update(payload).eq('id',row.id).select('id').single():sb.from('equipacion_sistemas_tallaje').insert(payload).select('id').single();const {data,error}=await q;if(error){alert(error.message);return}id=id||data.id;for(const v of values){const vp={sistema_tallaje_id:id,codigo:String(v.codigo).trim(),nombre:String(v.nombre).trim(),orden:Number(v.orden||100),activo:v.activo!==false};const r=v.id?await sb.from('equipacion_tallaje_valores').update(vp).eq('id',v.id):await sb.from('equipacion_tallaje_valores').insert(vp);if(r.error){alert(r.error.message);return}}d.close();equipmentResetConfigurationCache();await loadEquipmentData({tab:'config'})};
+}
+async function equipmentOpenExistingStock(){
+  try{await equipmentEnsureConfiguration()}catch(e){alert(e.message);return}
+  const seasons=dbSeasons,articles=(equipmentRows.allArticles||[]).filter(a=>a.activo),providers=equipmentRows.providers||[],brands=equipmentRows.brands||[],ctx=dbContextSeason();
+  const d=equipmentDynamicDialog('Registrar stock existente',`<p class="meta">Alta trazable de material que ya pertenece al Club. La talla se limita al sistema configurado para la referencia.</p><div class="form-grid"><label>Artículo<select name="articulo" required>${articles.map(a=>`<option value="${a.id}">${esc(equipmentArticleLabel(a))}</option>`).join('')}</select></label><label>Talla<select name="talla"></select></label><label>Cantidad<input name="cantidad" type="number" min="1" value="1" required></label><label>Marca<select name="marca"><option value="">Usar marca del artículo / desconocida</option>${brands.map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.activo?'':' · inactiva'}</option>`).join('')}</select></label><label>Proveedor<select name="proveedor"><option value="">Desconocido / sin informar</option>${providers.map(x=>`<option value="${x.id}">${esc(x.nombre)}${x.activo?'':' · inactivo'}</option>`).join('')}</select></label><label>Temporada de origen<select name="origen">${seasons.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></label><label>Vigencia en ${esc(ctx?.name||'temporada')}<select name="vigencia"><option value="valido">Válido</option><option value="no_valido">No válido</option><option value="pendiente">Pendiente de decidir</option></select></label><label>Referencia<input name="referencia"></label></div><label>Observaciones<textarea name="observaciones" rows="3"></textarea></label><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Registrar stock</button></div>`);
+  const sync=()=>{const a=articles.find(x=>x.id===d.querySelector('[name=articulo]').value);d.querySelector('[name=talla]').innerHTML=equipmentSizeOptions(a);d.querySelector('[name=marca]').value=a?.marca_id||''};sync();d.querySelector('[name=articulo]').onchange=sync;d.querySelector('[name=origen]').value=ctx?.id||'';d.querySelector('.cancel').onclick=()=>d.close();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget;const {error}=await sb.rpc('equipacion_registrar_stock_existente',{p_articulo_id:f.articulo.value,p_talla:f.talla.value,p_cantidad:Number(f.cantidad.value),p_temporada_origen_id:f.origen.value,p_temporada_vigencia_id:ctx.id,p_proveedor_id:f.proveedor.value||null,p_marca_id:f.marca.value||null,p_vigencia:f.vigencia.value,p_referencia:f.referencia.value.trim()||null,p_observaciones:f.observaciones.value.trim()||null});if(error){alert(error.message);return}d.close();await loadEquipmentData({tab:'stock'})};
+}
+function equipmentSuggestedOrderLines(){
+  const configured=new Set((equipmentRows.packArticles||[]).filter(x=>(equipmentRows.allPacks||equipmentRows.packs).some(p=>p.id===x.pack_id&&p.activo)).map(x=>x.articulo_id));
+  const out=[];const personalized=new Set(equipmentRows.articles.filter(a=>a.personalizable_dorsal&&configured.has(a.id)).map(a=>a.id));
+  equipmentRows.purchase.filter(x=>Number(x.falta_comprar||0)>0&&configured.has(x.articulo_id)&&!personalized.has(x.articulo_id)).forEach(x=>out.push({articulo_id:x.articulo_id,talla:x.talla,cantidad:Number(x.falta_comprar),origen:'sugerida'}));
+  equipmentRows.operational.filter(x=>personalized.has(x.articulo_id)&&x.estado_operativo==='pendiente_compra').forEach(op=>{const n=equipmentNeed(op.necesidad_id),d=equipmentRows.numbers.find(x=>x.jugador_id===n?.jugador_id);if(n?.jugador_id&&d?.dorsal)out.push({articulo_id:op.articulo_id,talla:op.talla,cantidad:1,jugador_id:n.jugador_id,dorsal:d.dorsal,origen:'sugerida'})});
+  return out;
+}
+async function equipmentOpenOrderEditor(order=null){
+  try{await equipmentEnsureConfiguration()}catch(e){alert(e.message);return}
+  const season=dbContextSeason()?.id;let lines=[];
+  if(order){const r=await sb.from('equipacion_pedido_lineas').select('*').eq('pedido_id',order.id);if(r.error){alert(r.error.message);return}lines=(r.data||[]).map(x=>({articulo_id:x.articulo_id,talla:x.talla,cantidad:x.cantidad_pedida,precio_unitario:x.precio_unitario,jugador_id:x.jugador_id,dorsal:x.dorsal,origen:x.origen||'manual'}))}else lines=equipmentSuggestedOrderLines();
+  equipmentOrderDraftLines=lines;const enabledIds=new Set((equipmentRows.providerSeasons||[]).filter(x=>x.activo).map(x=>x.proveedor_id));const activeProviders=(equipmentRows.providers||[]).filter(x=>x.activo&&enabledIds.has(x.id));if(!activeProviders.length){alert('Da de alta y habilita para esta temporada al menos un proveedor antes de crear un pedido.');return}
+  const d=equipmentDynamicDialog(order?'Editar pedido borrador':'Nuevo pedido',`<div class="form-grid"><label>Proveedor<select name="proveedor" required>${activeProviders.map(x=>`<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></label><label>Número / referencia<input name="numero" value="${esc(order?.numero||'')}"></label></div><label>Observaciones<textarea name="observaciones" rows="2">${esc(order?.observaciones||'')}</textarea></label><div class="section-head"><div><strong>Líneas</strong><div class="meta">La propuesta puede modificarse antes de cursar.</div></div><button type="button" class="secondary small" id="eqAddOrderLine">+ Línea manual</button></div><div id="eqOrderLines"></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Guardar borrador</button></div>`,{wide:true});
+  d.querySelector('[name=proveedor]').value=order?.proveedor_id||activeProviders[0].id;d.querySelector('.cancel').onclick=()=>d.close();
+  const draw=()=>{const box=d.querySelector('#eqOrderLines');box.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Jugador/dorsal</th><th>Cantidad</th><th>Origen</th><th></th></tr></thead><tbody>${equipmentOrderDraftLines.map((x,i)=>{const j=equipmentRows.players.find(p=>p.id===x.jugador_id);return `<tr><td>${esc(equipmentArticleName(x.articulo_id))}</td><td>${esc(x.talla)}</td><td>${x.jugador_id?`${esc(equipmentPersonName(j?.persona_id))} · #${x.dorsal}`:'—'}</td><td><input class="eq-line-qty" data-i="${i}" type="number" min="1" value="${x.cantidad}" ${x.jugador_id?'readonly':''}></td><td>${x.origen==='sugerida'?'Sugerida':'Manual'}</td><td><button type="button" class="icon-button eq-remove-line" data-i="${i}">✕</button></td></tr>`}).join('')||'<tr><td colspan="6">Añade al menos una línea.</td></tr>'}</tbody></table></div>`;box.querySelectorAll('.eq-line-qty').forEach(x=>x.onchange=()=>equipmentOrderDraftLines[Number(x.dataset.i)].cantidad=Number(x.value));box.querySelectorAll('.eq-remove-line').forEach(x=>x.onclick=()=>{equipmentOrderDraftLines.splice(Number(x.dataset.i),1);draw()})};draw();
+  d.querySelector('#eqAddOrderLine').onclick=()=>equipmentAddManualOrderLine(draw);
+  d.querySelector('form').onsubmit=async e=>{e.preventDefault();if(!equipmentOrderDraftLines.length){alert('El pedido necesita al menos una línea.');return}const f=e.currentTarget;const payload=equipmentOrderDraftLines.map(x=>({articulo_id:x.articulo_id,talla:x.talla,cantidad:x.cantidad,precio_unitario:x.precio_unitario??null,jugador_id:x.jugador_id||null,dorsal:x.dorsal??null,origen:x.origen||'manual'}));const {error}=await sb.rpc('equipacion_guardar_pedido_borrador',{p_temporada_id:season,p_proveedor_id:f.proveedor.value,p_lineas:payload,p_pedido_id:order?.id||null,p_numero:f.numero.value.trim()||null,p_observaciones:f.observaciones.value.trim()||null});if(error){alert(error.message);return}d.close();await loadEquipmentData({tab:'orders'})};
+}
+function equipmentAddManualOrderLine(redraw){
+  const configuredIds=new Set((equipmentRows.packArticles||[]).filter(x=>(equipmentRows.allPacks||[]).some(p=>p.id===x.pack_id&&p.activo)).map(x=>x.articulo_id));
+  const arts=(equipmentRows.allArticles||equipmentRows.articles).filter(a=>a.activo&&configuredIds.has(a.id)),players=equipmentRows.players;
+  if(!arts.length){alert('Configura primero artículos dentro de un pack activo de la temporada.');return}
+  const d=equipmentDynamicDialog('Añadir línea manual',`<div class="form-grid"><label>Artículo<select name="articulo">${arts.map(a=>`<option value="${a.id}">${esc(equipmentArticleLabel(a))}</option>`).join('')}</select></label><label>Talla<select name="talla"></select></label><label>Cantidad<input name="cantidad" type="number" min="1" value="1"></label><label class="personalized hidden">Jugador<select name="jugador">${players.map(j=>`<option value="${j.id}">${esc(equipmentPersonName(j.persona_id))}</option>`).join('')}</select></label><label class="personalized hidden">Dorsal<input name="dorsal" type="number" min="1" max="99"></label></div><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Añadir</button></div>`);
+  const sync=()=>{const a=arts.find(x=>x.id===d.querySelector('[name=articulo]').value),on=!!a?.personalizable_dorsal;d.querySelector('[name=talla]').innerHTML=equipmentSizeOptions(a);d.querySelectorAll('.personalized').forEach(x=>x.classList.toggle('hidden',!on));d.querySelector('[name=cantidad]').value=on?1:d.querySelector('[name=cantidad]').value;d.querySelector('[name=cantidad]').readOnly=on};sync();d.querySelector('[name=articulo]').onchange=sync;d.querySelector('.cancel').onclick=()=>d.close();d.querySelector('form').onsubmit=e=>{e.preventDefault();const f=e.currentTarget,a=arts.find(x=>x.id===f.articulo.value),on=!!a?.personalizable_dorsal;if(on&&!f.dorsal.value){alert('Indica el dorsal.');return}equipmentOrderDraftLines.push({articulo_id:f.articulo.value,talla:f.talla.value,cantidad:on?1:Number(f.cantidad.value),jugador_id:on?f.jugador.value:null,dorsal:on?Number(f.dorsal.value):null,origen:'manual'});d.close();redraw()};
+}
+async function equipmentOpenOrderDetail(order){
+  const [lr,rr]=await Promise.all([sb.from('equipacion_pedido_lineas').select('*').eq('pedido_id',order.id),sb.from('equipacion_recepciones').select('*,equipacion_recepcion_lineas(*)').eq('pedido_id',order.id).order('fecha_recepcion',{ascending:false})]);if(lr.error||rr.error){alert((lr.error||rr.error).message);return}const lines=lr.data||[],recs=rr.data||[];
+  const accepted=id=>recs.flatMap(r=>r.equipacion_recepcion_lineas||[]).filter(x=>x.pedido_linea_id===id).reduce((a,x)=>a+Number(x.cantidad_aceptada||0),0);
+  const d=equipmentDynamicDialog(`Pedido ${order.numero||''}`,`<div class="equipment-order-meta"><span>${equipmentStatusBadge(order.estado||'—')}</span><span><strong>Proveedor:</strong> ${esc(order.proveedor_nombre||'—')}</span><span><strong>Fecha:</strong> ${esc(order.fecha_pedido||'—')}</span></div><div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Personalización</th><th>Pedido</th><th>Aceptado</th><th>Pendiente</th></tr></thead><tbody>${lines.map(x=>`<tr><td>${esc(equipmentArticleName(x.articulo_id))}</td><td>${esc(x.talla)}</td><td>${x.dorsal?`#${x.dorsal}`:'—'}</td><td>${x.cantidad_pedida}</td><td>${accepted(x.id)}</td><td>${Math.max(0,x.cantidad_pedida-accepted(x.id))}</td></tr>`).join('')}</tbody></table></div><div class="modal-actions"><button type="button" class="secondary close">Cerrar</button>${order.estado==='borrador'?'<button type="button" class="secondary edit">Editar</button><button type="button" class="primary place">Cursar pedido</button>':''}${['pedido','parcialmente_recibido'].includes(order.estado)?'<button type="button" class="primary receive">Registrar recepción</button>':''}</div>`,{wide:true});d.querySelector('.close').onclick=()=>d.close();d.querySelector('.edit')?.addEventListener('click',()=>{d.close();equipmentOpenOrderEditor(order)});d.querySelector('.place')?.addEventListener('click',async()=>{if(!await showAppConfirm({eyebrow:'PEDIDOS',title:'Cursar pedido',message:'El pedido dejará de ser editable y pasará a seguimiento de recepción.',confirmLabel:'Cursar pedido'}))return;const {error}=await sb.rpc('equipacion_cursar_pedido',{p_pedido_id:order.id});if(error){alert(error.message);return}d.close();await loadEquipmentData({tab:'orders'})});d.querySelector('.receive')?.addEventListener('click',()=>{d.close();equipmentOpenReception(order,lines,accepted)});
+}
+function equipmentOpenReception(order,lines,accepted){
+  const pending=lines.filter(x=>x.cantidad_pedida-accepted(x.id)>0);const d=equipmentDynamicDialog('Registrar recepción',`<div class="form-grid"><label>Fecha<input name="fecha" type="date" value="${new Date().toISOString().slice(0,10)}"></label><label>Referencia<input name="referencia"></label></div><div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Pendiente</th><th>Recibido</th><th>Aceptado</th><th>Incidencia</th></tr></thead><tbody>${pending.map((x,i)=>`<tr data-line="${x.id}"><td>${esc(equipmentArticleName(x.articulo_id))} · ${esc(x.talla)}</td><td>${x.cantidad_pedida-accepted(x.id)}</td><td><input name="rec_${i}" type="number" min="0" max="${x.cantidad_pedida-accepted(x.id)}" value="0"></td><td><input name="acc_${i}" type="number" min="0" max="${x.cantidad_pedida-accepted(x.id)}" value="0"></td><td><input name="obs_${i}"></td></tr>`).join('')}</tbody></table></div><label>Observaciones generales<textarea name="observaciones" rows="2"></textarea></label><div class="modal-actions"><button type="button" class="secondary cancel">Cancelar</button><button type="submit" class="primary">Registrar recepción</button></div>`,{wide:true});d.querySelector('.cancel').onclick=()=>d.close();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,payload=[];pending.forEach((x,i)=>{const r=Number(f[`rec_${i}`].value),a=Number(f[`acc_${i}`].value);if(r>0)payload.push({pedido_linea_id:x.id,cantidad_recibida:r,cantidad_aceptada:a,observaciones:f[`obs_${i}`].value.trim()||null})});if(!payload.length){alert('Indica al menos una cantidad recibida.');return}if(payload.some(x=>x.cantidad_aceptada>x.cantidad_recibida)){alert('La cantidad aceptada no puede superar la recibida.');return}const {error}=await sb.rpc('equipacion_registrar_recepcion_pedido',{p_pedido_id:order.id,p_lineas:payload,p_fecha_recepcion:f.fecha.value,p_referencia:f.referencia.value.trim()||null,p_observaciones:f.observaciones.value.trim()||null});if(error){alert(error.message);return}d.close();await loadEquipmentData({tab:'orders'})};
+}
+
 function renderEquipment(){
   const c=$('#equipmentContent');if(!c||!equipmentAllowed())return;
   if(equipmentLoadState==='loading')return;
@@ -1960,15 +2186,19 @@ function renderEquipment(){
   }else if(equipmentTab==='stock'){
     const lotRows=[...stockLots].sort((a,b)=>equipmentArticleName(a.articulo_id).localeCompare(equipmentArticleName(b.articulo_id),'es')||String(a.talla).localeCompare(String(b.talla),'es'));
     const pageRows=pagedRows('equipmentStock',lotRows);
-    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Existencias físicas</span><h2>Stock y procedencia</h2><p class="meta">La disponibilidad para la temporada depende de la vigencia de cada lote; el stock histórico no se pierde ni se mezcla con el actual.</p></div></div>
+    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Existencias físicas</span><h2>Stock y procedencia</h2><p class="meta">La disponibilidad para la temporada depende de la vigencia de cada lote; el stock histórico no se pierde ni se mezcla con el actual.</p></div><div class="equipment-head-actions"><button type="button" class="secondary small" id="eqManageCatalogs">Proveedores y marcas</button><button type="button" class="primary small" id="eqRegisterExistingStock">+ Registrar stock existente</button></div></div>
     <div id="equipmentStockPaginationTop" class="list-pagination top"></div>
-    <div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Proveedor</th><th>Origen</th><th>Físico</th><th>Reservado</th><th>Vigencia</th><th>Disponible</th></tr></thead><tbody>${pageRows.items.map(x=>`<tr><td><strong>${esc(equipmentArticleName(x.articulo_id))}</strong></td><td>${esc(x.talla||'—')}</td><td>${esc(x.proveedor_nombre||'Sin proveedor')}</td><td>${esc(equipmentStockOriginLabel(x))}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td>${equipmentStatusBadge(equipmentStockLotStateLabel(x),x.estado==='valido'?'complete':x.estado==='no_valido'?'muted':'warning')}</td><td><strong>${x.cantidad_disponible||0}</strong></td></tr>`).join('')||'<tr><td colspan="8">No hay lotes de stock registrados.</td></tr>'}</tbody></table></div><div id="equipmentStockPagination" class="list-pagination"></div>
+    <div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Marca</th><th>Proveedor</th><th>Origen</th><th>Físico</th><th>Reservado</th><th>Vigencia</th><th>Disponible</th></tr></thead><tbody>${pageRows.items.map(x=>`<tr><td><strong>${esc(equipmentArticleName(x.articulo_id))}</strong></td><td>${esc(x.talla||'—')}</td><td>${esc(equipmentBrandName(x.marca_id))}</td><td>${esc(x.proveedor_nombre||equipmentProviderName(x.proveedor_id))}</td><td>${esc(equipmentStockOriginLabel(x))}</td><td>${x.cantidad_fisica||0}</td><td>${x.cantidad_reservada||0}</td><td>${equipmentStatusBadge(equipmentStockLotStateLabel(x),x.estado==='valido'?'complete':x.estado==='no_valido'?'muted':'warning')}</td><td><strong>${x.cantidad_disponible||0}</strong></td></tr>`).join('')||'<tr><td colspan="10">No hay lotes de stock registrados.</td></tr>'}</tbody></table></div><div id="equipmentStockPagination" class="list-pagination"></div>
     ${purchase.length?`<div class="equipment-secondary-block"><div class="section-head"><div><strong>Necesidades sin cubrir</strong><div class="meta">Calculadas sobre la demanda confirmada y el stock disponible.</div></div></div><div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Talla</th><th>Falta comprar</th></tr></thead><tbody>${purchase.filter(x=>Number(x.falta_comprar||0)>0).map(x=>`<tr><td>${esc(equipmentArticleName(x.articulo_id))}</td><td>${esc(x.talla||'—')}</td><td><strong>${x.falta_comprar||0}</strong></td></tr>`).join('')||'<tr><td colspan="3">La demanda confirmada está cubierta.</td></tr>'}</tbody></table></div></div>`:''}`;
     renderListPagination('equipmentStock',pageRows.total,lotRows.length,renderEquipment);
+    $('#eqManageCatalogs')?.addEventListener('click',equipmentOpenCatalogs);$('#eqRegisterExistingStock')?.addEventListener('click',equipmentOpenExistingStock);if(!equipmentRows.providers||!equipmentRows.brands)equipmentEnsureCatalogs().then(()=>{if(equipmentTab==='stock')renderEquipment()}).catch(()=>{});
   }else if(equipmentTab==='orders'){
     const pageRows=pagedRows('equipmentOrders',orders);
-    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Compras y recepción</span><h2>Pedidos</h2><p class="meta">Seguimiento de pedidos al proveedor y recepciones parciales de material.</p></div></div><div id="equipmentOrdersPaginationTop" class="list-pagination top"></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Número</th><th>Proveedor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>${pageRows.items.map(x=>`<tr><td>${esc(x.fecha_pedido||'—')}</td><td>${esc(x.numero||'—')}</td><td>${esc(x.proveedor_nombre||'—')}</td><td>${equipmentStatusBadge(x.estado||'—')}</td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="5">Sin pedidos registrados.</td></tr>'}</tbody></table></div><div id="equipmentOrdersPagination" class="list-pagination"></div>`;
+    c.innerHTML=`<div class="equipment-panel-head"><div><span class="eyebrow dark">Compras y recepción</span><h2>Pedidos</h2><p class="meta">Borradores editables, pedidos cursados y recepciones parciales con trazabilidad.</p></div><div class="equipment-head-actions"><button type="button" class="secondary small" id="eqManageCatalogsOrders">Proveedores y marcas</button><button type="button" class="primary small" id="eqNewOrder">+ Nuevo pedido</button></div></div><div id="equipmentOrdersPaginationTop" class="list-pagination top"></div><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Número</th><th>Proveedor</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>${pageRows.items.map(x=>`<tr class="equipment-order-row" data-order-id="${x.id}"><td>${esc(x.fecha_pedido||'—')}</td><td><strong>${esc(x.numero||'Sin número')}</strong></td><td>${esc(x.proveedor_nombre||'—')}</td><td>${equipmentStatusBadge(x.estado||'—')}</td><td>${esc(x.observaciones||'')}</td></tr>`).join('')||'<tr><td colspan="5">Sin pedidos registrados.</td></tr>'}</tbody></table></div><div id="equipmentOrdersPagination" class="list-pagination"></div>`;
     renderListPagination('equipmentOrders',pageRows.total,orders.length,renderEquipment);
+    $('#eqNewOrder')?.addEventListener('click',()=>equipmentOpenOrderEditor());$('#eqManageCatalogsOrders')?.addEventListener('click',equipmentOpenCatalogs);$$('[data-order-id]').forEach(r=>r.addEventListener('click',()=>equipmentOpenOrderDetail(orders.find(x=>x.id===r.dataset.orderId))));
+  }else if(equipmentTab==='config'){
+    equipmentRenderConfiguration(c);
   }else{
     renderEquipmentOperations(c,deliveryGroups);
   }
@@ -2603,6 +2833,225 @@ async function refreshEconomicPlayerModal(){await renderRemoteClub();const v=rem
 async function saveClubberIds(){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const b=$('#saveClubberIds');b.disabled=true;b.textContent='Guardando…';try{const {error}=await sb.rpc('actualizar_vinculos_clubber',{p_jugador_id:v.id,p_clubber_deportista_id:f.elements.clubberPlayerId.value.trim()||null,p_tutor_persona_id:v.representation?.representante_persona_id||null,p_clubber_tutor_id:f.elements.clubberTutorId.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se han podido guardar los IDs Cluber: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Guardar IDs Cluber'}}
 async function registerEconomicPayment(){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const amount=Number(f.elements.paymentAmount.value);if(!Number.isFinite(amount)||amount<=0){alert('Indica un importe mayor que cero.');return}const requestedMethod=f.elements.paymentMethod.value;const allowed=PAYMENT_FEATURES.manualMethods.some(m=>m.enabled&&m.value===requestedMethod);if(!allowed||requestedMethod!=='efectivo'){alert('Actualmente solo se permite registrar manualmente pagos en efectivo. Los pagos de Cluber se incorporarán mediante importación.');return}const b=$('#registerEconomicPayment');b.disabled=true;b.textContent='Registrando…';try{const {error}=await sb.rpc('registrar_pago_inscripcion',{p_inscripcion_id:v.inscription.id,p_importe:amount,p_metodo:'efectivo',p_fecha_pago:f.elements.paymentDate.value||isoToday(),p_referencia_externa:f.elements.paymentReference.value.trim()||null,p_clubber_pago_id:null,p_observaciones:f.elements.paymentNotes.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se ha podido registrar el pago: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Registrar pago en efectivo'}}
 async function setClubberInstallments(valid){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId);if(!v)return;if(valid&&!confirm('Confirma que el club ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.'))return;if(!valid&&!confirm('¿Revocar la validación del fraccionamiento Cluber?'))return;try{const {error}=await sb.rpc('validar_fraccionamiento_clubber',{p_inscripcion_id:v.inscription.id,p_validado:valid,p_observaciones:null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se ha podido actualizar el fraccionamiento: ${err.message||err}`)}}
+let selectedRffmTeamId=null;
+let rffmResultsByTeam=new Map();
+function rffmIntegrationFor(teamId){return dbFederationIntegrations.find(x=>x.equipo_id===teamId&&x.proveedor==='RFFM')||null}
+function rffmConfigState(x){if(!x)return '<span class="status pending">Sin configurar</span>';if(x.ultima_validacion_ok===true)return '<span class="status complete">Verificado</span>';if(x.ultima_validacion_ok===false)return '<span class="status returned">Error</span>';return '<span class="status pending">Sin verificar</span>'}
+function rffmGameTypeLabel(v){return ({'1':'F11','2':'F7','4':'F5'}[String(v)]||String(v||'—'))}
+async function invokeRffm(body){
+  const {data,error}=await withTimeout(sb.functions.invoke('rffm-resultados',{body}),15000,'No se ha podido contactar con RFFM en 15 segundos. Puedes volver a intentarlo.');
+  if(error){
+    let detail='';
+    try{const ctx=error.context;if(ctx&&typeof ctx.json==='function'){const payload=await ctx.json();detail=payload?.message||payload?.error||payload?.code||''}}catch{}
+    const e=new Error(detail||error.message||'Error al invocar RFFM');e.cause=error;throw e;
+  }
+  if(data?.ok===false||data?.error){const e=new Error(data?.message||data?.error||'Error RFFM');e.code=data?.code;e.phase=data?.phase;throw e}
+  return data
+}
+function renderRffmStructure(){
+  const list=$('#rffmTeamConfigList'),out=$('#rffmResultsContent');if(!dbStructureLoaded)return;if(!list){renderRffmResults();return;}
+  const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true);const can=['admin','club'].includes(currentRole);
+  list.innerHTML=teams.map(t=>{const x=rffmIntegrationFor(t.id);return `<article class="rffm-config-card"><div><strong>${esc(t.name)}</strong><span>${esc(dbCategoryName(t.categoryId))} · ${esc(t.modality||'—')}</span></div><div class="rffm-config-params">${x?`Temp. <b>${esc(x.config?.season_id||'22')}</b> · Comp. <b>${esc(x.competition_id)}</b> · Grupo <b>${esc(x.group_id)}</b> · ${esc(rffmGameTypeLabel(x.game_type))}${x.external_team_id?` · ID ${esc(x.external_team_id)}`:''}`:'Sin parámetros RFFM'}</div><div class="rffm-config-actions">${rffmConfigState(x)}${can?`<button type="button" class="secondary tiny rffm-configure" data-team="${esc(t.id)}">Configurar</button>`:''}${x?.activo?`<button type="button" class="secondary tiny rffm-team-refresh" data-team="${esc(t.id)}">Consultar</button>`:''}</div></article>`}).join('')||'<div class="info-card">No hay equipos en la temporada de contexto.</div>';
+  $$('.rffm-configure').forEach(b=>b.onclick=()=>openRffmConfig(b.dataset.team));
+  $$('.rffm-team-refresh').forEach(b=>b.onclick=()=>loadRffmTeam(b.dataset.team,true));
+  if(out&&!out.innerHTML)out.innerHTML='<div class="info-card">Los resultados se mostrarán para los equipos con RFFM configurada. Pulsa “Actualizar resultados”.</div>';
+  const configured=teams.filter(t=>rffmIntegrationFor(t.id)?.activo).length;$('#rffmStructureStatus').textContent=`${configured}/${teams.length} equipos configurados`;
+}
+function openRffmConfig(teamId){
+  if(!['admin','club'].includes(currentRole))return;selectedRffmTeamId=teamId;const t=dbTeams.find(x=>x.id===teamId),x=rffmIntegrationFor(teamId),f=$('#rffmConfigForm');if(!t||!f)return;f.reset();
+  $('#rffmConfigTitle').textContent=t.name;$('#rffmConfigSeason').textContent=`${dbContextSeason()?.name||''} · ${dbCategoryName(t.categoryId)}`;
+  f.elements.rffm_season_id.value=x?.config?.season_id||'22';f.elements.competition_id.value=x?.competition_id||'';f.elements.group_id.value=x?.group_id||'';f.elements.game_type.value=x?.game_type||(t.modality==='F11'?'1':t.modality==='F7'?'2':'4');f.elements.external_team_id.value=x?.external_team_id||'';f.elements.activo.value=x?.activo===false?'no':'yes';
+  $('#rffmValidationHint').textContent=x?.ultima_validacion_at?`Última prueba: ${new Date(x.ultima_validacion_at).toLocaleString('es-ES')} · ${x.ultima_validacion_ok?'Correcta':'Error'}${x.ultima_validacion_mensaje?' · '+x.ultima_validacion_mensaje:''}`:'Todavía no se ha probado esta configuración.';$('#rffmConfigModal').showModal();
+}
+async function saveRffmConfig(form,{test=false}={}){
+  if(!selectedRffmTeamId||!['admin','club'].includes(currentRole))return null;
+  const fd=new FormData(form),existing=rffmIntegrationFor(selectedRffmTeamId);
+  const row={equipo_id:selectedRffmTeamId,proveedor:'RFFM',config:{season_id:String(fd.get('rffm_season_id')||'').trim()},competition_id:String(fd.get('competition_id')||'').trim(),group_id:String(fd.get('group_id')||'').trim(),game_type:String(fd.get('game_type')||'').trim(),external_team_id:String(fd.get('external_team_id')||'').trim()||null,activo:fd.get('activo')==='yes'};
+  if(!row.config.season_id||!row.competition_id||!row.group_id||!row.game_type)throw new Error('Completa temporada RFFM, competición, grupo y tipo de juego.');
+  const query=existing
+    ? sb.from('equipo_integraciones_federacion').update({...row,ultima_validacion_at:test?new Date().toISOString():null,ultima_validacion_ok:null,ultima_validacion_mensaje:test?'Validación en curso':null}).eq('id',existing.id).select().single()
+    : sb.from('equipo_integraciones_federacion').insert(row).select().single();
+  const {data,error}=await withTimeout(query,10000,'No se ha podido guardar la configuración RFFM en 10 segundos. Puedes volver a intentarlo.');
+  if(error)throw error;
+  const idx=dbFederationIntegrations.findIndex(x=>x.equipo_id===selectedRffmTeamId&&x.proveedor==='RFFM');
+  if(idx>=0)dbFederationIntegrations[idx]=data;else dbFederationIntegrations.push(data);
+  return data;
+}
+async function persistRffmValidation(teamId,ok,message){
+  if(!teamId||!['admin','club'].includes(currentRole))return null;
+  const existing=rffmIntegrationFor(teamId);
+  if(!existing?.id)throw new Error('Guarda primero la configuración RFFM antes de validarla.');
+  const patch={ultima_validacion_at:new Date().toISOString(),ultima_validacion_ok:!!ok,ultima_validacion_mensaje:String(message||'').trim()||null};
+  const query=sb.from('equipo_integraciones_federacion').update(patch).eq('id',existing.id).select().single();
+  const {data,error}=await withTimeout(query,10000,'La prueba RFFM terminó, pero no se pudo guardar su estado de validación en 10 segundos.');
+  if(error)throw error;
+  const idx=dbFederationIntegrations.findIndex(x=>x.id===existing.id);
+  if(idx>=0)dbFederationIntegrations[idx]=data;
+  return data;
+}
+async function testRffmCurrent(){
+  const f=$('#rffmConfigForm');try{await saveRffmConfig(f);const data=await invokeRffm({action:'validate',team_id:selectedRffmTeamId});await loadSupabaseStructure();renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Conexión correcta · ${data.teamName||'equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;}catch(err){await loadSupabaseStructure().catch(()=>{});renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Error de validación: ${err.message||err}`;}
+}
+function rffmLogoHtml(url,alt=''){return url?`<img class="rffm-team-logo" src="${esc(url)}" alt="${esc(alt)}" loading="lazy" />`:''}
+function rffmMatchHtml(m,title){if(!m)return `<div class="rffm-empty">${title}: sin datos.</div>`;return `<div class="rffm-fixture"><div class="rffm-fixture-meta"><b>${title}</b><span>J${esc(m.jornada||'?')} · ${esc(m.date||'')}${m.time?' · '+esc(m.time):''}</span></div><div class="rffm-fixture-row"><span class="rffm-side">${rffmLogoHtml(m.homeLogo,m.home)}<span>${esc(m.home||'')}</span></span><strong>${m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:'VS'}</strong><span class="rffm-side rffm-side--away"><span>${esc(m.away||'')}</span>${rffmLogoHtml(m.awayLogo,m.away)}</span></div>${m.place?`<div class="rffm-place">${esc(m.place)}</div>`:''}</div>`}
+function rffmClassificationHtml(c){if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';return `<div class="rffm-standing"><b>${esc(c.position)}.º</b><span>${c.points!=null?esc(c.points)+' pts':''}${c.played!=null?' · '+esc(c.played)+' PJ':''}</span></div><div class="rffm-mini-head"><span>POS</span><span>EQUIPO</span><span>PJ</span><span>PTS</span></div>${(c.context||[]).map(r=>`<div class="rffm-mini-row ${Number(r.position)===Number(c.position)?'current':''}"><span>${esc(r.position)}.º</span><span class="team">${rffmLogoHtml(r.logo,r.team)}<span>${esc(r.team||'')}</span></span><span>${r.played??''}</span><span><b>${r.points??''}</b></span></div>`).join('')}`}
+let rffmBulkRefreshing=false;
+const rffmScorerPhotoCache=new Map();
+const RFFM_CATEGORY_ORDER=['AFICIONADO','JUVENIL','CADETE','INFANTIL','ALEVIN','BENJAMIN','PREBENJAMIN','DEBUTANTE','VETERANOS'];
+function normalizeRffmText(value){
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g,' ')
+    .trim();
+}
+function rffmFederationCategoryLabel(team){
+  const raw=normalizeRffmText(dbCategoryName(team?.categoryId)||'');
+  if(/VETERAN/.test(raw)||/VET/.test(normalizeRffmText(team?.code||'')))return 'VETERANOS';
+  if(/SENIOR|AFICIONADO/.test(raw))return 'AFICIONADO';
+  if(/JUVENIL/.test(raw))return 'JUVENIL';
+  if(/CADETE/.test(raw))return 'CADETE';
+  if(/INFANTIL/.test(raw))return 'INFANTIL';
+  if(/ALEVIN/.test(raw))return 'ALEVÍN';
+  if(/BENJAMIN/.test(raw)&&!/PREBENJAMIN/.test(raw))return 'BENJAMÍN';
+  if(/PREBENJAMIN/.test(raw))return 'PREBENJAMÍN';
+  if(/CHUPET|DEBUT/.test(raw))return 'DEBUTANTE';
+  return dbCategoryName(team?.categoryId)||'SIN CATEGORÍA';
+}
+function rffmCategoryRank(label){const n=normalizeRffmText(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
+function rffmCategoryGroups(){
+  const teams=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo),by=new Map();
+  for(const t of teams){const label=rffmFederationCategoryLabel(t),key=normalizeRffmText(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
+  const groups=[...by.values()];
+  for(const g of groups)g.teams.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'}));
+  return groups.sort((a,b)=>rffmCategoryRank(a.label)-rffmCategoryRank(b.label)||a.label.localeCompare(b.label,'es'));
+}
+function rffmPersonKey(value){
+  let s=String(value||'').trim();if(s.includes(',')){const [sur,...rest]=s.split(',');s=`${rest.join(' ')} ${sur}`}
+  return normalizeRffmText(s).replace(/[^A-Z0-9 ]+/g,' ').split(/\s+/).filter(Boolean).sort().join('|');
+}
+function rffmMatchedPlayer(teamId,scorerName){
+  const key=rffmPersonKey(scorerName);if(!key)return null;
+  const hits=(remoteClubPlayers||[]).filter(p=>p.active&&p.assignment?.equipo_id===teamId&&rffmPersonKey(p.name)===key);
+  return hits.length===1?hits[0]:null;
+}
+async function rffmPlayerPhotoUrl(player){
+  if(!player)return null;if(rffmScorerPhotoCache.has(player.id))return rffmScorerPhotoCache.get(player.id);
+  const req=(player.requirements||[]).find(r=>r.codigo==='foto_jugador'),doc=req?currentFedDoc(player,req):null;
+  if(!doc?.storage_path){rffmScorerPhotoCache.set(player.id,null);return null}
+  try{const {data,error}=await sb.storage.from('documentacion-federativa').createSignedUrl(doc.storage_path,900);if(error)throw error;const url=data?.signedUrl||null;rffmScorerPhotoCache.set(player.id,url);return url}catch{rffmScorerPhotoCache.set(player.id,null);return null}
+}
+function rffmScorersHtml(teamId,scorers){
+  const rows=(scorers||[]).slice(0,3);if(!rows.length)return '';
+  return `<section class="rffm-scorers"><div class="rffm-scorers-title">MÁXIMOS GOLEADORES</div><div class="rffm-scorers-grid">${rows.map((s,i)=>`<div class="rffm-scorer"><span class="rffm-scorer-avatar" data-rffm-scorer-avatar data-team="${esc(teamId)}" data-scorer="${esc(s.player||'')}"><span aria-hidden="true">👤</span></span><span class="rffm-scorer-copy"><strong>${esc(s.player||'')}</strong><small>${esc(s.goals??0)} ${Number(s.goals)===1?'gol':'goles'}${Number(s.penalties)>0?` · ${esc(s.penalties)} pen.`:''}</small></span><b class="rffm-scorer-rank">${i+1}</b></div>`).join('')}</div></section>`;
+}
+async function hydrateRffmScorerPhotos(root=$('#rffmResultsContent')){
+  if(!root)return;const nodes=[...root.querySelectorAll('[data-rffm-scorer-avatar]')];
+  await Promise.all(nodes.map(async node=>{if(node.dataset.photoHydrated==='1')return;node.dataset.photoHydrated='1';const player=rffmMatchedPlayer(node.dataset.team,node.dataset.scorer);const url=await rffmPlayerPhotoUrl(player);if(url){node.innerHTML=`<img src="${esc(url)}" alt="${esc(player?.name||node.dataset.scorer||'Jugador')}" />`;node.classList.add('has-photo');const img=node.querySelector('img');if(img&&!img.complete)await new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,2500)})}}));
+}
+function rffmTeamCardHtml(t){
+  const d=rffmResultsByTeam.get(t.id),loading=d?.loading===true,disabled=rffmBulkRefreshing||loading;
+  const officialTeam=d?.teamName||d?.classification?.teamName||'';const competition=d?.competitionName||'';
+  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
+}
+function renderRffmResults(){
+  const out=$('#rffmResultsContent');if(!out)return;const groups=rffmCategoryGroups();
+  out.innerHTML=groups.map(g=>{const mods=[...new Set(g.teams.map(t=>t.modality).filter(Boolean))].join('/');return `<section class="rffm-category-group" data-rffm-category="${esc(g.label)}"><header class="rffm-category-head"><h3>${esc(g.label)}</h3><span>${g.teams.length} ${g.teams.length===1?'equipo':'equipos'}${mods?' · '+esc(mods):''}</span></header><div class="rffm-category-grid">${g.teams.map(rffmTeamCardHtml).join('')}</div></section>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>';
+  $$('.rffm-card-refresh',out).forEach(b=>b.onclick=()=>{if(!rffmBulkRefreshing)loadRffmTeam(b.dataset.team,true)});
+  const all=$('#rffmRefreshAll');if(all)all.disabled=rffmBulkRefreshing;
+  hydrateRffmScorerPhotos(out);
+}
+async function loadRffmTeam(teamId,force=false,{deferRender=false}={}){rffmResultsByTeam.set(teamId,{loading:true});if(!deferRender)renderRffmResults();try{const data=await invokeRffm({action:'team',team_id:teamId,force});rffmResultsByTeam.set(teamId,data)}catch(err){rffmResultsByTeam.set(teamId,{error:String(err?.message||err)})}renderRffmResults()}
+async function loadAllRffm(){
+  if(rffmBulkRefreshing)return;const ids=rffmCategoryGroups().flatMap(g=>g.teams.map(t=>t.id)),status=$('#rffmStructureStatus'),button=$('#rffmRefreshAll');
+  rffmBulkRefreshing=true;renderRffmResults();
+  try{for(let i=0;i<ids.length;i++){if(status)status.textContent=`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`;if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;await loadRffmTeam(ids[i],true,{deferRender:true});}if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
+}
+function rffmPdfClassificationHtml(c){
+  if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';
+  const rows=c.all||c.context||[];
+  return `<div class="rffm-standing"><b>${esc(c.position)}.º</b><span>${c.points!=null?esc(c.points)+' pts':''}${c.played!=null?' · '+esc(c.played)+' PJ':''}</span></div><div class="rffm-mini-head"><span>POS</span><span>EQUIPO</span><span>PJ</span><span>PTS</span></div>${rows.map(r=>`<div class="rffm-mini-row ${Number(r.position)===Number(c.position)?'current':''}"><span>${esc(r.position)}.º</span><span class="team">${rffmLogoHtml(r.logo,r.team)}<span>${esc(r.team||'')}</span></span><span>${r.played??''}</span><span><b>${r.points??''}</b></span></div>`).join('')}`;
+}
+function rffmPdfTeamHtml(t,d){
+  const official=d?.teamName||d?.classification?.teamName||'',competition=d?.competitionName||'';
+  return `<article class="rffm-result-card rffm-pdf-team-card"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${official?`<span class="rffm-official-team">${esc(official)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div></header>${d?.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmPdfClassificationHtml(d?.classification)}${rffmMatchHtml(d?.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d?.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d?.scorers)}`}</article>`;
+}
+function parseRffmPdfDate(m){
+  const raw=String(m?.date||'');const x=raw.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);if(!x)return null;
+  const tm=String(m?.time||'').match(/(\d{1,2}):(\d{2})/);if(!tm)return null;
+  return new Date(+x[3],+x[2]-1,+x[1],+tm[1],+tm[2]);
+}
+function rffmSchedulePageHtml(teams){
+  let items=teams.map(t=>({t,d:rffmResultsByTeam.get(t.id)||{}})).filter(x=>x.d?.nextMatch).map(x=>({...x,dt:parseRffmPdfDate(x.d.nextMatch)})).filter(x=>x.dt).sort((a,b)=>a.dt-b.dt);
+  if(!items.length)return '';
+  const first=items[0].dt,offset=(first.getDay()+2)%7,friday=new Date(first.getFullYear(),first.getMonth(),first.getDate()-offset),monday=new Date(friday.getFullYear(),friday.getMonth(),friday.getDate()+3);
+  items=items.filter(x=>x.dt>=friday&&x.dt<monday);
+  const seen=new Set();items=items.filter(x=>{const m=x.d.nextMatch||{},key=[x.dt.getTime(),normalizeRffmText(m.home||''),normalizeRffmText(m.away||''),normalizeRffmText(m.place||'')].join('|');if(seen.has(key))return false;seen.add(key);return true});
+  if(!items.length)return '';
+  const months=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const days=[[5,'VIERNES'],[6,'SÁBADO'],[0,'DOMINGO']];
+  const blocks=days.map(([dow,label])=>{const rows=items.filter(x=>x.dt.getDay()===dow);if(!rows.length)return '';const dt=rows[0].dt;return `<section class="rffm-schedule-day"><h2>${label}, ${dt.getDate()} DE ${months[dt.getMonth()]} ${dt.getFullYear()}</h2><div class="rffm-schedule-head"><span>HORA</span><span>EQUIPO LOCAL</span><span>EQUIPO VISITANTE</span><span>CAMPO</span></div>${rows.map(({t,d,dt})=>{const m=d.nextMatch,appName=String(t.name||'').toUpperCase();let home=m.home||'',away=m.away||'';if(normalizeRffmText(home).includes('YEBENES'))home=appName;if(normalizeRffmText(away).includes('YEBENES'))away=appName;const teamCell=(n,logo)=>{const own=normalizeRffmText(n)===normalizeRffmText(appName);return `<span class="rffm-schedule-team ${own?'is-own':''}">${logo?rffmLogoHtml(logo,n):''}<span>${esc(n)}</span></span>`};return `<div class="rffm-schedule-row"><span>${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}</span><span>${teamCell(home,m.homeLogo)}</span><span>${teamCell(away,m.awayLogo)}</span><span>${esc(m.place||'')}</span></div>`}).join('')}</section>`}).join('');
+  return `<section class="rffm-pdf-page rffm-pdf-schedule-page"><div class="rffm-schedule-poster"><header><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><h1>C.D. LOS YÉBENES<br>SAN BRUNO</h1><p>HORARIOS DE PARTIDOS</p></div></header>${blocks}</div></section>`;
+}
+
+
+
+let rffmPreparedPdfReport=null;
+let rffmPreparedPdfOldTitle='';
+let rffmPdfPreparing=false;
+
+function rffmExportButton(){
+  return [...document.querySelectorAll('button')].find(b=>/exportar pdf|pdf preparado|preparando pdf/i.test(b.textContent||''))||null;
+}
+async function preloadRffmPdfImages(root,onProgress){
+  const urls=[...new Set([...root.querySelectorAll('img')].map(img=>img.currentSrc||img.src).filter(src=>/^https?:\/\//i.test(src)))];
+  let done=0;
+  const loadOne=url=>new Promise(resolve=>{
+    const img=new Image();let settled=false;
+    const finish=()=>{if(settled)return;settled=true;done++;onProgress?.(done,urls.length);resolve()};
+    img.onload=async()=>{try{if(typeof img.decode==='function')await img.decode()}catch{}finish()};
+    img.onerror=finish;img.src=url;
+  });
+  await Promise.race([Promise.all(urls.map(loadOne)),new Promise(resolve=>setTimeout(resolve,8000))]);
+  return {done,total:urls.length};
+}
+function resetPreparedRffmPdf(){
+  document.documentElement.classList.remove('rffm-pdf-mode');
+  rffmPreparedPdfReport?.remove();rffmPreparedPdfReport=null;
+  if(rffmPreparedPdfOldTitle){document.title=rffmPreparedPdfOldTitle;rffmPreparedPdfOldTitle=''}
+  const btn=rffmExportButton();if(btn){btn.disabled=false;btn.textContent='Exportar PDF'}
+}
+function printPreparedRffmPdf(){
+  if(!rffmPreparedPdfReport)return;
+  window.print();
+  setTimeout(resetPreparedRffmPdf,500);
+}
+
+async function exportRffmPdf(){
+  if(rffmPreparedPdfReport&&!rffmPdfPreparing){printPreparedRffmPdf();return;}
+  const groups=rffmCategoryGroups(),teams=groups.flatMap(g=>g.teams),oldTitle=document.title,now=new Date();
+  const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
+  document.title=`Los_Yebenes_Resultados_${y}-${m}-${d}`;
+  document.getElementById('rffmPrintReport')?.remove();
+  const report=document.createElement('div');report.id='rffmPrintReport';report.className='rffm-print-report';
+  for(const g of groups)for(const t of g.teams){const data=rffmResultsByTeam.get(t.id)||{};const page=document.createElement('section');page.className='rffm-pdf-page rffm-pdf-team-page';page.innerHTML=`<div class="rffm-pdf-page-inner"><header class="rffm-pdf-brand"><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada 2026/2027 · Resultados RFFM</span></div></header><header class="rffm-pdf-category">${esc(g.label)}</header>${rffmPdfTeamHtml(t,data)}</div>`;report.appendChild(page)}
+  report.insertAdjacentHTML('beforeend',rffmSchedulePageHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
+  try{
+    rffmPdfPreparing=true;rffmPreparedPdfReport=report;rffmPreparedPdfOldTitle=oldTitle;
+    const btn=rffmExportButton();
+    if(btn){btn.disabled=true;btn.textContent='Preparando PDF…'}
+    await hydrateRffmScorerPhotos(report);
+    report.querySelectorAll('img').forEach(img=>{img.loading='eager'});
+    await preloadRffmPdfImages(report,(done,total)=>{if(btn)btn.textContent=`Preparando PDF… ${done}/${total}`});
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    rffmPdfPreparing=false;
+    if(btn){btn.disabled=false;btn.textContent='PDF preparado · Exportar'}
+  }catch(err){
+    rffmPdfPreparing=false;resetPreparedRffmPdf();throw err;
+  }
+}
+
 function renderStructure(){
   if(!$('#seasonsTable'))return;
   const can=currentRole==='admin';
@@ -2616,22 +3065,22 @@ function renderStructure(){
     $('#seasonsTable').innerHTML=dbSeasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===active?.id?'<span class="status complete">Vigente</span>':'—'}</td><td>${esc(seasonStatusLabel(s.status))}</td><td>${s.id===context?.id?'<span class="status complete">En uso</span>':`<button class="secondary tiny use-context-season" data-id="${esc(s.id)}">Trabajar aquí</button>`}</td></tr>`).join('');
     $$('.use-context-season').forEach(b=>b.onclick=()=>{setDbContextSeason(b.dataset.id);renderStructure()});
     const body=$('#structureTeamsTable');
-    body.innerHTML='<tr><td colspan="9">Cargando equipos y configuración económica…</td></tr>';
+    body.innerHTML='<tr><td colspan="10">Cargando equipos y configuración económica…</td></tr>';
     loadEconomicConfigs().then(()=>{
       body.innerHTML=sortTeamsByCategoryAge(dbSeasonTeams(),true).map(t=>{
         const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);
         const playersCount=remoteClubPlayers.filter(p=>p.assignment?.equipo_id===t.id&&p.active).length;
         const amount=c?moneyEUR(c.importe_inscripcion):'<span class="meta">Sin configurar</span>';
         const configured=!!c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0);
-        return `<tr class="structure-team-row" data-id="${esc(t.id)}" tabindex="0"><td><strong>${esc(t.name)}</strong>${t.code?`<div class="meta">${esc(t.code)}</div>`:''}</td><td>${esc(dbCategoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playersCount||'—'}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length||'—'}</td><td>${amount}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td><span class="status ${t.active&&configured?'complete':t.active?'pending':'returned'}">${!t.active?'Inactivo':configured?'Activo':'Economía pendiente'}</span></td></tr>`;
-      }).join('')||'<tr><td colspan="9">No hay equipos configurados para la temporada.</td></tr>';
+        return `<tr class="structure-team-row" data-id="${esc(t.id)}" tabindex="0"><td><strong>${esc(t.name)}</strong>${t.code?`<div class="meta">${esc(t.code)}</div>`:''}</td><td>${esc(dbCategoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playersCount||'—'}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length||'—'}</td><td>${amount}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td>${rffmConfigState(rffmIntegrationFor(t.id))}</td><td><span class="status ${t.active&&configured?'complete':t.active?'pending':'returned'}">${!t.active?'Inactivo':configured?'Activo':'Economía pendiente'}</span></td></tr>`;
+      }).join('')||'<tr><td colspan="10">No hay equipos configurados para la temporada.</td></tr>';
       $$('.structure-team-row').forEach(r=>{
         if(canEconomic){r.onclick=()=>openTeamEdit(r.dataset.id);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTeamEdit(r.dataset.id)}}}
       });
-    }).catch(err=>{body.innerHTML=`<tr><td colspan="9">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
+    }).catch(err=>{body.innerHTML=`<tr><td colspan="10">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
     return;
   }
-  $('#openSeasonModal').style.display=can?'inline-flex':'none';$('#openTeamModal').style.display=can?'inline-flex':'none';$('#seasonsTable').innerHTML=seasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===currentSeasonId?'<span class="status complete">Actual</span>':'—'}</td><td>${s.active?'Activa':'Cerrada'}</td><td>${can&&s.id!==currentSeasonId?`<button class="secondary tiny activate-season" data-id="${s.id}">Usar</button>`:''}</td></tr>`).join('');$$('.activate-season').forEach(b=>b.onclick=()=>{currentSeasonId=b.dataset.id;writeJSON(K.currentSeason,currentSeasonId);recalculateSeasonCategories(currentSeasonId);recordAudit('Cambio de temporada activa','',seasonName(currentSeasonId));$('#currentSeasonLabel').textContent=seasonName(currentSeasonId);renderStructure();renderClub();renderMedical();renderCoaches()});$('#structureTeamsTable').innerHTML=sortTeamsByCategoryAge(currentSeasonTeams(),false).map(t=>`<tr class="structure-team-row" data-id="${esc(t.id)}" ${can?'tabindex="0"':''}><td><strong>${esc(t.name)}</strong></td><td>${esc(categoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td>—</td><td>—</td><td>—</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td></tr>`).join('');if(can)$$('.structure-team-row').forEach(r=>{r.onclick=()=>openTeamEdit(r.dataset.id);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTeamEdit(r.dataset.id)}}})
+  $('#openSeasonModal').style.display=can?'inline-flex':'none';$('#openTeamModal').style.display=can?'inline-flex':'none';$('#seasonsTable').innerHTML=seasons.map(s=>`<tr><td><strong>${esc(s.name)}</strong></td><td>${fmt(s.startDate)}</td><td>${fmt(s.endDate)}</td><td>${s.id===currentSeasonId?'<span class="status complete">Actual</span>':'—'}</td><td>${s.active?'Activa':'Cerrada'}</td><td>${can&&s.id!==currentSeasonId?`<button class="secondary tiny activate-season" data-id="${s.id}">Usar</button>`:''}</td></tr>`).join('');$$('.activate-season').forEach(b=>b.onclick=()=>{currentSeasonId=b.dataset.id;writeJSON(K.currentSeason,currentSeasonId);recalculateSeasonCategories(currentSeasonId);recordAudit('Cambio de temporada activa','',seasonName(currentSeasonId));$('#currentSeasonLabel').textContent=seasonName(currentSeasonId);renderStructure();renderClub();renderMedical();renderCoaches()});$('#structureTeamsTable').innerHTML=sortTeamsByCategoryAge(currentSeasonTeams(),false).map(t=>`<tr class="structure-team-row" data-id="${esc(t.id)}" ${can?'tabindex="0"':''}><td><strong>${esc(t.name)}</strong></td><td>${esc(categoryName(t.categoryId))}</td><td>${t.modality?esc(t.modality):'—'}</td><td>${playerTeams.filter(a=>a.teamId===t.id&&a.seasonId===currentSeasonId&&assignmentState(a)==='active').length}</td><td>${coaches.filter(c=>c.active&&(c.assignments||[]).some(a=>a.teamId===t.id&&assignmentState(a)==='active')).length}</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="status ${t.active?'complete':'returned'}">${t.active?'Activo':'Inactivo'}</span></td></tr>`).join('');if(can)$$('.structure-team-row').forEach(r=>{r.onclick=()=>openTeamEdit(r.dataset.id);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openTeamEdit(r.dataset.id)}}})
 }
 function saveTeamAssignment(){if(currentRole==='coach')return;const p=players.find(x=>x.id===selectedPlayerId),i=inscriptionFor(selectedPlayerId);if(!p||!i||i.workflow==='review')return;const teamId=$('#adminTeam').value,old=activeTeamAssignment(p.id);if(old?.teamId===teamId)return;if(old){old.endDate=isoToday();old.reason='Cambio de equipo';}if(teamId){playerTeams.push({id:uid('pt'),playerId:p.id,seasonId:currentSeasonId,teamId,startDate:isoToday(),endDate:currentSeason().endDate,reason:old?'Cambio de equipo':'Asignación inicial'})}savePlayerTeams();recordAudit('Asignación de equipo',p.id,teamId?`Asignado a ${teamName(teamId)}`:'Equipo retirado');openAdminPlayer(p.id);renderClub();renderCoaches();renderStructure()}
 function advanceSelected(){const i=inscriptionFor(selectedPlayerId);if(currentRole==='coach'||!i)return;const ix=Math.max(0,WORKFLOW.findIndex(x=>x.key===i.workflow)),n=WORKFLOW[Math.min(ix+1,WORKFLOW.length-1)];updateInscription(selectedPlayerId,x=>({...x,workflow:n.key,federation:n.federation,status:['ready','federated'].includes(n.key)?'complete':'pending',familyActionRequired:false,returnMessage:''}),'Avance de estado');openAdminPlayer(selectedPlayerId)}
@@ -2645,6 +3094,9 @@ function openPlayerForEdit(id){const p=familyAccessPlayers().find(x=>x.id===id);
 function openChangeTutor(){if(currentRole!=='admin')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const eligible=users.filter(u=>hasRole(u,'family')&&u.active);$('#tutorUserSelect').innerHTML='<option value="">Seleccionar tutor registrado</option>'+eligible.map(u=>`<option value="${u.id}">${esc(u.name)} · ${esc(u.email)}</option>`).join('');$('#changeTutorForm').reset();$('#changeTutorModal').showModal()}
 function openSelfRepresentation(){if(currentRole!=='admin')return;const p=players.find(x=>x.id===selectedPlayerId);if(!p)return;const pu=currentPlayerUser(p),d=daysTo18(p),a=ageOn(p.birth);const f=$('#selfRepresentationForm');f.reset();if(pu)f.elements.email.value=pu.email;$('#selfRepresentationHint').textContent=a>=18?'El jugador ya es mayor de edad: la cuenta se activará ahora y la representación ordinaria del tutor finalizará.':`La cuenta quedará preparada y se activará al cumplir 18 años${d!==null?` (en ${d} días)`:''}.`;$('#selfRepresentationModal').showModal()}
 
+function setTeamConfigTab(tab){const modal=$('#teamModal');if(modal?._modalSelectTab){modal._modalSelectTab(tab);return}$$('[data-team-config-tab]').forEach(b=>b.classList.toggle('active',b.dataset.teamConfigTab===tab));$$('[data-team-config-panel]').forEach(p=>p.hidden=p.dataset.teamConfigPanel!==tab)}
+function fillTeamRffmPane(teamId){const t=dbTeams.find(x=>x.id===teamId),x=rffmIntegrationFor(teamId),f=$('#teamRffmForm');if(!t||!f)return;selectedRffmTeamId=teamId;f.reset();f.elements.rffm_season_id.value=x?.config?.season_id||'22';f.elements.competition_id.value=x?.competition_id||'';f.elements.group_id.value=x?.group_id||'';f.elements.game_type.value=x?.game_type||(t.modality==='F11'?'1':t.modality==='F7'?'2':'4');f.elements.external_team_id.value=x?.external_team_id||'';f.elements.activo.value=x?.activo===false?'no':'yes';const status=$('#teamRffmValidationStatus');if(x?.ultima_validacion_ok===true)ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message:`Última comprobación: ${new Date(x.ultima_validacion_at).toLocaleString('es-ES')}${x.ultima_validacion_mensaje?' · '+x.ultima_validacion_mensaje:''}`});else if(x?.ultima_validacion_ok===false)ModalUI.setStatus(status,{tone:'danger',title:'Error de conexión',message:x.ultima_validacion_mensaje||'Revisa los parámetros RFFM y vuelve a probar.'});else ModalUI.setStatus(status,{tone:'warning',title:'Pendiente de comprobar',message:'Guarda la configuración y utiliza “Probar conexión” antes de consultar resultados.'});ModalUI.setActionEnabled($('#consultTeamRffm'),x?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');const out=$('#teamRffmResult');if(out)out.innerHTML=''}
+function renderTeamRffmResult(teamId){const out=$('#teamRffmResult');if(!out)return;const d=rffmResultsByTeam.get(teamId);out.innerHTML=!d?'':d.error?`<div class="info-card">${esc(d.error)}</div>`:`<article class="rffm-result-card">${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}</article>`}
 function openTeamEdit(id){
   editingTeamId=id;
   const remote=dbStructureLoaded;
@@ -2661,6 +3113,7 @@ function openTeamEdit(id){
   if(closeTeam)closeTeam.onclick=()=>teamModal?.close();
   if(cancelTeam)cancelTeam.onclick=()=>teamModal?.close();
   if(teamForm)teamForm.onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
+  ModalUI.enhance(teamModal,{size:'wide'});ModalUI.bindTabs(teamModal,{tabSelector:'[data-modal-tab]',panelSelector:'[data-modal-panel]'});setTeamConfigTab('club');fillTeamRffmPane(id);
   teamModal?.showModal()
 }
 function fillTeamCategorySelect(){const s=$('#teamCategorySelect'),source=dbStructureLoaded?dbCategories:categories;s.innerHTML=source.filter(c=>c.active).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}
@@ -2685,7 +3138,7 @@ async function saveUnifiedTeam(form){
     return;
   }
   if(currentRole!=='admin')return;
-  if(editingTeamId){const t=teams.find(x=>x.id===editingTeamId);Object.assign(t,{name:fd.get('name'),categoryId:fd.get('categoryId'),code:fd.get('code')||'',modality:fd.get('modality')||'',gender:fd.get('gender')||'',active:fd.get('active')==='yes'})}else teams.push({id:uid('t'),seasonId:currentSeasonId,name:fd.get('name'),categoryId:fd.get('categoryId'),code:fd.get('code')||'',modality:fd.get('modality')||'',gender:fd.get('gender')||'',active:fd.get('active')==='yes'});saveTeams();recordAudit('Equipo actualizado','',fd.get('name'));$('#teamModal').close();renderStructure();renderCoaches();
+  if(editingTeamId){const t=teams.find(x=>x.id===editingTeamId);Object.assign(t,{name:fd.get('name'),categoryId:fd.get('categoryId'),code:fd.get('code')||'',modality:fd.get('modality')||'',gender:fd.get('gender')||'',active:fd.get('active')==='yes'})}else teams.push({id:uid('t'),seasonId:currentSeasonId,name:fd.get('name'),categoryId:fd.get('categoryId'),code:fd.get('code')||'',modality:fd.get('modality')||'',gender:fd.get('gender')||'',active:fd.get('active')==='yes'});saveTeams();recordAudit('Equipo actualizado','',fd.get('name'));closeTeamModal();renderStructure();renderCoaches();
 }
 
 function renderUserAssignments(){renderAssignmentList('#clubUserAssignmentsList',pendingUserAssignments,'remove-user-assignment');$$('.remove-user-assignment').forEach(b=>b.onclick=()=>{pendingUserAssignments.splice(+b.dataset.index,1);renderUserAssignments()})}
@@ -2804,6 +3257,20 @@ function scrollActiveListToStart(view){
   const map={clubView:'clubPaginationTop',medicalView:'medicalPaginationTop',coachesView:'coachesPaginationTop',personsView:'personsPaginationTop'};
   const id=map[view];if(!id)return;requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'auto',block:'start'}));
 }
+$$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamConfigTab(b.dataset.teamConfigTab)));
+$('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus');if(form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Guardando…'});try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'success',title:'Configuración guardada',message:'Los parámetros RFFM se han guardado correctamente. Puedes probar la conexión.'});renderStructure();}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});const message=`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;await persistRffmValidation(editingTeamId,true,message);renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){const message=String(err.message||err);try{if(rffmIntegrationFor(editingTeamId)?.id)await persistRffmValidation(editingTeamId,false,message)}catch(persistErr){console.warn('No se pudo persistir el error de validación RFFM',persistErr)}renderStructure();ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(form?.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Consultando…'});try{const data=await invokeRffm({action:'team',team_id:editingTeamId,force:true});rffmResultsByTeam.set(editingTeamId,data);renderTeamRffmResult(editingTeamId);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'No se han podido consultar los resultados',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+function mountRffmResultsModal(){
+  const dialog=$('#rffmResultsModal');if(!dialog)return;
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Federación · RFFM',title:'Resultados del club',subtitle:'Equipos configurados de la temporada de contexto',body:'<div id="rffmResultsContent" class="rffm-content"></div>',actions:[{id:'rffmRefreshAll',label:'Actualizar todos'},{id:'rffmExportPdf',label:'Exportar PDF',primary:true}],closeId:'closeRffmResults',actionsClass:'rffm-results-actions'});
+  const identity=dialog.querySelector('.app-modal__identity .meta');if(identity)identity.id='rffmStructureStatus';
+}
+mountRffmResultsModal();
+$('#openRffmResults')?.addEventListener('click',()=>{const dialog=$('#rffmResultsModal');ModalUI.open(dialog);try{renderRffmResults()}catch(err){console.error('Render Resultados RFFM',err);const out=$('#rffmResultsContent');if(out)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar el contenido de resultados.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}});
+$('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
+$('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
+$('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
 $$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;const view=b.dataset.clubView;setView(view);if(view==='clubView')renderClub();if(view==='medicalView')renderMedical();if(view==='coachesView'){if(currentUser?.source==='supabase'&&!dbCoachesLoaded){loadSupabaseCoaches().then(()=>{markListMetric('coaches','remoteRefreshes');renderCoaches()}).catch(err=>{console.error('Recarga entrenadores',err);renderCoaches()})}else renderCoaches();}if(view==='structureView')renderStructure();if(view==='sponsorsView')loadSponsorAdmin().catch(err=>{console.error('Patrocinadores',err);alert('No se han podido cargar los patrocinadores.')});if(view==='usersView')renderClubUsers();if(view==='personsView')renderPersons();scrollActiveListToStart(view)});
 
 function setFamilyMainTab(tab){
@@ -2850,7 +3317,8 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
 }
 
 if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
-$('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=()=>$('#teamModal').close();$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
+function closeTeamModal(){const d=$('#teamModal');editingTeamId=null;selectedRffmTeamId=null;if(d?.open)d.close();}
+$('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;selectedRffmTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=closeTeamModal;$('#teamModal')?.addEventListener('cancel',e=>{e.preventDefault();closeTeamModal()});$('#teamModal')?.addEventListener('close',()=>{editingTeamId=null;selectedRffmTeamId=null});$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=async e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure();if(activeClubViewId()==='equipmentView')await loadEquipmentData({tab:equipmentTab})};
 $('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 

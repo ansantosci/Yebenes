@@ -150,7 +150,7 @@ values
   ('7a48e397-b059-4eab-aab0-1d4395c9093d','f6b07c5c-9f57-44f4-a20d-189ab8608eac','fd05a42c-b430-4de9-b76c-1529c94a9c8a','Infantil A','INF-A','masculino',true,'F11'),
   ('4cf8a784-fead-4208-b4a3-2b7c5db5477c','f6b07c5c-9f57-44f4-a20d-189ab8608eac','fd05a42c-b430-4de9-b76c-1529c94a9c8a','Infantil B','INF-B','masculino',true,null),
   ('95bd3687-2606-4573-b1a2-3fb62f0447fd','f6b07c5c-9f57-44f4-a20d-189ab8608eac','fd05a42c-b430-4de9-b76c-1529c94a9c8a','Infantil Femenino A','INF-FA','femenino',true,null),
-  ('56b6183d-a492-493c-b764-51e67846493b','f6b07c5c-9f57-44f4-a20d-189ab8608eac','fd05a42c-b430-4de9-b76c-1529c94a9c8a','Infantil Femenino B','INF-FB','femenino',true,null),
+  ('56b6183d-a492-493c-b764-51e67846493b','f6b07c5c-9f57-44f4-a20d-189ab8608eac','46675387-012d-47b7-ad79-2a34175a618f','Veteranos Masculino','VET-M','masculino',true,'F11'),
 
   ('ef3577eb-dd74-455a-9202-2aa813ec0800','f6b07c5c-9f57-44f4-a20d-189ab8608eac','b81e54d6-2cf2-49af-80a4-8e412e0ea944','Juvenil A','JUV-A','masculino',true,null),
   ('7776e2ac-9bb7-4008-8401-40ea8d471d2c','f6b07c5c-9f57-44f4-a20d-189ab8608eac','b81e54d6-2cf2-49af-80a4-8e412e0ea944','Juvenil B','JUV-B','masculino',true,null),
