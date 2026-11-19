@@ -10,6 +10,12 @@ process.env.ACCESS_IDENTITIES_JSON = JSON.stringify([
   { email: 'tutor.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000004', displayName: 'Tutor TEST Acceso' },
   { email: 'player-adult.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000005', displayName: 'Jugador Adulto TEST' },
   { email: 'multiprofile.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000007', displayName: 'Multiperfil TEST' },
+  { email: 'tutor-family-1.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000101', displayName: 'Tutor Familia 1 TEST' },
+  { email: 'tutor-family-2.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000102', displayName: 'Tutor Familia 2 TEST' },
+  { email: 'tutor-family-3.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000103', displayName: 'Tutor Familia 3 TEST' },
+  { email: 'tutor-family-4.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000104', displayName: 'Tutor Familia 4 TEST' },
+  { email: 'tutor-family-5.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000105', displayName: 'Tutor Familia 5 TEST' },
+  { email: 'tutor-family-6.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000106', displayName: 'Tutor Familia 6 TEST' },
 ]);
 process.env.RETIRED_ACCESS_IDENTITIES_JSON = JSON.stringify([
   { email: 'player-minor.test@yebenes.test', personaId: '10000000-0000-4000-8000-000000000006' },

@@ -105,6 +105,17 @@ where exists (
   where x.id=al.asignacion_id
 );
 
+delete from public.equipacion_devoluciones dv
+where exists (
+  select 1
+  from public.equipacion_entregas d
+  join public.equipacion_asignaciones x on x.id=d.asignacion_id
+  join private.test_dataset_entities e
+    on e.dataset_id='TEST-S' and e.table_name='equipacion_necesidades'
+   and e.entity_id=x.necesidad_id
+  where d.id=dv.entrega_id
+);
+
 delete from public.equipacion_entregas d
 where exists (
   select 1
@@ -186,6 +197,15 @@ where exists (
   from private.test_dataset_entities e
   where e.dataset_id='TEST-S' and e.table_name='equipacion_articulos'
     and e.entity_id=l.articulo_id
+);
+
+-- Change requests reference needs/persons with RESTRICT and can survive interrupted runs.
+delete from public.equipacion_solicitud_cambios sc
+where exists (
+  select 1 from private.test_dataset_entities e
+  where e.dataset_id='TEST-S'
+    and ((e.table_name='equipacion_necesidades' and e.entity_id=sc.necesidad_id)
+      or (e.table_name='personas' and e.entity_id=sc.persona_id))
 );
 
 -- Trigger-generated stock movements are children of TEST-S logistics rows but may not
@@ -370,6 +390,17 @@ where exists (select 1 from private.test_dataset_entities e
 delete from public.economia_cuota_temporada_config x
 where exists (select 1 from private.test_dataset_entities e
               where e.dataset_id='TEST-S' and e.table_name='temporadas' and e.entity_id=x.temporada_id);
+
+-- Canonical coach coverage assignments are shared-layer rows. Remove them before
+-- deleting coach facets, including rows left by older versions without registry ownership.
+delete from public.asignaciones_entrenador_equipo a
+where a.id in (
+  select md5('canonical-coach-cover:'||e.id::text||':'||g)::uuid
+  from public.equipos e
+  join public.temporadas t on t.id=e.temporada_id
+  cross join generate_series(1,2) g
+  where t.estado='activa'
+);
 
 -- remaining registered entities use id as their primary key
 -- persona_participaciones_temporada and historico_participaciones_temporada are intentionally
