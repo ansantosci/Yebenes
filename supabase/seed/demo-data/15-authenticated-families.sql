@@ -55,15 +55,21 @@ values('DEMO-S','entrenadores',private.demo_uuid('auth-family-coach:6')) on conf
 do $$
 declare missing_minor integer; linked integer; own_auth integer; same_team integer; cross_team integer; three_children integer; multimodal integer; coach_tutor integer;
 begin
- select count(*) into missing_minor from public.jugadores j join public.personas p on p.id=j.persona_id
+ select count(*) into missing_minor
+ from public.jugadores j
+ join private.demo_dataset_entities own on own.dataset_id='DEMO-S' and own.table_name='jugadores' and own.entity_id=j.id
+ join public.personas p on p.id=j.persona_id
  where j.activo and date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
  and not exists(select 1 from public.representaciones_jugador r where r.jugador_id=j.id and r.fecha_hasta is null);
- if missing_minor<>0 then raise exception 'Family matrix: % active minors without active representation',missing_minor; end if;
+ if missing_minor<>0 then raise exception 'Family matrix: % dataset-owned active minors without active representation',missing_minor; end if;
  select count(*) into linked from private.demo_access_identities a join public.personas p on p.id=a.persona_id where a.key like 'tutor_family_%' and p.auth_user_id is not null;
  if linked<>6 then raise exception 'Family matrix: expected 6 additional authenticated tutors, got %',linked; end if;
- select count(*) into own_auth from public.jugadores j join public.personas p on p.id=j.persona_id
+ select count(*) into own_auth
+ from public.jugadores j
+ join private.demo_dataset_entities own on own.dataset_id='DEMO-S' and own.table_name='jugadores' and own.entity_id=j.id
+ join public.personas p on p.id=j.persona_id
  where date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date and p.auth_user_id is not null;
- if own_auth<>0 then raise exception 'Family matrix: minors must not have Auth login, got %',own_auth; end if;
+ if own_auth<>0 then raise exception 'Family matrix: dataset-owned minors must not have Auth login, got %',own_auth; end if;
  select count(*) into same_team from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_2' where r.fecha_hasta is null;
  if same_team<2 then raise exception 'Family matrix: same-team siblings missing'; end if;
  select count(distinct aje.equipo_id) into cross_team from public.representaciones_jugador r join private.demo_access_identities a on a.persona_id=r.representante_persona_id and a.key='tutor_family_3'
