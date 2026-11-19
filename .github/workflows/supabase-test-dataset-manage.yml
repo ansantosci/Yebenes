@@ -112,11 +112,14 @@ jobs:
         if: ${{ inputs.action == 'RESET' }}
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
-          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_URL: https://${{ secrets.SUPABASE_TEST_PROJECT_REF }}.supabase.co
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
         run: |
           set -euo pipefail
+          test -n "${SUPABASE_TEST_URL:-}"
+          test -n "${SUPABASE_TEST_SERVICE_ROLE_KEY:-}"
+          test -n "${TEST_APP_USER_PASSWORD:-}"
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
           psql "$TEST_DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-before.txt
           test -s protected-auth-before.txt

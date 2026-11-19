@@ -155,14 +155,19 @@ jobs:
         shell: bash
         env:
           DB_URL: ${{ steps.db.outputs.db_url }}
-          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_URL: https://${{ secrets.SUPABASE_TEST_PROJECT_REF }}.supabase.co
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
-          SUPABASE_DEMO_URL: ${{ secrets.SUPABASE_DEMO_URL }}
+          SUPABASE_DEMO_URL: https://${{ secrets.SUPABASE_DEMO_PROJECT_REF }}.supabase.co
           SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
           DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
         run: |
           set -euo pipefail
+          if [ '${{ inputs.target }}' = 'TEST' ]; then
+            test -n "${SUPABASE_TEST_URL:-}"; test -n "${SUPABASE_TEST_SERVICE_ROLE_KEY:-}"; test -n "${TEST_APP_USER_PASSWORD:-}"
+          else
+            test -n "${SUPABASE_DEMO_URL:-}"; test -n "${SUPABASE_DEMO_SERVICE_ROLE_KEY:-}"; test -n "${DEMO_APP_USER_PASSWORD:-}"
+          fi
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/01-reset-demo-s.sql
           if [ '${{ inputs.target }}' = 'TEST' ]; then
             psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
