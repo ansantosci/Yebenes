@@ -99,6 +99,7 @@ jobs:
           test -s supabase/seed/demo-access/00-demo-access-personas.sql
           test -s supabase/seed/test-data/15-authenticated-families.sql
           test -s supabase/seed/demo-data/15-authenticated-families.sql
+          test -s supabase/seed/demo-data/15_authenticated_families_test_access_rehearsal.sql
           test -s scripts/bootstrap-test-access.mjs
           test -s scripts/bootstrap-demo-access.mjs
           test_family_rows=$(sed -n '/insert into private.test_access_identities/,/on conflict/p' supabase/seed/test-access/00-test-access-personas.sql | grep -c "^ ('tutor_family_[1-6]'")
@@ -179,8 +180,8 @@ jobs:
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
           if [ '${{ inputs.target }}' = 'TEST' ]; then
-            # Rehearsal runs on TEST Auth. Link family cases through TEST-ACCESS.
-            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/15-authenticated-families.sql
+            # Logical dataset is DEMO-S; physical Auth/ACCESS belongs to TEST during rehearsal.
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/15_authenticated_families_test_access_rehearsal.sql
           else
             psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/15-authenticated-families.sql
           fi
@@ -235,7 +236,7 @@ jobs:
           do $$
           begin
             if (select scenario from private.demo_datasets where id='DEMO-S') <> 'COMPLETO' then raise exception 'DEMO-S expected COMPLETO scenario'; end if;
-            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='jugadores') < 115 then raise exception 'DEMO-S expected at least 115 synthetic players'; end if;
+            if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='jugadores') < 384 then raise exception 'DEMO-S expected at least 384 modality-sized roster players'; end if;
             if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='entrenadores') < 28 then raise exception 'DEMO-S expected at least 28 synthetic coaches'; end if;
             if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='horarios_equipo') < 23 then raise exception 'DEMO-S baseline parity missing team schedules'; end if;
             if (select count(*) from private.demo_dataset_entities where dataset_id='DEMO-S' and table_name='personas' and entity_id in (private.demo_uuid('particip:carlos'),private.demo_uuid('particip:pablo'),private.demo_uuid('particip:lucia'))) <> 3 then raise exception 'DEMO-S baseline parity missing future multifacet fixture'; end if;
