@@ -2996,20 +2996,6 @@ function rffmSchedulePageHtml(teams){
 }
 
 
-async function waitForRffmPdfImages(root){
-  const imgs=[...(root||document).querySelectorAll('img')];
-  await Promise.all(imgs.map(img=>new Promise(resolve=>{
-    if(img.complete){
-      if(typeof img.decode==='function')img.decode().catch(()=>{}).finally(resolve);else resolve();
-      return;
-    }
-    let timer;
-    const done=()=>{clearTimeout(timer);img.removeEventListener('load',done);img.removeEventListener('error',done);if(typeof img.decode==='function')img.decode().catch(()=>{}).finally(resolve);else resolve()};
-    img.addEventListener('load',done,{once:true});img.addEventListener('error',done,{once:true});
-    timer=setTimeout(done,3000);
-  })));
-}
-
 async function exportRffmPdf(){
   const groups=rffmCategoryGroups(),teams=groups.flatMap(g=>g.teams),oldTitle=document.title,now=new Date();
   const y=now.getFullYear(),m=String(now.getMonth()+1).padStart(2,'0'),d=String(now.getDate()).padStart(2,'0');
@@ -3018,7 +3004,7 @@ async function exportRffmPdf(){
   const report=document.createElement('div');report.id='rffmPrintReport';report.className='rffm-print-report';
   for(const g of groups)for(const t of g.teams){const data=rffmResultsByTeam.get(t.id)||{};const page=document.createElement('section');page.className='rffm-pdf-page rffm-pdf-team-page';page.innerHTML=`<div class="rffm-pdf-page-inner"><header class="rffm-pdf-brand"><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada 2026/2027 · Resultados RFFM</span></div></header><header class="rffm-pdf-category">${esc(g.label)}</header>${rffmPdfTeamHtml(t,data)}</div>`;report.appendChild(page)}
   report.insertAdjacentHTML('beforeend',rffmSchedulePageHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
-  try{await hydrateRffmScorerPhotos(report);await waitForRffmPdfImages(report);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.print()}finally{document.documentElement.classList.remove('rffm-pdf-mode');report.remove();document.title=oldTitle}
+  try{await hydrateRffmScorerPhotos(report);report.querySelectorAll('img').forEach(img=>{img.loading='eager'});await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.print()}finally{document.documentElement.classList.remove('rffm-pdf-mode');report.remove();document.title=oldTitle}
 }
 
 function renderStructure(){
