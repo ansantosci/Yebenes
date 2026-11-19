@@ -69,6 +69,8 @@ jobs:
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
           test -s supabase/seed/common/10-rffm-2026-27.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
+          test -s supabase/seed/test-data/15-authenticated-families.sql
+          test -s scripts/bootstrap-test-access.mjs
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then
@@ -81,6 +83,9 @@ jobs:
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
             test -s supabase/seed/test-data/scenarios/completo-v1.sql
           fi
+      - name: Ensure canonical coach coverage
+        shell: bash
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
       - name: Recover TEST database from any DEMO rehearsal residue
         if: ${{ inputs.action == 'RESET' }}
         env:
@@ -104,6 +109,9 @@ jobs:
         if: ${{ inputs.action == 'RESET' }}
         env:
           TEST_DB_URL: ${{ secrets.SUPABASE_TEST_DB_URL }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
         run: |
           set -euo pipefail
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
@@ -111,8 +119,11 @@ jobs:
           test -s protected-auth-before.txt
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
+          node scripts/bootstrap-test-access.mjs
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/10-test-s-v1-baseline.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/15-authenticated-families.sql
+          psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
           psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             psql "$TEST_DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/scenarios/notifications-v1.sql

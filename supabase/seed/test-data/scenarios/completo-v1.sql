@@ -336,7 +336,9 @@ do $$ declare total integer; positioned integer; confirmed integer; pending inte
  select count(distinct persona_id) into pending from public.equipacion_estado_operativo where estado_operativo='pendiente_compra';
  select count(distinct persona_id) into prepared from public.equipacion_estado_operativo where estado_operativo='preparada';
  select count(distinct persona_id) into delivered from public.equipacion_estado_operativo where estado_operativo='entregada';
- if total<>167 then raise exception 'MATRIX v2: expected 167 canonical active players after retiring historical E067C, got %',total; end if;
+ if total<>(select coalesce(sum(case modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end),0)+2
+                    from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and e.activo)
+ then raise exception 'MATRIX v3: active player population does not match modality-sized rosters + 2 economy cases: got %',total; end if;
  if positioned<>total then raise exception 'MATRIX v2: every canonical player must have an equipment lifecycle position (%/%).',positioned,total; end if;
  if confirmed<80 then raise exception 'MATRIX v2: insufficient confirmed equipment population: %',confirmed; end if;
  if pending<10 or prepared<10 or delivered<10 then raise exception 'MATRIX v2: insufficient logistics diversity pending %, prepared %, delivered %',pending,prepared,delivered; end if;

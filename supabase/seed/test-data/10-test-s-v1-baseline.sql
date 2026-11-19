@@ -1,5 +1,5 @@
 -- TEST-S v1.2 BASELINE: deterministic synthetic dataset.
--- 46 players (2/team), 23 tutors, 12 coaches (2 are also senior players), 23 team schedules.
+-- Modality-sized rosters: F11=20, F7=12, F5=8; protected TEST-ACCESS identities are preserved.
 begin;
 insert into private.test_datasets(id,version,scenario,metadata) values('TEST-S','1.2','BASELINE','{"purpose":"small reproducible functional dataset"}')
 on conflict(id) do update set version=excluded.version,scenario=excluded.scenario,loaded_at=now(),metadata=excluded.metadata;
@@ -46,19 +46,19 @@ insert into private.test_dataset_entities
 select 'TEST-S','documentos_identidad',private.test_uuid('doc:tutor:'||e.codigo),now()
 from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' on conflict do nothing;
 
--- 46 player Personas: exactly two per active team, with age derived from category rules.
+-- Player Personas sized by team modality (F11=20, F7=12, F5=8), with age derived from category rules.
 with teams as (
  select e.*,c.codigo cat_codigo,coalesce(r.anio_nacimiento_hasta,2000) birth_year,row_number() over(order by e.codigo) team_n
  from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id
  left join public.reglas_categoria_temporada r on r.temporada_id=e.temporada_id and r.categoria_id=e.categoria_id and r.activo
  where t.estado='activa'
-), p as (select teams.*,g from teams cross join generate_series(1,2) g)
+), p as (select teams.*,g from teams cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g)
 insert into public.personas(id,nombre,primer_apellido,segundo_apellido,fecha_nacimiento,email_contacto,activo)
 select private.test_uuid('player:'||codigo||':'||g), 'Jugador TEST', codigo||' '||lpad(g::text,2,'0'), null,
        make_date(birth_year, case when g=1 then 3 else 9 end, case when g=1 then 10 else 20 end),
        lower(codigo)||'-'||g||'@test.invalid',true from p
 on conflict(id) do update set fecha_nacimiento=excluded.fecha_nacimiento,email_contacto=excluded.email_contacto,activo=true;
-insert into private.test_dataset_entities select 'TEST-S','personas',private.test_uuid('player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','personas',private.test_uuid('player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' on conflict do nothing;
 
 -- Player identity coverage follows the real age rule at the season reference date (2026-09-01):
 -- * age >= 14: principal DNI is always present and valid;
@@ -68,7 +68,7 @@ with players as (
   select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
   from public.equipos e
   join public.temporadas t on t.id=e.temporada_id
-  cross join generate_series(1,2) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
   where t.estado='activa'
 ), docs as (
@@ -96,7 +96,7 @@ with players as (
   select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
   from public.equipos e
   join public.temporadas t on t.id=e.temporada_id
-  cross join generate_series(1,2) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
   where t.estado='activa'
 ), docs as (
@@ -121,7 +121,7 @@ from (
   select e.codigo,g,p.fecha_nacimiento,row_number() over(order by e.codigo,g) n
   from public.equipos e
   join public.temporadas t on t.id=e.temporada_id
-  cross join generate_series(1,2) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
   where t.estado='activa'
 ) x
@@ -138,11 +138,11 @@ on conflict do nothing;
 -- Player facets, inscriptions and team assignments.
 insert into public.jugadores(id,persona_id,activo,fecha_alta)
 select private.test_s_player_id(e.codigo,g),private.test_s_player_person_id(e.codigo,g),true,date '2026-07-01'
-from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa'
+from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa'
 on conflict(id) do update set persona_id=excluded.persona_id,activo=true,fecha_baja=null;
 insert into private.test_dataset_entities
 select 'TEST-S','jugadores',private.test_s_player_id(e.codigo,g),now()
-from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g
+from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado='activa'
   and private.test_s_player_id(e.codigo,g) not in (select private.test_uuid('access-player:'||key) from private.test_access_identities where key in ('coach_player','adult_player','multiprofile'))
 on conflict do nothing;
@@ -157,7 +157,7 @@ select private.test_uuid('repr:'||e.codigo||':'||g),
        'TEST-S tutor'
 from public.equipos e
 join public.temporadas t on t.id=e.temporada_id
-cross join generate_series(1,2) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
 where t.estado='activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -167,7 +167,7 @@ insert into private.test_dataset_entities
 select 'TEST-S','representaciones_jugador',private.test_uuid('repr:'||e.codigo||':'||g),now()
 from public.equipos e
 join public.temporadas t on t.id=e.temporada_id
-cross join generate_series(1,2) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 join public.personas p on p.id=private.test_s_player_person_id(e.codigo,g)
 where t.estado='activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -176,15 +176,15 @@ on conflict do nothing;
 insert into public.inscripciones(id,jugador_id,temporada_id,categoria_id,fecha_solicitud,estado,observaciones)
 select private.test_uuid('insc:'||e.codigo||':'||g),private.test_s_player_id(e.codigo,g),e.temporada_id,e.categoria_id,date '2026-09-01',
        (array['pendiente_revision_inicial','datos_validados','documentacion_validada','lista_para_federar','ficha_tramitada'])[((row_number() over(order by e.codigo,g)-1)%5)+1], 'TEST-S v1'
-from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa'
+from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa'
 on conflict(id) do update set estado=excluded.estado,observaciones='TEST-S v1';
-insert into private.test_dataset_entities select 'TEST-S','inscripciones',private.test_uuid('insc:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','inscripciones',private.test_uuid('insc:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' on conflict do nothing;
 
 insert into public.asignaciones_jugador_equipo(id,inscripcion_id,equipo_id,fecha_desde,motivo_cambio)
 select private.test_uuid('player-team:'||e.codigo||':'||g),private.test_uuid('insc:'||e.codigo||':'||g),e.id,date '2026-09-01','TEST-S baseline'
-from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa'
+from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa'
 on conflict(id) do update set equipo_id=excluded.equipo_id,fecha_hasta=null;
-insert into private.test_dataset_entities select 'TEST-S','asignaciones_jugador_equipo',private.test_uuid('player-team:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2) g where t.estado='activa' on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','asignaciones_jugador_equipo',private.test_uuid('player-team:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' on conflict do nothing;
 
 -- Canonical participation: every synthetic player assigned to a team must also exist in the common season/facet domain.
 insert into public.persona_participaciones_temporada(
@@ -194,7 +194,7 @@ select private.test_uuid('particip:baseline:'||e.codigo||':'||g),
        private.test_s_player_person_id(e.codigo,g),e.temporada_id,'jugador','administrativa','aceptada',e.categoria_id,now()
 from public.equipos e
 join public.temporadas t on t.id=e.temporada_id
-cross join generate_series(1,2) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado='activa'
 on conflict(persona_id,temporada_id,faceta) do update set
   estado='aceptada',categoria_prevista_id=excluded.categoria_prevista_id,aceptada_at=coalesce(public.persona_participaciones_temporada.aceptada_at,excluded.aceptada_at),
@@ -218,9 +218,24 @@ insert into private.test_dataset_entities select 'TEST-S','persona_roles',privat
 
 insert into public.persona_roles(id,persona_id,rol_id,fecha_desde,activo)
 select private.test_uuid('role:player:'||e.codigo||':'||g),private.test_uuid('player:'||e.codigo||':'||g),'12451dc8-8225-4861-8b1b-f154810e84d6',date '2026-07-01',true
-from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join generate_series(1,2) g where t.estado='activa' and c.codigo='SEN'
+from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' and c.codigo='SEN'
 on conflict(id) do update set activo=true;
-insert into private.test_dataset_entities select 'TEST-S','persona_roles',private.test_uuid('role:player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join generate_series(1,2) g where t.estado='activa' and c.codigo='SEN' on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','persona_roles',private.test_uuid('role:player:'||e.codigo||':'||g),now() from public.equipos e join public.temporadas t on t.id=e.temporada_id join public.categorias c on c.id=e.categoria_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' and c.codigo='SEN' on conflict do nothing;
+
+-- Four deterministic synthetic senior players also act as coaches.
+with dual_players as (
+  select j.persona_id,row_number() over(order by e.codigo,j.id) n
+  from public.jugadores j join public.inscripciones i on i.jugador_id=j.id
+  join public.equipos e on e.id=i.equipo_id join public.temporadas t on t.id=i.temporada_id
+  where t.estado='activa' and e.codigo in ('SEN-A','SEN-B','SEN-F') and j.activo
+  order by e.codigo,j.id limit 4
+)
+insert into public.entrenadores(id,persona_id,activo,curso_delegado)
+select private.test_uuid('dual-coach:'||n),persona_id,true,false from dual_players
+on conflict(id) do update set persona_id=excluded.persona_id,activo=true;
+insert into private.test_dataset_entities(dataset_id,table_name,entity_id)
+select 'TEST-S','entrenadores',private.test_uuid('dual-coach:'||n)
+from generate_series(1,4)n on conflict do nothing;
 
 -- 10 coach-only Personas + first two SEN-A players as player+coach = 12 coaches.
 insert into public.personas(id,nombre,primer_apellido,fecha_nacimiento,email_contacto,telefono,activo)
@@ -315,7 +330,7 @@ with x as (
   select e.codigo,g,row_number() over(order by e.codigo,g)n
   from public.equipos e
   join public.temporadas t on t.id=e.temporada_id
-  cross join generate_series(1,2)g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado='activa'
 ),
 cases as (
@@ -338,30 +353,30 @@ from cases c
 where s.inscripcion_id=c.inscripcion_id;
 
 -- RRMM matrix on first 10 players, relative to load date to preserve semantic states.
-with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa' order by e.codigo,g limit 10)
+with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' order by e.codigo,g limit 10)
 insert into public.reconocimientos_medicos(id,jugador_id,persona_id,fecha_reconocimiento,fecha_valido_hasta,centro_medico,observaciones)
 select private.test_uuid('rrmm:'||codigo||':'||g),private.test_s_player_id(codigo,g),private.test_s_player_person_id(codigo,g),current_date-400,
  case n when 1 then current_date+200 when 2 then current_date+80 when 3 then current_date+20 when 4 then current_date-10 else current_date+300 end,
  'Centro Medico TEST','TEST-S RRMM' from p where n<=5
 on conflict(id) do update set fecha_valido_hasta=excluded.fecha_valido_hasta;
-insert into private.test_dataset_entities select 'TEST-S','reconocimientos_medicos',private.test_uuid('rrmm:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')x where n<=5 on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','reconocimientos_medicos',private.test_uuid('rrmm:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa')x where n<=5 on conflict do nothing;
 
 -- Citas: future, past-pending, cancelled, no-show.
-with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa' order by e.codigo,g limit 10)
+with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' order by e.codigo,g limit 10)
 insert into public.citas_reconocimiento_medico(id,jugador_id,persona_id,fecha_hora,lugar,direccion,indicaciones,estado)
 select private.test_uuid('cita:'||codigo||':'||g),private.test_s_player_id(codigo,g),private.test_s_player_person_id(codigo,g),
  case n when 6 then now()+interval '10 days' when 7 then now()-interval '2 days' when 8 then now()+interval '15 days' else now()-interval '5 days' end,
  'Centro Medico TEST','Calle TEST 1','Escenario TEST-S',case n when 8 then 'cancelada' when 9 then 'no_asiste' else 'programada' end from p where n between 6 and 9
 on conflict(id) do update set fecha_hora=excluded.fecha_hora,estado=excluded.estado;
-insert into private.test_dataset_entities select 'TEST-S','citas_reconocimiento_medico',private.test_uuid('cita:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')x where n between 6 and 9 on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','citas_reconocimiento_medico',private.test_uuid('cita:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa')x where n between 6 and 9 on conflict do nothing;
 
 -- Minimal documentation cases: one requirement per first six inscriptions, no physical Storage object required.
-with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa' order by e.codigo,g limit 6)
+with p as (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa' order by e.codigo,g limit 6)
 insert into public.requisitos_federativos_inscripcion(id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,motivo_rechazo)
 select private.test_uuid('req:'||codigo||':'||g),private.test_uuid('insc:'||codigo||':'||g),'TEST_DOC','Documento TEST',true,true,
  (array['pendiente','aportado','validado','rechazado','nueva_version_solicitada','declarado_realizado'])[n],case when n=4 then 'Documento ilegible TEST' end from p
 on conflict(id) do update set estado=excluded.estado,motivo_rechazo=excluded.motivo_rechazo;
-insert into private.test_dataset_entities select 'TEST-S','requisitos_federativos_inscripcion',private.test_uuid('req:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join generate_series(1,2)g where t.estado='activa')x where n<=6 on conflict do nothing;
+insert into private.test_dataset_entities select 'TEST-S','requisitos_federativos_inscripcion',private.test_uuid('req:'||codigo||':'||g),now() from (select e.codigo,g,row_number() over(order by e.codigo,g)n from public.equipos e join public.temporadas t on t.id=e.temporada_id cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g where t.estado='activa')x where n<=6 on conflict do nothing;
 
 update private.test_datasets set scenario='BASELINE',loaded_at=now() where id='TEST-S';
 

@@ -1,6 +1,6 @@
 -- DEMO-S v1: deterministic, presentation-ready data.
 -- It never creates Auth accounts and never assigns auth_user_id to a Persona.
--- Five synthetic players and one family are added for every active team.
+-- Modality-sized synthetic rosters (F11=20, F7=12, F5=8) and one family are added for every active team.
 -- DEMO-S v1.1 also adds a compact but representative coaching population.
 begin;
 
@@ -76,7 +76,7 @@ join public.temporadas t on t.id = e.temporada_id
 where t.estado = 'activa'
 on conflict do nothing;
 
--- Five players per team. Ages follow the configured category rule at the season reference point.
+-- Players per team follow modality (F11=20, F7=12, F5=8). Ages follow the category rule.
 with teams as (
   select e.codigo,
          coalesce(r.anio_nacimiento_hasta, 2000) as birth_year
@@ -90,7 +90,7 @@ with teams as (
 ), players as (
   select teams.*, g
   from teams
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 )
 insert into public.personas(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, email_contacto, activo)
 select private.demo_uuid('player:' || codigo || ':' || g),
@@ -110,7 +110,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'personas', private.demo_uuid('player:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -119,7 +119,7 @@ with players as (
   select e.codigo, g, p.fecha_nacimiento, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
   where t.estado = 'activa'
 ), docs as (
@@ -147,7 +147,7 @@ from (
   select e.codigo, g, p.fecha_nacimiento, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
   where t.estado = 'activa'
 ) players
@@ -162,7 +162,7 @@ select private.demo_uuid('player-facet:' || e.codigo || ':' || g),
        date '2026-07-01'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict (id) do update
 set persona_id = excluded.persona_id,
@@ -173,7 +173,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'jugadores', private.demo_uuid('player-facet:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -186,7 +186,7 @@ select private.demo_uuid('representation:' || e.codigo || ':' || g),
        'Representacion DEMO'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
 where t.estado = 'activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -196,7 +196,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'representaciones_jugador', private.demo_uuid('representation:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 join public.personas p on p.id = private.demo_uuid('player:' || e.codigo || ':' || g)
 where t.estado = 'activa'
   and date '2026-09-01' < (p.fecha_nacimiento + interval '18 years')::date
@@ -211,7 +211,7 @@ select private.demo_uuid('inscription:' || e.codigo || ':' || g),
        'Caso DEMO v1'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict (id) do update
 set estado = excluded.estado,
@@ -221,7 +221,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'inscripciones', private.demo_uuid('inscription:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -231,7 +231,7 @@ select private.demo_uuid('player-team:' || e.codigo || ':' || g),
        e.id, date '2026-09-01', 'Asignacion DEMO'
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict (id) do update
 set equipo_id = excluded.equipo_id,
@@ -241,7 +241,7 @@ insert into private.demo_dataset_entities(dataset_id, table_name, entity_id)
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('player-team:' || e.codigo || ':' || g)
 from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
-cross join generate_series(1, 5) g
+cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
 where t.estado = 'activa'
 on conflict do nothing;
 
@@ -262,6 +262,21 @@ from public.equipos e
 join public.temporadas t on t.id = e.temporada_id
 where t.estado = 'activa'
 on conflict do nothing;
+
+-- Four deterministic synthetic senior players also act as coaches.
+with dual_players as (
+  select j.persona_id,row_number() over(order by e.codigo,j.id) n
+  from public.jugadores j join public.inscripciones i on i.jugador_id=j.id
+  join public.equipos e on e.id=i.equipo_id join public.temporadas t on t.id=i.temporada_id
+  where t.estado='activa' and e.codigo in ('SEN-A','SEN-B','SEN-F') and j.activo
+  order by e.codigo,j.id limit 4
+)
+insert into public.entrenadores(id,persona_id,activo,curso_delegado)
+select private.demo_uuid('dual-coach:'||n),persona_id,true,false from dual_players
+on conflict(id) do update set persona_id=excluded.persona_id,activo=true;
+insert into private.demo_dataset_entities(dataset_id,table_name,entity_id)
+select 'DEMO-S','entrenadores',private.demo_uuid('dual-coach:'||n)
+from generate_series(1,4)n on conflict do nothing;
 
 -- Coaching population: 28 deterministic coach-only Personas.
 -- Coaches 1-23 are the principal coach of each active team; 24-27 add secondary/specialist coverage;
@@ -514,7 +529,7 @@ with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 10
@@ -536,7 +551,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
 ) players
 where n <= 5
@@ -546,7 +561,7 @@ with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 10
@@ -568,7 +583,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
 ) players
 where n between 6 and 9
@@ -578,7 +593,7 @@ with players as (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
   order by e.codigo, g
   limit 6
@@ -600,7 +615,7 @@ from (
   select e.codigo, g, row_number() over (order by e.codigo, g) as n
   from public.equipos e
   join public.temporadas t on t.id = e.temporada_id
-  cross join generate_series(1, 5) g
+  cross join lateral generate_series(1,case e.modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end) g
   where t.estado = 'activa'
 ) players
 where n <= 6

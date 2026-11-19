@@ -22,21 +22,19 @@ set activo = false,
     fecha_hasta = current_date
 where persona_id = '10000000-0000-4000-8000-000000000006';
 
-delete from private.test_access_identities where key = 'minor_player';
-
-insert into private.test_access_identities(key,persona_id,email,description) values
- ('club','10000000-0000-4000-8000-000000000001','club.test@yebenes.test','Club only'),
- ('coach','10000000-0000-4000-8000-000000000002','coach.test@yebenes.test','Coach only'),
- ('coach_player','10000000-0000-4000-8000-000000000003','coach-player.test@yebenes.test','Coach + adult player'),
- ('tutor','10000000-0000-4000-8000-000000000004','tutor.test@yebenes.test','Tutor / family'),
- ('adult_player','10000000-0000-4000-8000-000000000005','player-adult.test@yebenes.test','Adult player'),
- ('multiprofile','10000000-0000-4000-8000-000000000007','multiprofile.test@yebenes.test','Club + coach + player')
+delete from private.test_access_identities where key = 'minor_player',
+ ('tutor_family_1','10000000-0000-4000-8000-000000000101','tutor-family-1.test@yebenes.test','Synthetic tutor family case 1'),
+ ('tutor_family_2','10000000-0000-4000-8000-000000000102','tutor-family-2.test@yebenes.test','Synthetic tutor family case 2'),
+ ('tutor_family_3','10000000-0000-4000-8000-000000000103','tutor-family-3.test@yebenes.test','Synthetic tutor family case 3'),
+ ('tutor_family_4','10000000-0000-4000-8000-000000000104','tutor-family-4.test@yebenes.test','Synthetic tutor family case 4'),
+ ('tutor_family_5','10000000-0000-4000-8000-000000000105','tutor-family-5.test@yebenes.test','Synthetic tutor family case 5'),
+ ('tutor_family_6','10000000-0000-4000-8000-000000000106','tutor-family-6.test@yebenes.test','Synthetic tutor family case 6')
 on conflict(key) do update set persona_id=excluded.persona_id,email=excluded.email,description=excluded.description;
 
 insert into public.personas(id,nombre,primer_apellido,segundo_apellido,fecha_nacimiento,email_contacto,telefono,activo)
 select persona_id,
        case key when 'club' then 'Club TEST' when 'coach' then 'Entrenador TEST Acceso' when 'coach_player' then 'Entrenador Jugador TEST'
-                when 'tutor' then 'Tutor TEST Acceso' when 'adult_player' then 'Jugador Adulto TEST'
+                when 'tutor' then 'Tutor TEST Acceso' when 'tutor_family_1' then 'Tutor Familia 1 TEST' when 'tutor_family_2' then 'Tutor Familia 2 TEST' when 'tutor_family_3' then 'Tutor Familia 3 TEST' when 'tutor_family_4' then 'Tutor Familia 4 TEST' when 'tutor_family_5' then 'Tutor Familia 5 TEST' when 'tutor_family_6' then 'Tutor Familia 6 TEST' when 'adult_player' then 'Jugador Adulto TEST'
                 else 'Multiperfil TEST' end,
        'Acceso', null,
        date '1988-05-15',
@@ -73,6 +71,12 @@ with access_docs as (
            when 'coach_player' then 71000004
            when 'multiprofile' then 71000006
            when 'tutor' then 71000007
+           when 'tutor_family_1' then 71000101
+           when 'tutor_family_2' then 71000102
+           when 'tutor_family_3' then 71000103
+           when 'tutor_family_4' then 71000104
+           when 'tutor_family_5' then 71000105
+           when 'tutor_family_6' then 71000106
          end as dni_number
   from private.test_access_identities
 ), docs as (
@@ -88,6 +92,12 @@ on conflict(id) do update set numero=excluded.numero,es_principal=true,fecha_has
 -- Stable roles for login testing. These rows are TEST-ACCESS, not TEST-S, and survive dataset resets.
 with m(key,role_code) as (values
  ('club','club'),('coach','entrenador'),('coach_player','entrenador'),('coach_player','jugador'),('tutor','tutor'),
+ ('tutor_family_1','tutor'),
+ ('tutor_family_2','tutor'),
+ ('tutor_family_3','tutor'),
+ ('tutor_family_4','tutor'),
+ ('tutor_family_5','tutor'),
+ ('tutor_family_6','tutor'),
  ('adult_player','jugador'),('multiprofile','club'),('multiprofile','entrenador'),('multiprofile','jugador')
 )
 insert into public.persona_roles(id,persona_id,rol_id,fecha_desde,activo)

@@ -95,6 +95,12 @@ jobs:
           test -s supabase/seed/demo-data/10_demo_s_v1_baseline.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
           test -s supabase/seed/demo-data/20_demo_access_operational_matrix.sql
+          test -s supabase/seed/test-access/00-test-access-personas.sql
+          test -s supabase/seed/demo-access/00-demo-access-personas.sql
+          test -s supabase/seed/test-data/15-authenticated-families.sql
+          test -s supabase/seed/demo-data/15-authenticated-families.sql
+          test -s scripts/bootstrap-test-access.mjs
+          test -s scripts/bootstrap-demo-access.mjs
           test -s supabase/seed/common/05-align-2026-27-structure.sql
           test -s supabase/seed/common/10-rffm-2026-27.sql
           test -s supabase/seed/test-data/scenarios/economia-v1.sql
@@ -102,6 +108,9 @@ jobs:
           test -s supabase/seed/test-data/scenarios/notifications-v1.sql
           test -s supabase/seed/test-data/scenarios/completo-v1.sql
           psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select to_regclass('private.demo_datasets'), to_regclass('private.demo_dataset_entities');" | grep -q 'private.demo_datasets.*private.demo_dataset_entities'
+      - name: Ensure canonical coach coverage
+        shell: bash
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
       - name: Render canonical TEST teardown and scenarios for DEMO namespace
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
@@ -134,6 +143,26 @@ jobs:
           set -euo pipefail
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
+      - name: Bootstrap target ACCESS identities
+        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
+        shell: bash
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
+          SUPABASE_DEMO_URL: ${{ secrets.SUPABASE_DEMO_URL }}
+          SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
+          DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
+          DB_URL: ${{ steps.db.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          if [ '${{ inputs.target }}' = 'TEST' ]; then
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
+            node scripts/bootstrap-test-access.mjs
+          else
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-access/00-demo-access-personas.sql
+            node scripts/bootstrap-demo-access.mjs
+          fi
       - name: Reset and load DEMO-S COMPLETO
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
@@ -144,6 +173,13 @@ jobs:
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/01-reset-demo-s.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
+          if [ '${{ inputs.target }}' = 'TEST' ]; then
+            # Rehearsal runs on TEST Auth. Link family cases through TEST-ACCESS.
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/15-authenticated-families.sql
+          else
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/15-authenticated-families.sql
+          fi
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/15-test-baseline-parity.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql

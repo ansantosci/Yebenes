@@ -114,8 +114,12 @@ if (kind === 'reset') {
     if (!sql.includes(negativeNeedle)) throw new Error('COMPLETO renderer: economy balance anchor not found');
     sql = sql.replace(negativeNeedle, negativeReplacement);
 
-    const totalNeedle = `if total<>167 then raise exception 'MATRIX v2: expected 167 canonical active players after retiring historical E067C, got %',total; end if;`;
-    const totalReplacement = `if total<115 then raise exception 'MATRIX v2 DEMO: expected at least 115 dataset-owned active players in the matrix, got %',total; end if;`;
+    const totalNeedle = `if total<>(select coalesce(sum(case modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end),0)+2
+                    from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and e.activo)
+ then raise exception 'MATRIX v3: active player population does not match modality-sized rosters + 2 economy cases: got %',total; end if;`;
+    const totalReplacement = `if total<>(select coalesce(sum(case modalidad when 'F11' then 20 when 'F7' then 12 when 'F5' then 8 else 0 end),0)+2
+                    from public.equipos e join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and e.activo)
+ then raise exception 'MATRIX v3 DEMO: dataset-owned active population does not match modality-sized rosters + 2 economy cases: got %',total; end if;`;
     if (!sql.includes(totalNeedle)) throw new Error('COMPLETO renderer: total assertion anchor not found');
     sql = sql.replace(totalNeedle, totalReplacement);
 

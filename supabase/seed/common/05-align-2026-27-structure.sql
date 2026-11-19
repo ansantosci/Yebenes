@@ -64,4 +64,24 @@ begin
   end if;
 end $$;
 
+
+-- Canonical playing format for every active 2026/2027 team. Population rules depend on this.
+update public.equipos
+set modalidad = case
+  when codigo in ('CHU-A') then 'F5'
+  when codigo in ('ALE-A','ALE-B','BEN-A','BEN-B','BEN-C','INF-FA','PRE-A','PRE-B') then 'F7'
+  when codigo in ('ALE-F11','CAD-A','CAD-B','CAD-C','CAD-F','INF-A','INF-B','VET-M','JUV-A','JUV-B','JUV-C','SEN-A','SEN-B','SEN-F') then 'F11'
+  else modalidad
+end
+where temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac'::uuid;
+
+do $$
+declare v_bad integer;
+begin
+  select count(*) into v_bad from public.equipos
+  where temporada_id='f6b07c5c-9f57-44f4-a20d-189ab8608eac'::uuid
+    and activo and modalidad not in ('F11','F7','F5');
+  if v_bad<>0 then raise exception '2026/27 structure: every active team must have F11/F7/F5 modality; invalid=%',v_bad; end if;
+end $$;
+
 commit;
