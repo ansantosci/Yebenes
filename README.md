@@ -1,3 +1,11 @@
+# V96.4.11 - ModalUI canonical shell
+
+- ModalUI now owns the complete modal anatomy: header, single scrolling body and persistent actions footer.
+- Features provide content and action declarations instead of hand-building modal chrome.
+- RFFM Results is the first full consumer of the canonical shell; its Refresh all and Export PDF actions cannot be omitted by feature markup.
+- X and Escape converge on ModalUI.close(); closed dialogs remain governed by native <dialog> visibility.
+- Legacy enhance() remains temporarily for existing windows; new windows must use ModalUI.mount().
+
 # V96.4.10 - Resultados RFFM agrupados, refresco secuencial y PDF
 
 - Resultados del club se agrupa por categoría interna, integrando masculino y femenino en la misma sección.

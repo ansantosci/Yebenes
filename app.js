@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.10';
+const APP_VERSION='96.4.11';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -75,6 +75,36 @@ const ModalUI={
     dialog.querySelectorAll('.modal-actions').forEach(x=>x.classList.add('app-modal__actions'));
     return dialog;
   },
+  // V96.4.11: canonical modal shell. Features provide content/actions; ModalUI owns anatomy and behavior.
+  mount(dialog,{size='default',eyebrow='',title='',subtitle='',body='',actions=[],closeId='',bodyId='',bodyClass='',actionsClass=''}={}){
+    if(!dialog)return null;
+    dialog.className=`app-modal modal-ui-shell${dialog.classList.contains('rffm-results-modal')?' rffm-results-modal':''}`;
+    dialog.dataset.modalSize=size;
+    const closeButtonId=closeId?` id="${esc(closeId)}"`:'';
+    const bodyAttr=bodyId?` id="${esc(bodyId)}"`:'';
+    const actionHtml=(actions||[]).map(a=>{
+      const cls=[a.primary?'primary':'secondary',a.className||''].filter(Boolean).join(' ');
+      const id=a.id?` id="${esc(a.id)}"`:'';
+      const attrs=a.attrs?` ${a.attrs}`:'';
+      return `<button type="button" class="${esc(cls)}"${id}${attrs}>${esc(a.label||'Acción')}</button>`;
+    }).join('');
+    dialog.innerHTML=`<div class="app-modal__head"><div class="app-modal__identity"><span class="eyebrow dark">${esc(eyebrow)}</span><h2>${esc(title)}</h2>${subtitle?`<div class="meta">${esc(subtitle)}</div>`:''}</div><button type="button" class="icon-button modal-ui-close"${closeButtonId} aria-label="Cerrar">✕</button></div><div class="app-modal__body ${esc(bodyClass)}"${bodyAttr}>${body||''}</div>${actionHtml?`<div class="app-modal__actions modal-ui-actions ${esc(actionsClass)}">${actionHtml}</div>`:''}`;
+    const close=()=>this.close(dialog);
+    dialog.querySelector('.modal-ui-close')?.addEventListener('click',close);
+    if(dialog.dataset.modalShellBound!=='1'){
+      dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
+      dialog.addEventListener('close',()=>{dialog.dataset.modalBusy='0';dialog.querySelectorAll('[data-was-disabled]').forEach(el=>{el.disabled=el.dataset.wasDisabled==='1';delete el.dataset.wasDisabled})});
+      dialog.dataset.modalShellBound='1';
+    }
+    return {dialog,body:dialog.querySelector('.app-modal__body'),actions:dialog.querySelector('.app-modal__actions')};
+  },
+  open(dialog){if(dialog&&!dialog.open)dialog.showModal()},
+  close(dialog){if(dialog?.open)dialog.close()},
+  setProgress(dialog,{label='',busy=true}={}){
+    if(!dialog)return;
+    dialog.dataset.modalBusy=busy?'1':'0';
+    const el=dialog.querySelector('[data-modal-progress]');if(el)el.textContent=label||'';
+  },
   bindTabs(root,{tabSelector='[data-modal-tab]',panelSelector='[data-modal-panel]',active='active'}={}){
     if(!root)return;
     const tabs=[...root.querySelectorAll(tabSelector)],panels=[...root.querySelectorAll(panelSelector)];
@@ -94,7 +124,6 @@ const ModalUI={
   setBusy(root,busy,{label='Procesando…'}={}){
     if(!root)return;
     root.dataset.modalBusy=busy?'1':'0';
-    // Busy blocks actions, but form controls stay enabled so FormData keeps their values.
     root.querySelectorAll('button').forEach(el=>{
       if(el.matches('[data-busy-keep]'))return;
       if(busy){el.dataset.wasDisabled=el.disabled?'1':'0';el.disabled=true}else if(el.dataset.wasDisabled==='0'){el.disabled=false;delete el.dataset.wasDisabled}else delete el.dataset.wasDisabled;
@@ -3099,8 +3128,14 @@ $$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamCo
 $('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus');if(form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Guardando…'});try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'success',title:'Configuración guardada',message:'Los parámetros RFFM se han guardado correctamente. Puedes probar la conexión.'});renderStructure();}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});const message=`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;await persistRffmValidation(editingTeamId,true,message);renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){const message=String(err.message||err);try{if(rffmIntegrationFor(editingTeamId)?.id)await persistRffmValidation(editingTeamId,false,message)}catch(persistErr){console.warn('No se pudo persistir el error de validación RFFM',persistErr)}renderStructure();ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(form?.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Consultando…'});try{const data=await invokeRffm({action:'team',team_id:editingTeamId,force:true});rffmResultsByTeam.set(editingTeamId,data);renderTeamRffmResult(editingTeamId);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'No se han podido consultar los resultados',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
-$('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();$('#rffmResultsModal')?.showModal()});
-$('#closeRffmResults')?.addEventListener('click',()=>$('#rffmResultsModal')?.close());
+function mountRffmResultsModal(){
+  const dialog=$('#rffmResultsModal');if(!dialog)return;
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Federación · RFFM',title:'Resultados del club',subtitle:'Equipos configurados de la temporada de contexto',body:'<div id="rffmResultsContent" class="rffm-content"></div>',actions:[{id:'rffmRefreshAll',label:'Actualizar todos'},{id:'rffmExportPdf',label:'Exportar PDF',primary:true}],closeId:'closeRffmResults',actionsClass:'rffm-results-actions'});
+  const identity=dialog.querySelector('.app-modal__identity .meta');if(identity)identity.id='rffmStructureStatus';
+}
+mountRffmResultsModal();
+$('#openRffmResults')?.addEventListener('click',()=>{renderRffmResults();ModalUI.open($('#rffmResultsModal'))});
+$('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
 $('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
 $$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;const view=b.dataset.clubView;setView(view);if(view==='clubView')renderClub();if(view==='medicalView')renderMedical();if(view==='coachesView'){if(currentUser?.source==='supabase'&&!dbCoachesLoaded){loadSupabaseCoaches().then(()=>{markListMetric('coaches','remoteRefreshes');renderCoaches()}).catch(err=>{console.error('Recarga entrenadores',err);renderCoaches()})}else renderCoaches();}if(view==='structureView')renderStructure();if(view==='sponsorsView')loadSponsorAdmin().catch(err=>{console.error('Patrocinadores',err);alert('No se han podido cargar los patrocinadores.')});if(view==='usersView')renderClubUsers();if(view==='personsView')renderPersons();scrollActiveListToStart(view)});
