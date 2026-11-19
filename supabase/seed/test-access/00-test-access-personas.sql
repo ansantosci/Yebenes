@@ -22,7 +22,15 @@ set activo = false,
     fecha_hasta = current_date
 where persona_id = '10000000-0000-4000-8000-000000000006';
 
-delete from private.test_access_identities where key = 'minor_player',
+delete from private.test_access_identities where key = 'minor_player';
+
+insert into private.test_access_identities(key,persona_id,email,description) values
+ ('club','10000000-0000-4000-8000-000000000001','club.test@yebenes.test','Club only'),
+ ('coach','10000000-0000-4000-8000-000000000002','coach.test@yebenes.test','Coach only'),
+ ('coach_player','10000000-0000-4000-8000-000000000003','coach-player.test@yebenes.test','Coach + adult player'),
+ ('tutor','10000000-0000-4000-8000-000000000004','tutor.test@yebenes.test','Tutor / family'),
+ ('adult_player','10000000-0000-4000-8000-000000000005','player-adult.test@yebenes.test','Adult player'),
+ ('multiprofile','10000000-0000-4000-8000-000000000007','multiprofile.test@yebenes.test','Club + coach + player'),
  ('tutor_family_1','10000000-0000-4000-8000-000000000101','tutor-family-1.test@yebenes.test','Synthetic tutor family case 1'),
  ('tutor_family_2','10000000-0000-4000-8000-000000000102','tutor-family-2.test@yebenes.test','Synthetic tutor family case 2'),
  ('tutor_family_3','10000000-0000-4000-8000-000000000103','tutor-family-3.test@yebenes.test','Synthetic tutor family case 3'),

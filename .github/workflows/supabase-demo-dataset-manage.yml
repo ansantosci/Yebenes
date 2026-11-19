@@ -101,6 +101,13 @@ jobs:
           test -s supabase/seed/demo-data/15-authenticated-families.sql
           test -s scripts/bootstrap-test-access.mjs
           test -s scripts/bootstrap-demo-access.mjs
+          test "$(grep -c "^ ('tutor_family_[1-6]'" supabase/seed/test-access/00-test-access-personas.sql)" -eq 6
+          test "$(grep -c "^ ('tutor_family_[1-6]'" supabase/seed/demo-access/00-demo-access-personas.sql)" -eq 6
+          test "$(grep -c "tutor-family-[1-6]\.test@" scripts/bootstrap-test-access.mjs)" -eq 6
+          test "$(grep -c "tutor-family-[1-6]\.demo@" scripts/bootstrap-demo-access.mjs)" -eq 6
+          grep -q "insert into private.test_access_identities" supabase/seed/test-access/00-test-access-personas.sql
+          grep -q "insert into private.demo_access_identities" supabase/seed/demo-access/00-demo-access-personas.sql
+
           test -s supabase/seed/common/05-align-2026-27-structure.sql
           test -s supabase/seed/common/10-rffm-2026-27.sql
           test -s supabase/seed/common/20-coach-coverage.sql

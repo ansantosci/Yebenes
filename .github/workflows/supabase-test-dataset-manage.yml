@@ -72,6 +72,10 @@ jobs:
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s supabase/seed/test-data/15-authenticated-families.sql
           test -s scripts/bootstrap-test-access.mjs
+          test "$(grep -c "^ ('tutor_family_[1-6]'" supabase/seed/test-access/00-test-access-personas.sql)" -eq 6
+          test "$(grep -c "tutor-family-[1-6]\.test@" scripts/bootstrap-test-access.mjs)" -eq 6
+          grep -q "insert into private.test_access_identities" supabase/seed/test-access/00-test-access-personas.sql
+
           if [ "${{ inputs.scenario }}" = "NOTIFICATIONS" ]; then
             test -s supabase/seed/test-data/scenarios/notifications-v1.sql
           elif [ "${{ inputs.scenario }}" = "EQUIPACIONES" ]; then

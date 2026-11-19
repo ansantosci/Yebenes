@@ -17,7 +17,15 @@ set activo = false,
     fecha_hasta = current_date
 where persona_id = '20000000-0000-4000-8000-000000000006';
 
-delete from private.demo_access_identities where key = 'minor_player',
+delete from private.demo_access_identities where key = 'minor_player';
+
+insert into private.demo_access_identities(key,persona_id,email,description) values
+ ('club','20000000-0000-4000-8000-000000000001','club.demo@yebenes.demo.invalid','Club only'),
+ ('coach','20000000-0000-4000-8000-000000000002','coach.demo@yebenes.demo.invalid','Coach only'),
+ ('coach_player','20000000-0000-4000-8000-000000000003','coach-player.demo@yebenes.demo.invalid','Coach + adult player'),
+ ('tutor','20000000-0000-4000-8000-000000000004','tutor.demo@yebenes.demo.invalid','Tutor / family'),
+ ('adult_player','20000000-0000-4000-8000-000000000005','player-adult.demo@yebenes.demo.invalid','Adult player'),
+ ('multiprofile','20000000-0000-4000-8000-000000000007','multiprofile.demo@yebenes.demo.invalid','Club + coach + player'),
  ('tutor_family_1','20000000-0000-4000-8000-000000000101','tutor-family-1.demo@yebenes.demo.invalid','Synthetic tutor family case 1'),
  ('tutor_family_2','20000000-0000-4000-8000-000000000102','tutor-family-2.demo@yebenes.demo.invalid','Synthetic tutor family case 2'),
  ('tutor_family_3','20000000-0000-4000-8000-000000000103','tutor-family-3.demo@yebenes.demo.invalid','Synthetic tutor family case 3'),

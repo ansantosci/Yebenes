@@ -114,7 +114,7 @@ jobs:
           ACCESS_COUNT="${RESULT%%,*}"
           LINKED_COUNT="${RESULT##*,}"
 
-          if [ "$ACCESS_COUNT" != "6" ] || [ "$LINKED_COUNT" != "6" ]; then
+          if [ "$ACCESS_COUNT" != "12" ] || [ "$LINKED_COUNT" != "12" ]; then
             echo "ERROR: expected 12 TEST-ACCESS identities and 12 Auth links."
             exit 1
           fi
