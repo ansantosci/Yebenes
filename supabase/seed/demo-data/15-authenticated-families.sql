@@ -4,9 +4,24 @@ begin;
 -- Reassign selected dataset-owned representations to authenticated ACCESS tutors instead of
 -- inserting a second active representation (forbidden by representacion_activa_jugador_uq).
 with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'INF-B',1),(6,'CAD-A',1),(6,'CAD-F',1)), resolved as (
- select fc.n,j.id jugador_id,a.persona_id tutor_id
- from family_case fc join public.equipos e on e.codigo=fc.team_code
- join public.jugadores j on j.persona_id=private.demo_uuid('player:'||e.codigo||':'||fc.slot)
+ select fc.n,eligible.jugador_id,a.persona_id tutor_id
+ from family_case fc
+ join lateral (
+   select q.jugador_id
+   from (
+     select j.id jugador_id,row_number() over(order by j.id) eligible_slot
+     from public.equipos e
+     join public.asignaciones_jugador_equipo aje on aje.equipo_id=e.id and aje.fecha_hasta is null
+     join public.inscripciones i on i.id=aje.inscripcion_id
+     join public.jugadores j on j.id=i.jugador_id and j.activo
+     join public.personas p on p.id=j.persona_id
+     join private.demo_dataset_entities own on own.dataset_id='DEMO-S' and own.table_name='jugadores' and own.entity_id=j.id
+     join public.representaciones_jugador r on r.jugador_id=j.id and r.fecha_hasta is null
+     where e.codigo=fc.team_code
+       and date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
+       and not exists(select 1 from private.demo_access_identities ax where ax.persona_id=p.id)
+   ) q where q.eligible_slot=fc.slot
+ ) eligible on true
  join private.demo_access_identities a on a.key='tutor_family_'||fc.n
 ), active_repr as (
  select r.id,r.jugador_id,x.tutor_id
@@ -24,10 +39,25 @@ do $$
 declare expected integer := 13; actual integer;
 begin
  with family_case(n,team_code,slot) as (values (1,'PRE-A',1),(2,'BEN-A',1),(2,'BEN-A',2),(3,'PRE-B',1),(3,'ALE-A',1),(4,'BEN-B',1),(4,'ALE-B',1),(4,'INF-A',1),(5,'CHU-A',1),(5,'PRE-A',2),(5,'INF-B',1),(6,'CAD-A',1),(6,'CAD-F',1)), expected_links as (
-   select fc.n,j.id jugador_id,a.persona_id tutor_id
-   from family_case fc join public.equipos e on e.codigo=fc.team_code
-   join public.jugadores j on j.persona_id=private.demo_uuid('player:'||e.codigo||':'||fc.slot)
-   join private.demo_access_identities a on a.key='tutor_family_'||fc.n
+      select fc.n,eligible.jugador_id,a.persona_id tutor_id
+    from family_case fc
+    join lateral (
+      select q.jugador_id
+      from (
+        select j.id jugador_id,row_number() over(order by j.id) eligible_slot
+        from public.equipos e
+        join public.asignaciones_jugador_equipo aje on aje.equipo_id=e.id and aje.fecha_hasta is null
+        join public.inscripciones i on i.id=aje.inscripcion_id
+        join public.jugadores j on j.id=i.jugador_id and j.activo
+        join public.personas p on p.id=j.persona_id
+        join private.demo_dataset_entities own on own.dataset_id='DEMO-S' and own.table_name='jugadores' and own.entity_id=j.id
+        join public.representaciones_jugador r on r.jugador_id=j.id and r.fecha_hasta is null
+        where e.codigo=fc.team_code
+          and date '2026-09-01' < (p.fecha_nacimiento+interval '18 years')::date
+          and not exists(select 1 from private.demo_access_identities ax where ax.persona_id=p.id)
+      ) q where q.eligible_slot=fc.slot
+    ) eligible on true
+    join private.demo_access_identities a on a.key='tutor_family_'||fc.n
  )
  select count(*) into actual
  from expected_links x join public.representaciones_jugador r
