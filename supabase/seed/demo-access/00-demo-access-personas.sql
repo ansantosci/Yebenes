@@ -19,13 +19,19 @@ where persona_id = '20000000-0000-4000-8000-000000000006';
 
 delete from private.demo_access_identities where key = 'minor_player';
 
-insert into private.demo_access_identities(key, persona_id, email, description) values
-  ('club',          '20000000-0000-4000-8000-000000000001', 'club.demo@yebenes.demo.invalid',          'Club only'),
-  ('coach',         '20000000-0000-4000-8000-000000000002', 'coach.demo@yebenes.demo.invalid',         'Coach only'),
-  ('coach_player',  '20000000-0000-4000-8000-000000000003', 'coach-player.demo@yebenes.demo.invalid',  'Coach + adult player'),
-  ('tutor',         '20000000-0000-4000-8000-000000000004', 'tutor.demo@yebenes.demo.invalid',         'Tutor / family'),
-  ('adult_player',  '20000000-0000-4000-8000-000000000005', 'player-adult.demo@yebenes.demo.invalid',  'Adult player'),
-  ('multiprofile',  '20000000-0000-4000-8000-000000000007', 'multiprofile.demo@yebenes.demo.invalid',  'Club + coach + player')
+insert into private.demo_access_identities(key,persona_id,email,description) values
+ ('club','20000000-0000-4000-8000-000000000001','club.demo@yebenes.demo.invalid','Club only'),
+ ('coach','20000000-0000-4000-8000-000000000002','coach.demo@yebenes.demo.invalid','Coach only'),
+ ('coach_player','20000000-0000-4000-8000-000000000003','coach-player.demo@yebenes.demo.invalid','Coach + adult player'),
+ ('tutor','20000000-0000-4000-8000-000000000004','tutor.demo@yebenes.demo.invalid','Tutor / family'),
+ ('adult_player','20000000-0000-4000-8000-000000000005','player-adult.demo@yebenes.demo.invalid','Adult player'),
+ ('multiprofile','20000000-0000-4000-8000-000000000007','multiprofile.demo@yebenes.demo.invalid','Club + coach + player'),
+ ('tutor_family_1','20000000-0000-4000-8000-000000000101','tutor-family-1.demo@yebenes.demo.invalid','Synthetic tutor family case 1'),
+ ('tutor_family_2','20000000-0000-4000-8000-000000000102','tutor-family-2.demo@yebenes.demo.invalid','Synthetic tutor family case 2'),
+ ('tutor_family_3','20000000-0000-4000-8000-000000000103','tutor-family-3.demo@yebenes.demo.invalid','Synthetic tutor family case 3'),
+ ('tutor_family_4','20000000-0000-4000-8000-000000000104','tutor-family-4.demo@yebenes.demo.invalid','Synthetic tutor family case 4'),
+ ('tutor_family_5','20000000-0000-4000-8000-000000000105','tutor-family-5.demo@yebenes.demo.invalid','Synthetic tutor family case 5'),
+ ('tutor_family_6','20000000-0000-4000-8000-000000000106','tutor-family-6.demo@yebenes.demo.invalid','Synthetic tutor family case 6')
 on conflict (key) do update
 set persona_id = excluded.persona_id,
     email = excluded.email,
@@ -37,7 +43,7 @@ select persona_id,
          when 'club' then 'Club DEMO'
          when 'coach' then 'Entrenador DEMO Acceso'
          when 'coach_player' then 'Entrenador Jugador DEMO'
-         when 'tutor' then 'Tutor DEMO Acceso'
+         when 'tutor' then 'Tutor DEMO Acceso' when 'tutor_family_1' then 'Tutor Familia 1 DEMO' when 'tutor_family_2' then 'Tutor Familia 2 DEMO' when 'tutor_family_3' then 'Tutor Familia 3 DEMO' when 'tutor_family_4' then 'Tutor Familia 4 DEMO' when 'tutor_family_5' then 'Tutor Familia 5 DEMO' when 'tutor_family_6' then 'Tutor Familia 6 DEMO'
          when 'adult_player' then 'Jugador Adulto DEMO'
          else 'Multiperfil DEMO'
        end,
@@ -81,6 +87,12 @@ with access_docs as (
            when 'coach_player' then 76000004
            when 'multiprofile' then 76000006
            when 'tutor' then 76000007
+           when 'tutor_family_1' then 76000101
+           when 'tutor_family_2' then 76000102
+           when 'tutor_family_3' then 76000103
+           when 'tutor_family_4' then 76000104
+           when 'tutor_family_5' then 76000105
+           when 'tutor_family_6' then 76000106
          end as dni_number
   from private.demo_access_identities
 ), docs as (
@@ -113,6 +125,12 @@ with mapping(key, role_code) as (values
   ('coach_player', 'entrenador'),
   ('coach_player', 'jugador'),
   ('tutor', 'tutor'),
+  ('tutor_family_1', 'tutor'),
+  ('tutor_family_2', 'tutor'),
+  ('tutor_family_3', 'tutor'),
+  ('tutor_family_4', 'tutor'),
+  ('tutor_family_5', 'tutor'),
+  ('tutor_family_6', 'tutor'),
   ('adult_player', 'jugador'),
   ('multiprofile', 'club'),
   ('multiprofile', 'entrenador'),

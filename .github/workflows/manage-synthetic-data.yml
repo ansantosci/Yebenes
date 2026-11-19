@@ -6,7 +6,7 @@ on:
         description: Dataset environment
         required: true
         type: choice
-        options: [TEST, DEMO]
+        options: [TEST, DEMO, DEMO_REHEARSAL]
         default: TEST
       action:
         description: Data action
@@ -15,13 +15,13 @@ on:
         options: [KEEP, RESET]
         default: KEEP
       test_scenario:
-        description: TEST scenario (ignored for DEMO)
+        description: TEST scenario (ignored for DEMO / DEMO_REHEARSAL)
         required: true
         type: choice
         options: [BASELINE, NOTIFICATIONS, EQUIPACIONES, ECONOMIA, COMPLETO]
         default: BASELINE
       demo_confirmation:
-        description: For DEMO RESET, type MANAGE_DEMO_DATA
+        description: DEMO RESET = MANAGE_DEMO_DATA; rehearsal = REHEARSE_DEMO_ON_TEST
         required: false
         type: string
 permissions:
@@ -44,6 +44,10 @@ jobs:
           if [ "$ENVIRONMENT" = "DEMO" ] && [ "$ACTION" = "RESET" ]; then
             [ "$CONFIRMATION" = "MANAGE_DEMO_DATA" ] || { echo "::error::DEMO RESET requires MANAGE_DEMO_DATA confirmation."; exit 2; }
           fi
+          if [ "$ENVIRONMENT" = "DEMO_REHEARSAL" ]; then
+            [ "$ACTION" = "RESET" ] || { echo "::error::DEMO_REHEARSAL only supports RESET."; exit 2; }
+            [ "$CONFIRMATION" = "REHEARSE_DEMO_ON_TEST" ] || { echo "::error::DEMO_REHEARSAL requires REHEARSE_DEMO_ON_TEST confirmation."; exit 2; }
+          fi
   manage_test:
     name: Manage TEST-S
     needs: validate
@@ -64,4 +68,15 @@ jobs:
       target: DEMO
       action: ${{ inputs.action == 'RESET' && 'RESET_AND_LOAD' || 'KEEP' }}
       demo_confirmation: ${{ inputs.demo_confirmation }}
+    secrets: inherit
+  rehearse_demo:
+    name: Rehearse DEMO-S on TEST database
+    needs: validate
+    if: ${{ inputs.environment == 'DEMO_REHEARSAL' }}
+    uses: ./.github/workflows/supabase-demo-dataset-manage.yml
+    with:
+      source_ref: develop
+      target: TEST
+      action: RESET_AND_LOAD
+      rehearsal_confirmation: ${{ inputs.demo_confirmation }}
     secrets: inherit
