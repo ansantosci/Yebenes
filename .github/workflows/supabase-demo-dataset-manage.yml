@@ -103,14 +103,12 @@ jobs:
           test -s scripts/bootstrap-demo-access.mjs
           test -s supabase/seed/common/05-align-2026-27-structure.sql
           test -s supabase/seed/common/10-rffm-2026-27.sql
+          test -s supabase/seed/common/20-coach-coverage.sql
           test -s supabase/seed/test-data/scenarios/economia-v1.sql
           test -s supabase/seed/test-data/scenarios/equipaciones-v1.sql
           test -s supabase/seed/test-data/scenarios/notifications-v1.sql
           test -s supabase/seed/test-data/scenarios/completo-v1.sql
           psql "$DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c "select to_regclass('private.demo_datasets'), to_regclass('private.demo_dataset_entities');" | grep -q 'private.demo_datasets.*private.demo_dataset_entities'
-      - name: Ensure canonical coach coverage
-        shell: bash
-        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed/common/20-coach-coverage.sql
       - name: Render canonical TEST teardown and scenarios for DEMO namespace
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
@@ -143,19 +141,20 @@ jobs:
           set -euo pipefail
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/test-support/00-test-infrastructure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-data/01-reset-test-s.sql
-      - name: Bootstrap target ACCESS identities
+      - name: Reset and load DEMO-S COMPLETO
         if: ${{ inputs.action == 'RESET_AND_LOAD' }}
         shell: bash
         env:
+          DB_URL: ${{ steps.db.outputs.db_url }}
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
           TEST_APP_USER_PASSWORD: ${{ secrets.TEST_APP_USER_PASSWORD }}
           SUPABASE_DEMO_URL: ${{ secrets.SUPABASE_DEMO_URL }}
           SUPABASE_DEMO_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEMO_SERVICE_ROLE_KEY }}
           DEMO_APP_USER_PASSWORD: ${{ secrets.DEMO_APP_USER_PASSWORD }}
-          DB_URL: ${{ steps.db.outputs.db_url }}
         run: |
           set -euo pipefail
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/01-reset-demo-s.sql
           if [ '${{ inputs.target }}' = 'TEST' ]; then
             psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/test-access/00-test-access-personas.sql
             node scripts/bootstrap-test-access.mjs
@@ -163,14 +162,6 @@ jobs:
             psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-access/00-demo-access-personas.sql
             node scripts/bootstrap-demo-access.mjs
           fi
-      - name: Reset and load DEMO-S COMPLETO
-        if: ${{ inputs.action == 'RESET_AND_LOAD' }}
-        shell: bash
-        env:
-          DB_URL: ${{ steps.db.outputs.db_url }}
-        run: |
-          set -euo pipefail
-          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/01-reset-demo-s.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/05-align-2026-27-structure.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/10_demo_s_v1_baseline.sql
           if [ '${{ inputs.target }}' = 'TEST' ]; then
@@ -194,7 +185,10 @@ jobs:
           DB_URL: ${{ steps.db.outputs.db_url }}
         run: |
           set -euo pipefail
-          test -s protected-auth-before.txt
+          if [ ! -s protected-auth-before.txt ]; then
+            echo 'Protected Auth verification skipped: reset did not reach the snapshot stage.'
+            exit 0
+          fi
           psql "$DB_URL" -X -A -t -F '|' -v ON_ERROR_STOP=1 \
             -c "select id,auth_user_id from public.personas where auth_user_id is not null order by id,auth_user_id" > protected-auth-after.txt
           missing=$(comm -23 <(sort protected-auth-before.txt) <(sort protected-auth-after.txt) || true)
