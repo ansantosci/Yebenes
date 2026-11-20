@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.26';
+const APP_VERSION='96.4.27';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3663,8 +3663,13 @@ window.addEventListener('pagehide',()=>authDiag('PAGEHIDE',{storage:authStorageS
 window.addEventListener('pageshow',e=>authDiag('PAGESHOW',{persisted:Boolean(e.persisted),storage:authStorageSummary()}));
 window.addEventListener('storage',e=>{
   const key=String(e.key||'');
+  // V96.4.27: never diagnose writes to the diagnostic channel itself. storage events are
+  // delivered to the OTHER tabs on the same origin; logging such an event back to
+  // localStorage creates an endless cross-tab ping-pong (diag -> storage -> diag -> ...).
+  if(key.startsWith('yebenes-auth-diagnostic-v1'))return;
   const ownAuthStorageChange=key===SUPABASE_AUTH_STORAGE_KEY;
-  authDiag('STORAGE_EVENT',{key:key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,auth_storage_change:ownAuthStorageChange,token_present:authTokenStoragePresent(),storage:authStorageSummary()});
+  const relevantSessionKey=ownAuthStorageChange||key===K.authLastActivity||key===K.authSessionStarted||key===K.sessionRole||key===K.navResume||key===K.navLive;
+  if(relevantSessionKey)authDiag('STORAGE_EVENT',{key:key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,auth_storage_change:ownAuthStorageChange,token_present:authTokenStoragePresent()});
   // V96.4.26: ignore Auth/session writes from the other Yebenes environments. Supabase
   // already synchronizes token refreshes; a token mutation must not rebuild the application.
   // Only disappearance of THIS environment's persisted session requires revalidation/logout.
