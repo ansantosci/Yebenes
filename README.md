@@ -1,4 +1,4 @@
-# V96.6.0 - Canonical role validity for RBAC (backend 102)
+# V96.6.1 - Canonical role validity for RBAC (backend 102)
 
 - Centralizes persona_roles temporal validity: NULL fecha_desde = no lower bound; NULL fecha_hasta = no upper bound.
 - RBAC mis_capacidades()/has_capability() consume the canonical rule.
