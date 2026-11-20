@@ -1,4 +1,13 @@
-# V96.4.32 - Coach context reset and canonical navigation
+# V96.5.0 - Capability-based authorization
+
+## V96.5.0 - Capability-based authorization (backend 101)
+
+- Supabase becomes the canonical source of application capabilities through RBAC role-to-capability mappings.
+- The frontend builds navigation and enables actions from effective capabilities of the active profile, not role-name literals.
+- RFFM backend authorization starts consuming the same capability matrix.
+- Existing RLS remains in place and will migrate incrementally to capabilities to minimize release risk.
+- Establishes `teams.roster.read_assigned` as the authorization basis for the upcoming Coach Plantillas experience.
+
 
 - Coach menu is limited to Fichas, RRMM, Resultados and Perfil until Plantillas replaces the coach-facing Fichas/Resultados experience.
 - Identity/profile changes immediately clear player KPIs, filters, pagination and prior rows before asynchronous authorized data loads.
