@@ -1,3 +1,9 @@
+# V96.4.30 - Coach context reset and canonical navigation
+
+- Coach menu is limited to Fichas, RRMM, Resultados and Perfil until Plantillas replaces the coach-facing Fichas/Resultados experience.
+- Identity/profile changes immediately clear player KPIs, filters, pagination and prior rows before asynchronous authorized data loads.
+- No backend or schema changes.
+
 # V96.4.29 - Resultados RFFM para Entrenador
 
 - Reutiliza la vista persistente de Resultados RFFM para el perfil Entrenador, limitada a sus asignaciones activas de la temporada de contexto.

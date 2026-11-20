@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.29';
+const APP_VERSION='96.4.30';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2222,9 +2222,21 @@ function renderEquipment(){
 
 
 function setView(id){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.toggle('active',v===id));$$('.club-nav .nav-item').forEach(x=>x.classList.toggle('active',x.dataset.clubView===id))}
+function resetClubViewForIdentityChange(message='Cargando datos del perfil…'){
+  ['statPlayers','statComplete','statDocs','statReview','statMedical90','statAdult30','statPaymentPending'].forEach(id=>{const el=$('#'+id);if(el)el.textContent='—'});
+  const search=$('#searchInput');if(search)search.value='';
+  const status=$('#statusFilter');if(status)status.value='all';
+  const category=$('#clubCategoryFilter');if(category)category.value='all';
+  const active=$('#clubActiveFilter');if(active)active.value='active';
+  clubQuickFilter='all';resetListPage('club');
+  const table=$('#adminTable');if(table)table.innerHTML=`<tr><td colspan="10">${esc(message)}</td></tr>`;
+  const pagination=$('#clubPagination');if(pagination)pagination.innerHTML='';
+  const paginationTop=$('#clubPaginationTop');if(paginationTop)paginationTop.innerHTML='';
+  const count=$('#clubResultCount');if(count)count.textContent='';
+}
 function resetSensitiveContextForIdentityChange(message='Cargando datos del perfil…'){
   remoteClubPlayers=[];remoteMedicalRows=[];remoteMedicalAppointments=[];rffmResultsByTeam.clear();rffmLastBulkUpdate=null;rffmLastCoachRefresh=null;
-  const table=$('#adminTable');if(table)table.innerHTML=`<tr><td colspan="10">${esc(message)}</td></tr>`;
+  resetClubViewForIdentityChange(message);
   const results=$('#rffmResultsContent');if(results)results.innerHTML='';
 }
 function showRoleChooser(force=false){
@@ -2241,10 +2253,10 @@ function showApp(options={}){
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
   $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';$('#equipmentNavButton')?.classList.toggle('hidden',!equipmentAllowed());
   const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),rffmResultsNavButton=$('#rffmResultsNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),sponsorsNavButton=$('#sponsorsNavButton'),openCoachModal=$('#openCoachModal');
-  // Coach sees only actions actually available to the active role: Fichas, Resultados and Perfil.
-  const coachHidden=[medicalNavButton,coachesNavButton,structureNavButton,usersNavButton,personsNavButton,$('#equipmentNavButton'),sponsorsNavButton];
+  // Until the dedicated Plantillas experience lands, Coach navigation is intentionally limited to Fichas, RRMM, Resultados and Perfil.
+  const coachHidden=[coachesNavButton,structureNavButton,usersNavButton,personsNavButton,$('#equipmentNavButton'),sponsorsNavButton];
   coachHidden.forEach(el=>{if(el){el.style.display=isCoach?'none':'';el.classList.toggle('hidden',isCoach)}});
-  if(medicalNavButton&&!isCoach)medicalNavButton.style.display='flex';
+  if(medicalNavButton)medicalNavButton.style.display='flex';
   if(coachesNavButton&&!isCoach)coachesNavButton.style.display='flex';
   if(structureNavButton&&!isCoach)structureNavButton.style.display='flex';
   if(rffmResultsNavButton){rffmResultsNavButton.style.display=['admin','club','coach'].includes(currentRole)?'flex':'none';rffmResultsNavButton.classList.toggle('hidden',!['admin','club','coach'].includes(currentRole))}
@@ -3738,6 +3750,14 @@ const SIDEBAR_PIN_KEY='yebenes-club-sidebar-pinned-v1';
 function sidebarDesktop(){return window.matchMedia('(min-width:1100px)').matches}
 function sidebarPinned(){return sidebarDesktop()&&localStorage.getItem(SIDEBAR_PIN_KEY)==='1'}
 function managementRole(){return ['admin','club','coach'].includes(currentRole||'')}
+function enforceCoachNavigationVisibility(){
+  if(currentRole!=='coach')return;
+  const allowed=new Set(['clubView','medicalView']);
+  $$('#clubNav .nav-item').forEach(el=>{
+    const isAllowed=allowed.has(el.dataset.clubView||'')||el.id==='rffmResultsNavButton'||el.id==='clubProfileButton';
+    el.classList.toggle('hidden',!isAllowed);el.style.display=isAllowed?'flex':'none';
+  });
+}
 function syncClubSidebar(){
   const side=$('#clubSidebar'),back=$('#clubSidebarBackdrop'),btn=$('#sidebarMenuButton'),pin=$('#sidebarPinButton');
   if(!side||!btn)return;
@@ -3750,8 +3770,9 @@ function syncClubSidebar(){
   if(pinned){side.classList.remove('hidden');back?.classList.add('hidden');btn.setAttribute('aria-expanded','true')}
   else if(side.classList.contains('hidden'))btn.setAttribute('aria-expanded','false');
   pin?.classList.toggle('active',pinned);pin?.setAttribute('aria-pressed',String(pinned));
+  enforceCoachNavigationVisibility();
 }
-function openClubSidebar(){if(!managementRole())return;$('#clubSidebar')?.classList.remove('hidden');if(sidebarDesktop())document.body.classList.add('club-sidebar-open');if(!sidebarPinned()&&!sidebarDesktop())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true');$('#sidebarMenuButton')?.classList.add('drawer-visible')}
+function openClubSidebar(){if(!managementRole())return;enforceCoachNavigationVisibility();$('#clubSidebar')?.classList.remove('hidden');if(sidebarDesktop())document.body.classList.add('club-sidebar-open');if(!sidebarPinned()&&!sidebarDesktop())$('#clubSidebarBackdrop')?.classList.remove('hidden');$('#sidebarMenuButton')?.setAttribute('aria-expanded','true');$('#sidebarMenuButton')?.classList.add('drawer-visible')}
 function closeClubSidebar(force=false){if(sidebarPinned()&&!force)return;$('#clubSidebar')?.classList.add('hidden');$('#clubSidebarBackdrop')?.classList.add('hidden');document.body.classList.remove('club-sidebar-open');$('#sidebarMenuButton')?.setAttribute('aria-expanded','false');$('#sidebarMenuButton')?.classList.remove('drawer-visible')}
 $('#sidebarMenuButton')?.addEventListener('click',openClubSidebar);
 $('#sidebarCloseButton')?.addEventListener('click',()=>{
