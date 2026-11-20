@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.4';
+const APP_VERSION='96.6.5';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -616,6 +616,7 @@ let clubQuickFilter='all',medicalQuickFilter='all';
 let dbSeasons=[],dbCategories=[],dbTeams=[],dbCategoryRules=[],dbEconomicConfigs=[],dbFederationIntegrations=[],dbPersons=[],dbPersonRoles=[],dbRoleCatalog=[],dbStructureLoaded=false;
 let dbCoachFormations=[],dbCoachLicenses=[],dbCoachSeasonRows=[],dbCoachAvailability=[],dbCoachPrivacy=[],dbTeamSchedules=[];
 let remoteClubPlayers=[],selectedRemotePlayerId=null;
+let identityContextGeneration=0;
 let selectedEconomicTeamId=null,selectedEconomicPlayerId=null,economicReturnPlayerId=null;
 let remoteFamilyPlayers=[];
 let remoteFamilyLoadPromise=null;
@@ -1479,8 +1480,10 @@ async function requestNewFederationVersion(v,reqId){
   try{const {error}=await sb.rpc('solicitar_nueva_version_requisito',{p_requisito_id:reqId,p_motivo:reason.trim()});if(error)throw error;await renderRemoteClub();await openRemoteAdminPlayer(v.id)}catch(err){alert(`No se ha podido solicitar una nueva versión: ${err.message||err}`)}
 }
 async function loadRemoteClubData(){
+  const loadGeneration=identityContextGeneration,loadRole=currentRole;
+  if(!sb||!currentUser||!['admin','club','coach'].includes(loadRole))return remoteClubPlayers;
+  if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
   remoteClubPlayers=[];
-  if(!sb||!currentUser||!['admin','club','coach'].includes(currentRole))return remoteClubPlayers;
   const season=dbActiveSeason();if(!season)return remoteClubPlayers;
   const {data:insRows,error:insErr}=await sb.from('inscripciones').select('id,jugador_id,temporada_id,categoria_id,fecha_solicitud,estado,observaciones,documento_identidad_usado_id,representacion_usada_id').eq('temporada_id',season.id);
   if(insErr)throw insErr;
@@ -1497,8 +1500,9 @@ async function loadRemoteClubData(){
   const {data:reqRows,error:reqErr}=insIds.length?await sb.from('requisitos_federativos_inscripcion').select('id,inscripcion_id,codigo,nombre,obligatorio,requiere_archivo,estado,current_documento_id,motivo_rechazo,revisado_at,nueva_version_solicitada_at,motivo_nueva_version,declarado_realizado_at,declarado_realizado_por').in('inscripcion_id',insIds).order('created_at',{ascending:true}):{data:[],error:null};if(reqErr)throw reqErr;
   const {data:fedDocRows,error:fedDocErr}=insIds.length?await sb.from('documentos_federativos').select('id,requisito_id,inscripcion_id,storage_path,nombre_original,mime_type,subtipo,estado,motivo_rechazo,aportado_at,revisado_at').in('inscripcion_id',insIds).order('aportado_at',{ascending:false}):{data:[],error:null};if(fedDocErr)throw fedDocErr;
   const {data:medicalRows,error:mErr}=await sb.from('reconocimientos_medicos').select('id,jugador_id,fecha_reconocimiento,fecha_valido_hasta,fecha_validacion_rffm,centro_medico,observaciones,created_at').in('jugador_id',playerIds).order('fecha_reconocimiento',{ascending:false});if(mErr)throw mErr;
+  if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
   remoteMedicalRows=medicalRows||[];
-  const {data:appointmentRows,error:apptErr}=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at,created_at,updated_at').in('jugador_id',playerIds).order('fecha_hora',{ascending:false});if(apptErr)throw apptErr;remoteMedicalAppointments=appointmentRows||[];
+  const {data:appointmentRows,error:apptErr}=await sb.from('citas_reconocimiento_medico').select('id,jugador_id,fecha_hora,lugar,direccion,indicaciones,estado,comunicada_at,created_at,updated_at').in('jugador_id',playerIds).order('fecha_hora',{ascending:false});if(apptErr)throw apptErr;if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;remoteMedicalAppointments=appointmentRows||[];
   const appointmentIds=(appointmentRows||[]).map(x=>x.id);let notificationRows=[];
   if(appointmentIds.length&&['admin','club'].includes(currentRole)){const nr=await sb.from('notificaciones_salida').select('id,cita_id,destinatario_tipo,destinatario_email,estado,intentos,enviado_at,ultimo_error,created_at').in('cita_id',appointmentIds).order('created_at',{ascending:false});if(!nr.error)notificationRows=nr.data||[];}
   let economicRows=[],paymentRows=[],clubberRows=[],economicConfigRows=[];
@@ -1514,7 +1518,7 @@ async function loadRemoteClubData(){
   const clubIdentityByPerson=new Map();for(const d of clubIdentityRows){if(!clubIdentityByPerson.has(d.persona_id)||d.es_principal)clubIdentityByPerson.set(d.persona_id,d)}
   const personsById=new Map((personRows||[]).map(x=>[x.id,x])),repPersonsById=new Map((repPersons||[]).map(x=>[x.id,x])),insByPlayer=new Map((insRows||[]).map(x=>[x.jugador_id,x]));
   const today=isoToday();
-  remoteClubPlayers=(playerRows||[]).map(p=>{
+  const loadedClubPlayers=(playerRows||[]).map(p=>{
     const person=personsById.get(p.persona_id)||{},ins=insByPlayer.get(p.id)||null;
     const rep=(repRows||[]).filter(r=>r.jugador_id===p.id&&(!r.fecha_desde||r.fecha_desde<=today)&&(!r.fecha_hasta||r.fecha_hasta>=today)).sort((a,b)=>String(b.fecha_desde||'').localeCompare(String(a.fecha_desde||'')))[0]||null;
     const repPerson=rep?repPersonsById.get(rep.representante_persona_id):null;const representationHistory=(repRows||[]).filter(r=>r.jugador_id===p.id).map(r=>{const rp=repPersonsById.get(r.representante_persona_id)||{};return {...r,representativeName:[rp.nombre,rp.primer_apellido,rp.segundo_apellido].filter(Boolean).join(' ')||'Representante'}});
@@ -1525,11 +1529,15 @@ async function loadRemoteClubData(){
     const latestRemoteMedical=medicalsForPlayer[0]||null;
     const appointments=(appointmentRows||[]).filter(a=>a.jugador_id===p.id).sort((a,b)=>String(b.fecha_hora||'').localeCompare(String(a.fecha_hora||'')));const appointment=appointments.find(a=>a.estado==='programada')||null;const appointmentNotifications=appointment?notificationRows.filter(n=>n.cita_id===appointment.id):[];const economic=ins?economicRows.find(e=>e.inscripcion_id===ins.id)||null:null;const economicConfig=assignment?economicConfigRows.find(c=>c.equipo_id===assignment.equipo_id)||null:null;const payments=ins?paymentRows.filter(x=>x.inscripcion_id===ins.id):[];const identity=clubIdentityByPerson.get(p.persona_id)||null;const clubberPlayer=clubberRows.find(x=>x.tipo==='deportista'&&x.jugador_id===p.id)||null;const clubberTutor=rep?clubberRows.find(x=>x.tipo==='tutor'&&x.persona_id===rep.representante_persona_id)||null:null;return {id:p.id,personId:p.persona_id,name:[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' '),birth:person.fecha_nacimiento||'',playerEmail:person.email_contacto||'',playerPhone:person.telefono||'',childDocumentType:identity?.tipo||'',childDocumentNumber:identity?.numero||'',active:p.activo!==false,inscription:ins,categoryName:ins?dbCategoryName(ins.categoria_id):'—',representation:rep,representationHistory,tutorName:repPerson?[repPerson.nombre,repPerson.primer_apellido,repPerson.segundo_apellido].filter(Boolean).join(' '):(person.fecha_nacimiento&&ageOn(person.fecha_nacimiento)>=18?'Autorrepresentación':'Sin representante'),assignment,teamName:team?.name||'Sin equipo',requirements,fedDocs,docsLabel:docsComplete?'Completa':requirements.some(r=>r.estado==='rechazado'||r.estado==='nueva_version_solicitada')?'Revisar':requirements.some(r=>['aportado','declarado_realizado'].includes(r.estado))?'En revisión':'Pendiente',medicals:medicalsForPlayer,medical:latestRemoteMedical,appointments,appointment,appointmentNotifications,economic,economicConfig,payments,clubberPlayer,clubberTutor};
   });
-  if(currentRole==='coach'){
+  if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
+  let scopedClubPlayers=loadedClubPlayers;
+  if(loadRole==='coach'){
     const coachAssignments=activeCoachAssignments(currentUser.authUserId||currentUser.id);
     const allowedTeams=new Set(coachAssignments.map(a=>a.teamId));
-    remoteClubPlayers=remoteClubPlayers.filter(v=>v.assignment&&allowedTeams.has(v.assignment.equipo_id));
+    scopedClubPlayers=scopedClubPlayers.filter(v=>v.assignment&&allowedTeams.has(v.assignment.equipo_id));
   }
+  if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
+  remoteClubPlayers=scopedClubPlayers;
   return remoteClubPlayers;
 }
 
@@ -2271,6 +2279,7 @@ function resetClubViewForIdentityChange(message='Cargando datos del perfil…'){
   const count=$('#clubResultCount');if(count)count.textContent='';
 }
 function resetSensitiveContextForIdentityChange(message='Cargando datos del perfil…'){
+  identityContextGeneration++;
   remoteClubPlayers=[];remoteMedicalRows=[];remoteMedicalAppointments=[];rffmResultsByTeam.clear();rffmLastBulkUpdate=null;rffmLastCoachRefresh=null;
   resetClubViewForIdentityChange(message);
   const results=$('#rffmResultsContent');if(results)results.innerHTML='';
