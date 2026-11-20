@@ -1,4 +1,4 @@
-# V96.4.28 - Resultados RFFM para Entrenador
+# V96.4.29 - Resultados RFFM para Entrenador
 
 - Reutiliza la vista persistente de Resultados RFFM para el perfil Entrenador, limitada a sus asignaciones activas de la temporada de contexto.
 - El entrenador puede actualizar individualmente sus equipos o usar `Actualizar mis equipos`; los snapshots son los mismos que consume Club/Admin.
