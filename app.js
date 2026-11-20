@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.0';
+const APP_VERSION='96.6.1';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -204,9 +204,18 @@ const sb=window.supabase?.createClient(
     }
   }
 );
+// Legacy role aliases remain temporarily for routing/presentation only. Authorization never uses them as permission keys.
 const DB_ROLE_TO_APP={administrador:'admin',club:'club',entrenador:'coach',tutor:'family',jugador:'player'};
-const APP_ROLE_TO_DB=Object.fromEntries(Object.entries(DB_ROLE_TO_APP).map(([db,app])=>[app,db]));
-function capabilitiesForRole(role=currentRole){return new Set(currentUser?.capabilitiesByRole?.[role]||[])}
+function activeProfileForRole(role=currentRole){
+  return currentUser?.profiles?.find(profile=>profile.legacyRole===role)||null;
+}
+function activeCanonicalRoleCode(role=currentRole){
+  return activeProfileForRole(role)?.roleCode||null;
+}
+function capabilitiesForRole(role=currentRole){
+  const roleCode=activeCanonicalRoleCode(role);
+  return new Set(roleCode?(currentUser?.capabilitiesByRole?.[roleCode]||[]):[]);
+}
 function can(capability,role=currentRole){return capabilitiesForRole(role).has(capability)}
 function canAny(...capabilities){const owned=capabilitiesForRole();return capabilities.some(c=>owned.has(c))}
 function elementCapabilityAllowed(el){const raw=String(el?.dataset?.capabilityAny||'').trim();return !raw||raw.split(/\s+/).some(can)}
@@ -951,10 +960,15 @@ async function loadSupabaseIdentity(authUser){
   }
   const byId=new Map(roleRows.map(r=>[r.id,r]));
   const today=isoToday();
-  const roles=(assignments||[])
+  const profiles=(assignments||[])
     .filter(a=>a.activo!==false && (!a.fecha_desde||a.fecha_desde<=today) && (!a.fecha_hasta||a.fecha_hasta>=today))
-    .map(a=>DB_ROLE_TO_APP[byId.get(a.rol_id)?.codigo])
-    .filter(Boolean);
+    .map(a=>{
+      const role=byId.get(a.rol_id),roleCode=String(role?.codigo||'').trim();
+      if(!roleCode)return null;
+      return {roleCode,roleName:role?.nombre||roleCode,legacyRole:DB_ROLE_TO_APP[roleCode]||null};
+    })
+    .filter(profile=>profile?.legacyRole);
+  const roles=profiles.map(profile=>profile.legacyRole);
 
   const {data:identityDoc,error:docError}=await sb
     .from('documentos_identidad')
@@ -968,7 +982,11 @@ async function loadSupabaseIdentity(authUser){
   const {data:capabilityRows,error:capabilityError}=await sb.rpc('mis_capacidades');
   if(capabilityError)throw capabilityError;
   const capabilitiesByRole={};
-  for(const row of capabilityRows||[]){const appRole=DB_ROLE_TO_APP[row.rol_codigo];if(!appRole)continue;(capabilitiesByRole[appRole]??=[]).push(row.capacidad_codigo)}
+  for(const row of capabilityRows||[]){
+    const roleCode=String(row?.rol_codigo||'').trim(),capability=String(row?.capacidad_codigo||'').trim();
+    if(!roleCode||!capability)continue;
+    (capabilitiesByRole[roleCode]??=[]).push(capability);
+  }
   Object.keys(capabilitiesByRole).forEach(k=>capabilitiesByRole[k]=[...new Set(capabilitiesByRole[k])]);
   const fullName=[person.nombre,person.primer_apellido,person.segundo_apellido].filter(Boolean).join(' ');
   return normalizeUser({
@@ -982,6 +1000,7 @@ async function loadSupabaseIdentity(authUser){
     documentType:identityDoc?.tipo||'',
     documentNumber:identityDoc?.numero||'',
     roles:[...new Set(roles)],
+    profiles,
     capabilitiesByRole,
     active:true,
     source:'supabase'
@@ -2258,6 +2277,7 @@ function showRoleChooser(force=false){
 function showApp(options={}){
   hideSessionRestoring();const preserveView=Boolean(options.preserveView);
   if(!currentRole||!roleAvailable(currentUser,currentRole)){currentRole=availableRoles(currentUser)[0]||null}if(!currentRole)return;
+  if(currentUser?.source==='supabase'&&!activeCanonicalRoleCode()){console.warn('RBAC profile mismatch',{activeLegacyRole:currentRole,availableProfiles:(currentUser.profiles||[]).map(p=>p.roleCode)});}
   $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);renderSeasonContextHeader();$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
   const familyLike=['family','player'].includes(currentRole);
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);

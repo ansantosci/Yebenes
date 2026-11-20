@@ -1687,3 +1687,12 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - `Probar conexión` persiste ahora el resultado real en `ultima_validacion_at`, `ultima_validacion_ok` y `ultima_validacion_mensaje`.
 - El listado de Estructura refleja inmediatamente `Verificado` o `Error`; guardar/importar configuración continúa sin equivaler a validarla.
 - Se reutilizan UPDATE + RLS Club/Admin existentes en 096; no hay cambio de backend ni de esquema.
+
+
+## V96.6.1 - RBAC frontend convergence phase 1
+- Capability maps remain keyed by canonical `roles.codigo` values returned by Supabase.
+- Supabase identities retain canonical profiles (`roleCode`) alongside temporary legacy routing aliases.
+- `can()` derives authorization from the active profile's canonical role code; legacy role names are not permission keys.
+- Capability selection is dynamic on every active-profile change/restore, avoiding stale or prematurely calculated effective permissions.
+- Navigation remains capability-declared and fail-closed; a profile/capability mismatch emits a diagnostic warning.
+- No backend migration: backend baseline remains 102.
