@@ -95,6 +95,7 @@ jobs:
           test -s supabase/seed/demo-data/10_demo_s_v1_baseline.sql
           test -s supabase/seed/test-data/10-test-s-v1-baseline.sql
           test -s supabase/seed/demo-data/20_demo_access_operational_matrix.sql
+          test -s supabase/seed/demo-data/20_demo_access_operational_matrix_test_access_rehearsal.sql
           test -s supabase/seed/test-access/00-test-access-personas.sql
           test -s supabase/seed/demo-access/00-demo-access-personas.sql
           test -s supabase/seed/test-data/15-authenticated-families.sql
@@ -189,7 +190,11 @@ jobs:
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -c "insert into private.demo_dataset_entities(dataset_id,table_name,entity_id) select 'DEMO-S','asignaciones_entrenador_equipo',a.id from public.asignaciones_entrenador_equipo a join public.equipos e on e.id=a.equipo_id join public.temporadas t on t.id=e.temporada_id where t.estado='activa' and a.id in (select md5('canonical-coach-cover:'||e2.id::text||':'||g)::uuid from public.equipos e2 join public.temporadas t2 on t2.id=e2.temporada_id cross join generate_series(1,2) g where t2.estado='activa') on conflict do nothing;"
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/15-test-baseline-parity.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/common/10-rffm-2026-27.sql
-          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql
+          if [ '${{ inputs.target }}' = 'TEST' ]; then
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix_test_access_rehearsal.sql
+          else
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f supabase/seed/demo-data/20_demo_access_operational_matrix.sql
+          fi
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/economia-v1.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/equipaciones-v1.sql
           psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f .generated/demo-dataset/notifications-v1.sql

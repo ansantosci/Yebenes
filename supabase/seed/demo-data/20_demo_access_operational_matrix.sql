@@ -6,23 +6,13 @@ begin;
 
 do $$
 declare
-  identity_count integer;
+  missing_keys text;
 begin
-  select count(*) into identity_count from private.demo_access_identities;
-  if identity_count = 0 then
-    raise notice 'DEMO-ACCESS not provisioned: skipping operational bindings.';
-  elsif identity_count <> 12 then
-    raise exception 'DEMO-ACCESS contract failed: expected 12 identities (6 historical + 6 family tutors), found %', identity_count;
-  end if;
-
-  if (select count(*) from private.demo_access_identities
-      where key in ('club','coach','coach_player','multiprofile','tutor','adult_player')) <> 6 then
-    raise exception 'DEMO-ACCESS contract failed: historical protected access set is incomplete';
-  end if;
-
-  if (select count(*) from private.demo_access_identities
-      where key in ('tutor_family_1','tutor_family_2','tutor_family_3','tutor_family_4','tutor_family_5','tutor_family_6')) <> 6 then
-    raise exception 'DEMO-ACCESS contract failed: expected 6 authenticated family tutor identities';
+  select string_agg(required.key, ',' order by required.key) into missing_keys
+  from (values ('club'),('coach'),('coach_player'),('tutor'),('adult_player'),('multiprofile')) required(key)
+  where not exists (select 1 from private.demo_access_identities a where a.key=required.key);
+  if missing_keys is not null then
+    raise exception 'DEMO-ACCESS operational contract failed: missing required profiles %',missing_keys;
   end if;
 end $$;
 
