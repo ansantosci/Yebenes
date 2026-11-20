@@ -1,3 +1,12 @@
+# V96.4.28 - Resultados RFFM para Entrenador
+
+- Reutiliza la vista persistente de Resultados RFFM para el perfil Entrenador, limitada a sus asignaciones activas de la temporada de contexto.
+- El entrenador puede actualizar individualmente sus equipos o usar `Actualizar mis equipos`; los snapshots son los mismos que consume Club/Admin.
+- La migración 100 amplía RLS de snapshots/estado únicamente a equipos asignados al entrenador y añade autorización canónica por equipo.
+- `rffm-resultados` valida autorización antes de consultar con service role; `validate` sigue reservado a Club/Admin.
+- No crea tablas de resultados nuevas ni duplica cachés; 098/099 siguen siendo la fuente única.
+- Mantiene V96.4.25-27: lazy loading, aislamiento de sesión por entorno y corrección del bucle cross-tab.
+
 # V96.4.27 - Corte de bucle cross-tab de diagnóstico
 
 - Reduce la huella inicial por pestaña: Club/Admin ya no precargan Entrenadores ni Personas durante el bootstrap.

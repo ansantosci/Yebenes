@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.27';
+const APP_VERSION='96.4.28';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2239,7 +2239,7 @@ function showApp(options={}){
   if(medicalNavButton)medicalNavButton.style.display=isCoach?'none':'flex';
   if(coachesNavButton)coachesNavButton.style.display=isCoach?'none':'flex';
   if(structureNavButton)structureNavButton.style.display=isCoach?'none':'flex';
-  if(rffmResultsNavButton)rffmResultsNavButton.style.display=['admin','club'].includes(currentRole)?'flex':'none';
+  if(rffmResultsNavButton)rffmResultsNavButton.style.display=['admin','club','coach'].includes(currentRole)?'flex':'none';
   // V61 consolidó Usuarios dentro de Personas. usersNavButton es opcional para mantener compatibilidad con HTML anterior.
   if(usersNavButton)usersNavButton.style.display=currentRole==='admin'?'flex':'none';
   if(personsNavButton)personsNavButton.style.display=currentRole==='admin'?'flex':'none';
@@ -2247,7 +2247,7 @@ function showApp(options={}){
   if(openCoachModal)openCoachModal.style.display=currentRole==='admin'?'inline-flex':'none';
   if($('#paymentPendingStat'))$('#paymentPendingStat').style.display=isCoach?'none':'';if($('#paymentTableHead'))$('#paymentTableHead').style.display=isCoach?'none':'';if(isCoach&&clubQuickFilter==='payment')clubQuickFilter='all';
   const clubNav=$('#clubNav'),clubHeroTitle=$('#clubHeroTitle'),clubHeroText=$('#clubHeroText');
-  if(clubNav)clubNav.style.gridTemplateColumns=isCoach?'repeat(2,1fr)':currentRole==='admin'?'repeat(7,1fr)':'repeat(6,1fr)';
+  if(clubNav)clubNav.style.gridTemplateColumns=isCoach?'repeat(3,1fr)':currentRole==='admin'?'repeat(7,1fr)':'repeat(6,1fr)';
   if(clubHeroTitle)clubHeroTitle.textContent=isCoach?'Jugadores de mis equipos':'Control de fichas federativas';
   if(clubHeroText)clubHeroText.textContent=isCoach?'Consulta los jugadores asignados a tus equipos con una asignación vigente.':'Revisa inscripciones, representación, equipos, reconocimientos y preparación federativa.';
   // V96.4.25: render/load only the active view. Hidden sections used to preload
@@ -2875,17 +2875,18 @@ function rffmCacheAgeLabel(value){return rffmAgeLabel(value,'Actualizado')}
 function rffmConsultAgeLabel(value){return rffmAgeLabel(value,'Consultado')}
 function rffmRelativeAge(value){const label=rffmAgeLabel(value,'');return label.trim().replace(/^hace /,'hace ').replace(/^ayer/,'ayer').replace(/^ahora$/,'ahora')}
 async function loadRffmCachedResults(){
-  if(!['admin','club'].includes(currentRole))return;
-  const integrations=dbFederationIntegrations.filter(x=>x.proveedor==='RFFM'&&x.activo),ids=integrations.map(x=>x.id);if(!ids.length)return;
+  if(!['admin','club','coach'].includes(currentRole))return;
+  const allowed=rffmCoachTeamIds();
+  const integrations=dbFederationIntegrations.filter(x=>x.proveedor==='RFFM'&&x.activo&&(!allowed||allowed.has(x.equipo_id))),ids=integrations.map(x=>x.id);if(!ids.length)return;
   const season=dbContextSeason();
-  const bulkPromise=season?.id?sb.from('rffm_actualizaciones_generales').select('id,temporada_id,finalizado_at,equipos_total,equipos_ok,equipos_error,estado').eq('temporada_id',season.id).order('finalizado_at',{ascending:false}).limit(1).maybeSingle():Promise.resolve({data:null,error:null});
+  const bulkPromise=currentRole!=='coach'&&season?.id?sb.from('rffm_actualizaciones_generales').select('id,temporada_id,finalizado_at,equipos_total,equipos_ok,equipos_error,estado').eq('temporada_id',season.id).order('finalizado_at',{ascending:false}).limit(1).maybeSingle():Promise.resolve({data:null,error:null});
   const [{data:states,error},bulk]=await Promise.all([sb.from('rffm_resultados_estado').select('integracion_id,ultimo_snapshot_id,ultimo_intento_at,ultimo_exito_at,ultimo_error').in('integracion_id',ids),bulkPromise]);if(error)throw error;if(bulk?.error)throw bulk.error;rffmLastBulkUpdate=bulk?.data||null;
   const snapshotIds=(states||[]).map(x=>x.ultimo_snapshot_id).filter(Boolean);let snapshots=[];
   if(snapshotIds.length){const q=await sb.from('rffm_resultados_snapshots').select('id,payload,obtenido_at').in('id',snapshotIds);if(q.error)throw q.error;snapshots=q.data||[]}
   const snapById=new Map(snapshots.map(x=>[x.id,x])),integrationById=new Map(integrations.map(x=>[x.id,x]));
   for(const st of states||[]){const integ=integrationById.get(st.integracion_id),snap=snapById.get(st.ultimo_snapshot_id);if(!integ||!snap?.payload)continue;rffmResultsByTeam.set(integ.equipo_id,{...snap.payload,_cache:{obtenidoAt:snap.obtenido_at,ultimoExitoAt:st.ultimo_exito_at,ultimoIntentoAt:st.ultimo_intento_at,ultimoError:st.ultimo_error}})}
 }
-async function openRffmResultsView(){if(!['admin','club'].includes(currentRole))return;const dialog=$('#rffmResultsModal');ModalUI.open(dialog);const out=$('#rffmResultsContent');try{if(out)out.innerHTML='<div class="info-card">Cargando última información guardada…</div>';await loadRffmCachedResults();renderRffmResults()}catch(err){console.error('Carga caché RFFM',err);renderRffmResults();if(out&&!out.innerHTML)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar la última información guardada.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}}
+async function openRffmResultsView(){if(!['admin','club','coach'].includes(currentRole))return;if(currentRole==='coach'&&!dbCoachesLoaded)await loadSupabaseCoaches();const dialog=$('#rffmResultsModal');const title=dialog?.querySelector('.app-modal__identity h2'),subtitle=dialog?.querySelector('.app-modal__identity .app-modal__subtitle');if(title)title.textContent=currentRole==='coach'?'Resultados de mis equipos':'Resultados del club';if(subtitle)subtitle.textContent=currentRole==='coach'?'Información RFFM de tus equipos asignados':'Equipos configurados de la temporada de contexto';const refresh=$('#rffmRefreshAll');if(refresh)refresh.textContent=currentRole==='coach'?'Actualizar mis equipos':'Actualizar todos';ModalUI.open(dialog);const out=$('#rffmResultsContent');try{if(out)out.innerHTML='<div class="info-card">Cargando última información guardada…</div>';await loadRffmCachedResults();renderRffmResults()}catch(err){console.error('Carga caché RFFM',err);renderRffmResults();if(out&&!out.innerHTML)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar la última información guardada.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}}
 function renderRffmStructure(){
   const list=$('#rffmTeamConfigList'),out=$('#rffmResultsContent');if(!dbStructureLoaded)return;if(!list){renderRffmResults();return;}
   const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true);const can=['admin','club'].includes(currentRole);
@@ -2977,8 +2978,14 @@ function rffmFederationCategoryLabel(team){
   return dbCategoryName(team?.categoryId)||'SIN CATEGORÍA';
 }
 function rffmCategoryRank(label){const n=normalizeRffmText(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
+function rffmCoachTeamIds(){
+  if(currentRole!=='coach')return null;
+  const seasonId=dbContextSeason()?.id||dbActiveSeason()?.id||null,me=coaches.find(c=>c.active&&c.userId===currentUser?.id);
+  return new Set((me?.assignments||[]).filter(a=>assignmentState(a)==='active'&&(!seasonId||dbTeams.find(t=>t.id===a.teamId)?.seasonId===seasonId)).map(a=>a.teamId));
+}
 function rffmCategoryGroups(){
-  const teams=dbSeasonTeams().filter(t=>rffmIntegrationFor(t.id)?.activo),by=new Map();
+  const allowed=rffmCoachTeamIds();
+  const teams=dbSeasonTeams().filter(t=>(!allowed||allowed.has(t.id))&&rffmIntegrationFor(t.id)?.activo),by=new Map();
   for(const t of teams){const label=rffmFederationCategoryLabel(t),key=normalizeRffmText(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
   const groups=[...by.values()];
   for(const g of groups)g.teams.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es',{numeric:true,sensitivity:'base'}));
@@ -3016,6 +3023,7 @@ function rffmGeneralAgeLabel(value){const label=rffmCacheAgeLabel(value);return 
 function updateRffmResultsHeader(override=''){
   const el=$('#rffmStructureStatus');if(!el)return;const total=rffmCategoryGroups().reduce((n,g)=>n+g.teams.length,0);
   if(override){el.textContent=override;return}
+  if(currentRole==='coach'){el.textContent=`${total} ${total===1?'equipo asignado':'equipos asignados'} · snapshots compartidos con el club`;return}
   const b=rffmLastBulkUpdate;if(!b){el.textContent=`${total} equipos · Sin actualización general`;return}
   const age=rffmGeneralAgeLabel(b.finalizado_at)||new Date(b.finalizado_at).toLocaleString('es-ES');
   if(b.estado==='completa')el.textContent=`${total} equipos · Última actualización general ${age}`;
@@ -3041,8 +3049,8 @@ async function loadAllRffm(){
   rffmBulkRefreshing=true;renderRffmResults();
   try{
     for(let i=0;i<ids.length;i++){updateRffmResultsHeader(`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`);if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;const result=await loadRffmTeam(ids[i],true,{deferRender:true});if(result?.ok)ok++;else errors++;}
-    try{await persistRffmBulkSummary(ids.length,ok,errors)}catch(err){console.error('No se pudo guardar el resumen de actualización general RFFM',err);updateRffmResultsHeader(`Actualización terminada · ${ok} correctos · ${errors} con error · resumen no persistido`);return}
-  }finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
+    if(currentRole!=='coach'){try{await persistRffmBulkSummary(ids.length,ok,errors)}catch(err){console.error('No se pudo guardar el resumen de actualización general RFFM',err);updateRffmResultsHeader(`Actualización terminada · ${ok} correctos · ${errors} con error · resumen no persistido`);return}}
+  }finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent=currentRole==='coach'?'Actualizar mis equipos':'Actualizar todos'}renderRffmResults();}
 }
 function rffmPdfClassificationHtml(c){
   if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';
