@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.2';
+const APP_VERSION='96.6.3';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -292,7 +292,7 @@ async function removeSponsorLogoByUrl(url=''){
   if(error)console.warn('No se pudo retirar el logo anterior',error.message||error);
 }
 async function loadSponsorAdmin(){
-  if(!sb||!['admin','club'].includes(currentRole))return [];
+  if(!sb||!can('sponsors.manage'))return [];
   const {data,error}=await sb.from('patrocinadores_club').select('id,nombre,logo_url,url,orden,activo,created_at,updated_at').order('orden',{ascending:true}).order('nombre',{ascending:true});
   if(error)throw error;sponsorAdminRows=data||[];renderSponsorAdmin();return sponsorAdminRows;
 }
@@ -314,16 +314,20 @@ function renderSponsorAdmin(){
   });
 }
 async function persistSponsorOrder(rows){
+  if(!can('sponsors.manage'))return;
   for(let i=0;i<rows.length;i++){const {error}=await sb.from('patrocinadores_club').update({orden:i+1,updated_at:new Date().toISOString()}).eq('id',rows[i].id);if(error)throw error}
   sponsorAdminRows=rows.map((x,i)=>({...x,orden:i+1}));renderSponsorAdmin();await loadClubSponsors();
 }
 async function moveSponsor(id,delta){
+  if(!can('sponsors.manage'))return;
   const rows=[...sponsorAdminRows],i=rows.findIndex(x=>x.id===id),j=i+delta;if(i<0||j<0||j>=rows.length)return;[rows[i],rows[j]]=[rows[j],rows[i]];try{await persistSponsorOrder(rows)}catch(err){console.error('Reordenar patrocinadores',err);alert(`No se ha podido cambiar el orden: ${err.message||err}`);await loadSponsorAdmin()}
 }
 async function reorderSponsorBefore(sourceId,targetId){
+  if(!can('sponsors.manage'))return;
   const rows=[...sponsorAdminRows],from=rows.findIndex(x=>x.id===sourceId),to=rows.findIndex(x=>x.id===targetId);if(from<0||to<0)return;const [moved]=rows.splice(from,1);rows.splice(to>from?to-1:to,0,moved);try{await persistSponsorOrder(rows)}catch(err){console.error('Reordenar patrocinadores',err);alert(`No se ha podido cambiar el orden: ${err.message||err}`);await loadSponsorAdmin()}
 }
 function openSponsorEditor(id=''){
+  if(!can('sponsors.manage'))return;
   const f=$('#sponsorForm');if(!f)return;const row=sponsorAdminRows.find(x=>x.id===id);f.reset();f.elements.id.value=row?.id||'';f.elements.nombre.value=row?.nombre||'';f.elements.logo_url.value=row?.logo_url||'';f.elements.url.value=row?.url||'';f.elements.activo.value=String(row?.activo??true);$('#sponsorModalTitle').textContent=row?'Editar patrocinador':'Nuevo patrocinador';updateSponsorPreview();$('#sponsorModal').showModal();
 }
 function updateSponsorPreview(){
@@ -332,7 +336,7 @@ function updateSponsorPreview(){
   box.innerHTML=current?`<img src="${esc(current)}" alt="${esc(name)}" /><span>Logo actual</span>`:'<span>Selecciona una imagen para ver la vista previa</span>';
 }
 async function saveSponsor(form){
-  if(!['admin','club'].includes(currentRole))return;
+  if(!can('sponsors.manage'))return;
   const fd=new FormData(form),id=String(fd.get('id')||''),existing=sponsorAdminRows.find(x=>x.id===id),file=form.elements.logo_file?.files?.[0]||null;
   const base={nombre:String(fd.get('nombre')||'').trim(),url:String(fd.get('url')||'').trim()||null,activo:String(fd.get('activo'))==='true',updated_at:new Date().toISOString()};if(!base.nombre)return;
   if(!existing&&!file)throw new Error('Selecciona el logo del patrocinador.');
@@ -346,8 +350,8 @@ async function saveSponsor(form){
   }catch(err){if(newUpload?.url)await removeSponsorLogoByUrl(newUpload.url);if(created)await sb.from('patrocinadores_club').delete().eq('id',sponsorId);throw err}
   $('#sponsorModal').close();await loadSponsorAdmin();await loadClubSponsors();
 }
-async function toggleSponsor(id){const row=sponsorAdminRows.find(x=>x.id===id);if(!row)return;const {error}=await sb.from('patrocinadores_club').update({activo:!row.activo,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(`No se ha podido cambiar el estado: ${error.message||error}`);return}await loadSponsorAdmin();await loadClubSponsors()}
-async function deleteSponsor(id){const row=sponsorAdminRows.find(x=>x.id===id);if(!row||!confirm(`¿Eliminar el patrocinador ${row.nombre}?`))return;const {error}=await sb.from('patrocinadores_club').delete().eq('id',id);if(error){alert(`No se ha podido eliminar: ${error.message||error}`);return}await removeSponsorLogoByUrl(row.logo_url);const remaining=sponsorAdminRows.filter(x=>x.id!==id);try{await persistSponsorOrder(remaining)}catch{await loadSponsorAdmin();await loadClubSponsors()}}
+async function toggleSponsor(id){if(!can('sponsors.manage'))return;const row=sponsorAdminRows.find(x=>x.id===id);if(!row)return;const {error}=await sb.from('patrocinadores_club').update({activo:!row.activo,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(`No se ha podido cambiar el estado: ${error.message||error}`);return}await loadSponsorAdmin();await loadClubSponsors()}
+async function deleteSponsor(id){if(!can('sponsors.manage'))return;const row=sponsorAdminRows.find(x=>x.id===id);if(!row||!confirm(`¿Eliminar el patrocinador ${row.nombre}?`))return;const {error}=await sb.from('patrocinadores_club').delete().eq('id',id);if(error){alert(`No se ha podido eliminar: ${error.message||error}`);return}await removeSponsorLogoByUrl(row.logo_url);const remaining=sponsorAdminRows.filter(x=>x.id!==id);try{await persistSponsorOrder(remaining)}catch{await loadSponsorAdmin();await loadClubSponsors()}}
 
 // Configuración operativa de medios de cobro manual.
 // El modelo de datos no se modifica: se conservan capacidades técnicas para futuras formas de pago,
@@ -1680,6 +1684,7 @@ function openAccountProfile(){
   $('#accountPasswordForm').reset();if($('#accountEmail'))$('#accountEmail').value=currentUser.email||'';if($('#accountEmailConfirm'))$('#accountEmailConfirm').value=currentUser.email||'';const ef=$('#accountEmailFeedback');if(ef){ef.hidden=true;ef.textContent=''}const av=$('#selfCoachAvailabilityWrap'),c=coaches.find(x=>x.personId===currentUser.personId||x.userId===currentUser.authUserId),tab=$('#accountAvailabilityTab'),empty=$('#accountNoCoachAvailability');if(av){av.hidden=!c;if(c)renderCoachAvailabilityPanel('#selfCoachAvailabilityPanel',c,{self:true})}if(tab)tab.hidden=!c;if(empty)empty.hidden=!!c;setSimpleTabs('#accountProfileModal','profile');d.showModal();
 }
 async function createTemporaryAccessForSelectedPerson(){
+  if(!can('people.manage'))return;
   const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;
   if(!p.email_contacto){alert('La Persona necesita un correo electrónico antes de enviar la invitación.');return}
   const roles=remotePersonRoleCodes(p.id);if(!roles.some(r=>['administrador','club','entrenador'].includes(r))){alert('Asigna primero Administrador, Club o Entrenador.');return}
@@ -1696,6 +1701,7 @@ async function getInternalAccessState(personId){
   return await invokeAccessManager({action:'get_internal_access_state',persona_id:personId});
 }
 async function resendInternalInvitationForSelectedPerson(){
+  if(!can('people.manage'))return;
   const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;
   const b=$('#resendInternalInvitation');if(b){b.disabled=true;b.textContent='Enviando…'}
   try{
@@ -2647,7 +2653,7 @@ function applyCoachPersonToForm(personId){
   ['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});
 }
 async function openCoachForNew(personId=null){
-  if(!['admin','club'].includes(currentRole)){alert('Solo Club o Administrador pueden dar de alta entrenadores.');return}
+  if(!can('coaches.manage')){alert('No tienes capacidad para gestionar entrenadores.');return}
   editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];setCoachAssignmentGuard('');const cp=$('#coachMinorConsentPanel');if(cp){cp.hidden=true;cp.innerHTML=''}const f=$('#coachForm');f.reset();
   ['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});
   f.elements.active.value='yes';fillAssignmentTeamSelect('#coachAssignmentTeam');$('#coachAssignmentStart').value=isoToday();$('#coachAssignmentEnd').value=dbActiveSeason()?.endDate||'';renderCoachAssignments();renderCoachAvailabilityPanel('#coachAvailabilityPanel',null);
@@ -2659,12 +2665,12 @@ async function openCoachForNew(personId=null){
 function setCoachAssignmentGuard(message='',kind='warning'){
   const el=$('#coachAssignmentGuard');if(!el)return;el.textContent=message;el.hidden=!message;el.className=message?(kind==='ok'?'success-box':'warning-box'):'';
 }
-function openCoachForEdit(id){const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);renderCoachAdminSummary(c);renderCoachAdminMedical(c);renderCoachAdminHistory(c);bindCoachAdminTabs();coachAdminTab('summary');$('#coachModal').showModal()}
+function openCoachForEdit(id){if(!can('coaches.manage'))return;const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);renderCoachAdminSummary(c);renderCoachAdminMedical(c);renderCoachAdminHistory(c);bindCoachAdminTabs();coachAdminTab('summary');$('#coachModal').showModal()}
 async function saveRemoteCoach(form){
-  if(!['admin','club'].includes(currentRole))return;
+  if(!can('coaches.manage'))return;
   const fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');
   if(!personId){alert('Selecciona primero una Persona existente.');return}
-  if(!editingCoachId&&!['admin','club'].includes(currentRole)){alert('Solo Club o Administrador pueden dar de alta entrenadores.');return}
+  if(!editingCoachId&&!can('coaches.manage')){alert('No tienes capacidad para gestionar entrenadores.');return}
   const person=dbPersons.find(x=>x.id===personId);const personEmail=String(person?.email_contacto||old?.email||fd.get('email')||'').trim().toLowerCase();if(fd.get('active')==='yes'&&!personEmail){alert('Todo entrenador activo necesita un correo electrónico propio antes de completar el alta.');return}
   if(btn){btn.disabled=true;btn.textContent='Guardando…'}
   try{
@@ -2711,7 +2717,7 @@ function setPersonAdminTab(tab){
   $$('#personAdminModal [data-person-panel]').forEach(p=>p.classList.toggle('active',p.dataset.personPanel===tab));
 }
 async function openPersonAdmin(personId,tab='identity'){
-  if(currentRole!=='admin')return;
+  if(!can('people.manage'))return;
   await loadSupabasePersons();await loadSupabaseCoaches();
   const person=dbPersons.find(p=>p.id===personId);if(!person)return;
   selectedPersonAdminId=personId;
@@ -2745,7 +2751,7 @@ async function openPersonAdmin(personId,tab='identity'){
 let remotePersonsRenderPromise=null;
 let remotePersonsPreparedRows=[];
 function paintRemotePersonsPage(){markListMetric('persons','localRenders');
-  const body=$('#personsTable');if(!body||currentRole!=='admin')return;
+  const body=$('#personsTable');if(!body||!can('people.manage'))return;
   const pageRows=pagedRows('persons',remotePersonsPreparedRows);
   body.innerHTML=pageRows.items.join('')||'<tr><td colspan="6">No hay personas registradas.</td></tr>';
   $$('.person-row').forEach(r=>{r.onclick=()=>openPersonAdmin(r.dataset.person);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPersonAdmin(r.dataset.person)}}});
@@ -2753,7 +2759,7 @@ function paintRemotePersonsPage(){markListMetric('persons','localRenders');
 }
 async function renderRemotePersons(options={}){
   markListMetric('persons','remoteRefreshes');
-  const body=$('#personsTable');if(!body||currentRole!=='admin')return;
+  const body=$('#personsTable');if(!body||!can('people.manage'))return;
   const reload=options.reload!==false;
   if(!reload&&remotePersonsPreparedRows.length){paintRemotePersonsPage();return}
   if(remotePersonsRenderPromise)return remotePersonsRenderPromise;
@@ -2787,7 +2793,7 @@ async function renderRemotePersons(options={}){
   return remotePersonsRenderPromise;
 }
 async function createRemotePerson(form){
-  if(currentRole!=='admin')return;const fd=new FormData(form);const email=String(fd.get('email')||'').trim(),emailConfirm=String(fd.get('emailConfirm')||'').trim();const emailError=validateRepeatedEmail(email,emailConfirm,{required:false});if(emailError){alert(emailError);return}
+  if(!can('people.manage'))return;const fd=new FormData(form);const email=String(fd.get('email')||'').trim(),emailConfirm=String(fd.get('emailConfirm')||'').trim();const emailError=validateRepeatedEmail(email,emailConfirm,{required:false});if(emailError){alert(emailError);return}
   const roleAdmin=fd.get('roleAdmin')==='on',roleClub=fd.get('roleClub')==='on',roleCoach=fd.get('roleCoach')==='on',sendInvite=roleAdmin||roleClub||roleCoach;
   if(sendInvite&&!email){alert('Indica un correo electrónico para enviar la invitación.');return}
   const submit=form.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='Creando…'}
@@ -2801,11 +2807,13 @@ async function createRemotePerson(form){
 }
 
 async function savePersonAdminIdentity(form){
+  if(!can('people.manage'))return;
   const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;const fd=new FormData(form),btn=form.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent='Guardando…';
   try{const newEmail=String(fd.get('email')||'').trim().toLowerCase(),emailConfirm=String(fd.get('emailConfirm')||'').trim().toLowerCase();const emailError=validateRepeatedEmail(newEmail,emailConfirm,{required:!!newEmail});if(emailError)throw new Error(emailError);if(p.auth_user_id&&!newEmail)throw new Error('Una Persona con cuenta de acceso no puede quedarse sin correo.');if(newEmail!==String(p.email_contacto||'').trim().toLowerCase()&&newEmail){await invokeAccessManager({action:'change_person_email',persona_id:p.id,new_email:newEmail})}const {error}=await sb.rpc('guardar_persona_admin',{p_persona_id:p.id,p_nombre:String(fd.get('firstName')||'').trim(),p_primer_apellido:String(fd.get('lastName1')||'').trim(),p_segundo_apellido:String(fd.get('lastName2')||'').trim()||null,p_email:newEmail||null,p_telefono:String(fd.get('phone')||'').trim()||null,p_fecha_nacimiento:String(fd.get('birth')||'')||null,p_activo:fd.get('active')==='yes'});if(error)throw error;await loadSupabasePersons();await openPersonAdmin(p.id,'identity');renderPersons();
   }catch(err){alert(`No se ha podido guardar la Persona: ${err.message||err}`)}finally{btn.disabled=false;btn.textContent='Guardar identidad'}
 }
 async function savePersonAdminRoles(){
+  if(!can('people.manage'))return;
   const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;const b=$('#savePersonRoles'),feedback=$('#personRoleSaveFeedback');b.disabled=true;b.textContent='Guardando…';if(feedback){feedback.hidden=true;feedback.textContent=''}
   try{
     const wantsCoach=$('#personRoleCoach').checked;
@@ -2816,28 +2824,28 @@ async function savePersonAdminRoles(){
     const f=$('#personRoleSaveFeedback');if(f){f.textContent=message;f.hidden=false;f.className='success-box'}
   }catch(err){alert(`No se han podido actualizar los perfiles: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Guardar perfiles'}
 }
-async function linkPersonAuth(){const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;try{const {error}=await sb.rpc('vincular_auth_persona_por_email_admin',{p_persona_id:p.id});if(error)throw error;await loadSupabasePersons();await openPersonAdmin(p.id,'access');renderPersons()}catch(err){alert(`No se ha podido vincular la cuenta: ${err.message||err}`)}}
+async function linkPersonAuth(){if(!can('people.manage'))return;const p=dbPersons.find(x=>x.id===selectedPersonAdminId);if(!p)return;try{const {error}=await sb.rpc('vincular_auth_persona_por_email_admin',{p_persona_id:p.id});if(error)throw error;await loadSupabasePersons();await openPersonAdmin(p.id,'access');renderPersons()}catch(err){alert(`No se ha podido vincular la cuenta: ${err.message||err}`)}}
 
 
 async function loadEconomicConfigs(){
-  if(!sb||!['admin','club'].includes(currentRole)||!dbContextSeason())return [];
+  if(!sb||!can('structure.manage')||!dbContextSeason())return [];
   const {data,error}=await sb.from('configuracion_economica_equipo').select('id,temporada_id,equipo_id,importe_inscripcion,admite_fraccionamiento,requiere_pago_ficha,observaciones').eq('temporada_id',dbContextSeason().id);
   if(error)throw error;dbEconomicConfigs=data||[];return dbEconomicConfigs;
 }
 function renderEconomicTeamConfig(){
   const body=$('#economicTeamsTable');if(!body)return;
-  if(!['admin','club'].includes(currentRole)){body.innerHTML='<tr><td colspan="6">Sin acceso a configuración económica.</td></tr>';return}
+  if(!can('structure.manage')){body.innerHTML='<tr><td colspan="6">Sin acceso a configuración económica.</td></tr>';return}
   loadEconomicConfigs().then(()=>{
     body.innerHTML=sortTeamsByCategoryAge(dbSeasonTeams(),true).map(t=>{const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);return `<tr><td><strong>${esc(t.name)}</strong><div class="meta">${esc(dbCategoryName(t.categoryId))}</div></td><td>${c?moneyEUR(c.importe_inscripcion):'Sin configurar'}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td><span class="status ${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'complete':'pending'}">${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'Configurado':'Pendiente'}</span></td><td><button class="secondary tiny edit-economic-config" data-id="${t.id}">${c?'Editar':'Configurar'}</button></td></tr>`}).join('');
     $$('.edit-economic-config').forEach(b=>b.onclick=()=>openEconomicConfig(b.dataset.id));
   }).catch(err=>{body.innerHTML=`<tr><td colspan="6">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
 }
 function openEconomicConfig(teamId){
-  if(!['admin','club'].includes(currentRole))return;selectedEconomicTeamId=teamId;const t=dbTeams.find(x=>x.id===teamId),c=dbEconomicConfigs.find(x=>x.equipo_id===teamId),f=$('#economicConfigForm');if(!t||!f)return;
+  if(!can('structure.manage'))return;selectedEconomicTeamId=teamId;const t=dbTeams.find(x=>x.id===teamId),c=dbEconomicConfigs.find(x=>x.equipo_id===teamId),f=$('#economicConfigForm');if(!t||!f)return;
   $('#economicConfigTitle').textContent=t.name;f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';$('#economicConfigModal').showModal();
 }
 async function saveEconomicConfig(form){
-  if(!selectedEconomicTeamId||!['admin','club'].includes(currentRole))return;
+  if(!selectedEconomicTeamId||!can('structure.manage'))return;
   const fd=new FormData(form),amount=Number(fd.get('amount'));
   if(!Number.isFinite(amount)||amount<0){alert('Indica un importe válido.');return}
   const teamId=selectedEconomicTeamId;
@@ -3187,8 +3195,8 @@ async function exportRffmPdf(){
 
 function renderStructure(){
   if(!$('#seasonsTable'))return;
-  const can=currentRole==='admin';
-  const canEconomic=['admin','club'].includes(currentRole);
+  const can=can('structure.manage');
+  const canEconomic=can;
   if(dbStructureLoaded){
     const active=dbActiveSeason(),context=dbContextSeason();
     if($('#structureSeasonName'))$('#structureSeasonName').textContent=context?.name||'—';
@@ -3238,8 +3246,8 @@ function openTeamEdit(id){
   const f=$('#teamForm'),c=remote?dbEconomicConfigs.find(x=>x.equipo_id===id):null;
   f.elements.name.value=t.name||'';f.elements.categoryId.value=t.categoryId||'';f.elements.code.value=t.code||'';f.elements.modality.value=t.modality||'';f.elements.gender.value=t.gender||'';f.elements.active.value=t.active?'yes':'no';
   f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';
-  const sportsEditable=['admin','club'].includes(currentRole);['name','categoryId','code','modality','gender','active'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!sportsEditable});
-  ['amount','installments','required','notes'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!['admin','club'].includes(currentRole)});
+  const sportsEditable=can('structure.manage');['name','categoryId','code','modality','gender','active'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!sportsEditable});
+  ['amount','installments','required','notes'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!can('structure.manage')});
   $('#teamModalSeason').textContent=remote?`Temporada ${dbContextSeason()?.name||''} · ${currentRole==='club'?'Gestión deportiva del club':'Administración'}`:`Temporada ${seasonName(currentSeasonId)}`;
   $('#teamModalTitle').textContent=t.name||'Editar equipo';
   const teamModal=$('#teamModal'),closeTeam=$('#closeTeamModal'),cancelTeam=$('#cancelTeam'),teamForm=$('#teamForm');
@@ -3253,10 +3261,10 @@ function fillTeamCategorySelect(){const s=$('#teamCategorySelect'),source=dbStru
 async function saveUnifiedTeam(form){
   const fd=new FormData(form),remote=dbStructureLoaded;
   if(remote){
-    if(!editingTeamId||!['admin','club'].includes(currentRole))return;
+    if(!editingTeamId||!can('structure.manage'))return;
     const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent='Guardando…'}
     try{
-      if(['admin','club'].includes(currentRole)){
+      if(can('structure.manage')){
         const payload={nombre:String(fd.get('name')||'').trim(),categoria_id:fd.get('categoryId'),codigo:String(fd.get('code')||'').trim()||null,modalidad:String(fd.get('modality')||'')||null,genero:String(fd.get('gender')||'')||null,activo:fd.get('active')==='yes'};
         if(!payload.nombre){alert('Indica el nombre del equipo.');return}
         const {error}=await sb.from('equipos').update(payload).eq('id',editingTeamId);if(error)throw error;
@@ -3433,7 +3441,7 @@ $('#closeSelfRepresentationModal').onclick=$('#cancelSelfRepresentation').onclic
 $('#openEconomicModal')&&($('#openEconomicModal').onclick=openEconomicPlayer);$('#closeEconomicPlayerModal')&&($('#closeEconomicPlayerModal').onclick=closeEconomicPlayerAndReturn);$('#economicPlayerModal')&&($('#economicPlayerModal').oncancel=e=>{e.preventDefault();closeEconomicPlayerAndReturn()});$$('#adminPlayerTabs [data-player-tab]').forEach(b=>b.onclick=()=>setAdminPlayerTab(b.dataset.playerTab));$('#openMedicalFromPlayer').onclick=()=>{const id=selectedRemotePlayerId;if(!id)return;$('#adminPlayerModal').close();openRemoteMedical(id)};$('#saveClubberIds').onclick=saveClubberIds;$('#registerEconomicPayment').onclick=registerEconomicPayment;$('#validateClubberInstallments').onclick=()=>setClubberInstallments(true);$('#revokeClubberInstallments').onclick=()=>setClubberInstallments(false);$('#closeEconomicConfigModal').onclick=$('#cancelEconomicConfig').onclick=()=>$('#economicConfigModal').close();$('#economicConfigForm').onsubmit=e=>{e.preventDefault();saveEconomicConfig(e.currentTarget)};
 $('#medicalSearch').oninput=()=>{resetListPage('medical');renderMedical()};$('#medicalFilter').onchange=()=>{resetListPage('medical');renderMedical()};$$('[data-medical-quick]').forEach(el=>{const go=()=>{const v=el.dataset.medicalQuick;medicalQuickFilter=(medicalQuickFilter===v&&v!=='all')?'all':v;resetListPage('medical');renderMedical()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addMonths(e.target.value,18)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#editMedicalAppointment').onclick=()=>{const v=currentRemoteMedicalTarget();if(v)setMedicalAppointmentEditor(v,true)};$('#cancelMedicalAppointmentEdit').onclick=()=>{const v=currentRemoteMedicalTarget();if(v)setMedicalAppointmentEditor(v,false)};$('#cancelMedicalAppointment').onclick=cancelRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
 
-$$('#accountProfileModal [data-account-tab]').forEach(b=>b.onclick=()=>setSimpleTabs('#accountProfileModal',b.dataset.accountTab));$$('#medicalModal [data-medical-tab]').forEach(b=>b.onclick=()=>setMedicalTab(b.dataset.medicalTab));$$('#medicalModal .medical-close').forEach(b=>b.onclick=()=>$('#medicalModal').close());$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachMedicalFilter','coachLicenseFilter','coachDelegateFilter','coachBenchFilter','coachPlayerFilter','coachStatusFilter'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=()=>{resetListPage('coaches');renderCoaches()}});if($('#coachSearch'))$('#coachSearch').oninput=()=>{resetListPage('coaches');renderCoaches()};$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(!['admin','club'].includes(currentRole))return;const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:old?.hasLicense||false,licenseType:old?.licenseType||'',licenseNumber:old?.licenseNumber||'',delegateCourse:old?.delegateCourse||false,notes:old?.notes||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure()};
+$$('#accountProfileModal [data-account-tab]').forEach(b=>b.onclick=()=>setSimpleTabs('#accountProfileModal',b.dataset.accountTab));$$('#medicalModal [data-medical-tab]').forEach(b=>b.onclick=()=>setMedicalTab(b.dataset.medicalTab));$$('#medicalModal .medical-close').forEach(b=>b.onclick=()=>$('#medicalModal').close());$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachMedicalFilter','coachLicenseFilter','coachDelegateFilter','coachBenchFilter','coachPlayerFilter','coachStatusFilter'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=()=>{resetListPage('coaches');renderCoaches()}});if($('#coachSearch'))$('#coachSearch').oninput=()=>{resetListPage('coaches');renderCoaches()};$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(!can('coaches.manage'))return;const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:old?.hasLicense||false,licenseType:old?.licenseType||'',licenseNumber:old?.licenseNumber||'',delegateCourse:old?.delegateCourse||false,notes:old?.notes||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure()};
 $('#addCoachAssignment').onclick=async()=>{try{const old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value;if(currentUser?.source==='supabase'&&personId){const ok=await ensureMinorCoachAssignmentAllowed(personId);if(!ok){setCoachAssignmentGuard('No se puede añadir esta asignación. El entrenador es menor y todavía no consta la autorización expresa de su tutor.');return}}setCoachAssignmentGuard('');const team=$('#coachAssignmentTeam').value,role=$('#coachAssignmentRole').value,start=$('#coachAssignmentStart').value,endValue=$('#coachAssignmentEnd').value,end=endValue||'9999-12-31';if(!team||!start){alert('Selecciona equipo y completa la fecha de inicio.');return}if(endValue&&endValue<start){alert('La fecha de fin no puede ser anterior al inicio.');return}let replacePrincipal=false;if(role==='first'){const conflicts=coaches.filter(c=>c.id!==editingCoachId).flatMap(c=>(c.assignments||[]).filter(a=>a.teamId===team&&a.coachRole==='first'&&!a.cancelledAt&&!(end<(a.startDate||'0000-01-01')||start>(a.endDate||'9999-12-31'))).map(a=>({coach:c,assignment:a})));if(conflicts.length){const names=[...new Set(conflicts.map(x=>x.coach.name))].join(', ');if(!confirm(`${coachTeamName(team)} ya tiene como entrenador principal a ${names}. ¿Quieres finalizar esa etapa y asignar a este entrenador como nuevo principal desde ${fmt(start)}?`)){setCoachAssignmentGuard('La asignación no se ha añadido porque el equipo ya tiene entrenador principal en ese periodo.');return}replacePrincipal=true}}const ownIndex=pendingCoachAssignments.findIndex(a=>{const aEnd=a.endDate||'9999-12-31';return a.teamId===team&&!(end<(a.startDate||'0000-01-01')||start>aEnd)});if(ownIndex>=0){const previous=pendingCoachAssignments[ownIndex];if(previous.coachRole===role){alert('Ya existe una asignación solapada para ese equipo.');return}if(!confirm(`Este entrenador ya figura como ${coachRoleLabel(previous.coachRole)} de ${coachTeamName(team)} en ese periodo. ¿Quieres cambiar su función a ${coachRoleLabel(role)} desde ${fmt(start)}?`))return;const previousStart=previous.startDate||start;if(start<=previousStart){pendingCoachAssignments.splice(ownIndex,1,{teamId:team,coachRole:role,startDate:start,endDate:endValue||'',replacePrincipal});}else{const d=new Date(`${start}T12:00:00`);d.setDate(d.getDate()-1);const previousDay=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;pendingCoachAssignments[ownIndex]={...previous,endDate:previousDay};pendingCoachAssignments.push({teamId:team,coachRole:role,startDate:start,endDate:endValue||'',replacePrincipal});}renderCoachAssignments();setCoachAssignmentGuard(replacePrincipal?'Al guardar, se cambiará la función de este entrenador y se finalizará la etapa del entrenador principal anterior, conservando el histórico.':'Al guardar, se cambiará la función del entrenador conservando el histórico anterior cuando corresponda.','ok');return}const added=addAssignmentFrom('coachAssignment',pendingCoachAssignments,renderCoachAssignments);if(added&&replacePrincipal){pendingCoachAssignments[pendingCoachAssignments.length-1].replacePrincipal=true;renderCoachAssignments();setCoachAssignmentGuard('Al guardar, se finalizará la asignación del entrenador principal anterior y se conservará en el histórico.','ok')}}catch(err){setCoachAssignmentGuard(`No se ha podido comprobar la asignación: ${err.message||err}`)}};
 if($('#minorCoachConsentConfirm'))$('#minorCoachConsentConfirm').onclick=submitMinorCoachConsent;
 if($('#closeMinorCoachConsent'))$('#closeMinorCoachConsent').onclick=()=>{$('#minorCoachConsentModal').close();pendingMinorConsentAction=null};
@@ -3446,14 +3454,14 @@ if($('#cancelMinorCoachConsent'))$('#cancelMinorCoachConsent').onclick=()=>{$('#
   if(cancelClubUser&&clubUserModal)cancelClubUser.onclick=()=>clubUserModal.close();
   if(clubUserRole)clubUserRole.onchange=syncCoachUserFields;
   if(addClubUserAssignment)addClubUserAssignment.onclick=()=>addAssignmentFrom('clubUserAssignment',pendingUserAssignments,renderUserAssignments);
-  if(clubUserForm)clubUserForm.onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget),email=String(fd.get('email')).toLowerCase(),role=fd.get('role');let u=users.find(x=>x.email.toLowerCase()===email);if(role==='coach'&&!pendingUserAssignments.length){alert('Añade al menos una asignación de equipo.');return}if(u){u=normalizeUser(u);if(hasRole(u,role)){alert('Esa persona ya tiene ese perfil.');return}u.roles.push(role);u.name=fd.get('name')||u.name;u.active=true;if(role==='coach'){let c=coaches.find(x=>x.userId===u.id);const data={name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true};if(c)Object.assign(c,data);else coaches.push({id:uid('c'),userId:u.id,...data})}recordAudit('Perfil añadido a persona','',`${u.name} · ${roleLabel(role)}`)}else{const password=fd.get('password');if(!password||String(password).length<6){alert('Para una cuenta nueva indica una contraseña inicial de al menos 6 caracteres.');return}const person={id:uid('person'),name:fd.get('name'),email,dni:'',createdAt:isoToday(),mergedFrom:[]};persons.push(person);u={id:uid('u-person'),personId:person.id,name:fd.get('name'),email,phone:'',password,roles:[role],active:true};users.push(u);if(role==='coach')coaches.push({id:uid('c'),userId:u.id,name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true});recordAudit('Persona interna creada','',`${u.name} · ${roleLabel(role)}`)}saveUsers();saveCoaches();writeJSON(K.persons,persons);pendingUserAssignments=[];clubUserModal?.close();renderClubUsers();renderCoaches()};
+  if(clubUserForm)clubUserForm.onsubmit=e=>{e.preventDefault();if(!can('people.manage'))return;const fd=new FormData(e.currentTarget),email=String(fd.get('email')).toLowerCase(),role=fd.get('role');let u=users.find(x=>x.email.toLowerCase()===email);if(role==='coach'&&!pendingUserAssignments.length){alert('Añade al menos una asignación de equipo.');return}if(u){u=normalizeUser(u);if(hasRole(u,role)){alert('Esa persona ya tiene ese perfil.');return}u.roles.push(role);u.name=fd.get('name')||u.name;u.active=true;if(role==='coach'){let c=coaches.find(x=>x.userId===u.id);const data={name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true};if(c)Object.assign(c,data);else coaches.push({id:uid('c'),userId:u.id,...data})}recordAudit('Perfil añadido a persona','',`${u.name} · ${roleLabel(role)}`)}else{const password=fd.get('password');if(!password||String(password).length<6){alert('Para una cuenta nueva indica una contraseña inicial de al menos 6 caracteres.');return}const person={id:uid('person'),name:fd.get('name'),email,dni:'',createdAt:isoToday(),mergedFrom:[]};persons.push(person);u={id:uid('u-person'),personId:person.id,name:fd.get('name'),email,phone:'',password,roles:[role],active:true};users.push(u);if(role==='coach')coaches.push({id:uid('c'),userId:u.id,name:u.name,assignments:pendingUserAssignments.map(a=>({...a})),hasLicense:fd.get('hasLicense')==='yes',licenseType:fd.get('licenseType')||'',delegateCourse:fd.get('delegateCourse')==='yes',active:true});recordAudit('Persona interna creada','',`${u.name} · ${roleLabel(role)}`)}saveUsers();saveCoaches();writeJSON(K.persons,persons);pendingUserAssignments=[];clubUserModal?.close();renderClubUsers();renderCoaches()};
 }
 
-if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(currentRole!=='admin')return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
+if($('#openPersonModal'))$('#openPersonModal').onclick=()=>{if(!can('people.manage'))return;$('#personForm').reset();$('#personModal').showModal()};if($('#closePersonModal'))$('#closePersonModal').onclick=$('#cancelPerson').onclick=()=>$('#personModal').close();if($('#personForm'))$('#personForm').onsubmit=e=>{e.preventDefault();createRemotePerson(e.currentTarget)};if($('#closePersonAdminModal'))$('#closePersonAdminModal').onclick=()=>$('#personAdminModal').close();if($('#personAdminIdentityForm'))$('#personAdminIdentityForm').onsubmit=e=>{e.preventDefault();savePersonAdminIdentity(e.currentTarget)};if($('#savePersonRoles'))$('#savePersonRoles').onclick=savePersonAdminRoles;if($('#linkPersonAuth'))$('#linkPersonAuth').onclick=linkPersonAuth;if($('#createTemporaryAccess'))$('#createTemporaryAccess').onclick=createTemporaryAccessForSelectedPerson;if($('#resendInternalInvitation'))$('#resendInternalInvitation').onclick=resendInternalInvitationForSelectedPerson;$$('#personAdminTabs [data-person-tab]').forEach(b=>b.onclick=()=>setPersonAdminTab(b.dataset.personTab));
 function closeTeamModal(){const d=$('#teamModal');editingTeamId=null;selectedRffmTeamId=null;if(d?.open)d.close();}
-$('#openTeamModal').onclick=()=>{if(currentRole!=='admin'||dbStructureLoaded)return;editingTeamId=null;selectedRffmTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=closeTeamModal;$('#teamModal')?.addEventListener('cancel',e=>{e.preventDefault();closeTeamModal()});$('#teamModal')?.addEventListener('close',()=>{editingTeamId=null;selectedRffmTeamId=null});$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
+$('#openTeamModal').onclick=()=>{if(!can('structure.manage')||dbStructureLoaded)return;editingTeamId=null;selectedRffmTeamId=null;$('#teamForm').reset();fillTeamCategorySelect();$('#teamModalTitle').textContent='Nuevo equipo';$('#teamModalSeason').textContent=`Temporada ${seasonName(currentSeasonId)}`;$('#teamModal').showModal()};$('#closeTeamModal').onclick=$('#cancelTeam').onclick=closeTeamModal;$('#teamModal')?.addEventListener('cancel',e=>{e.preventDefault();closeTeamModal()});$('#teamModal')?.addEventListener('close',()=>{editingTeamId=null;selectedRffmTeamId=null});$('#teamForm').onsubmit=e=>{e.preventDefault();saveUnifiedTeam(e.currentTarget)};
 const seasonContextSelect=$('#seasonContextSelect');if(seasonContextSelect)seasonContextSelect.onchange=async e=>{setDbContextSeason(e.currentTarget.value);if(activeClubViewId()==='structureView')renderStructure();if(activeClubViewId()==='equipmentView')await loadEquipmentData({tab:equipmentTab})};
-$('#openSeasonModal').onclick=()=>{if(currentRole!=='admin')return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(currentRole!=='admin')return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
+$('#openSeasonModal').onclick=()=>{if(!can('structure.manage'))return;$('#seasonForm').reset();$('#seasonModal').showModal()};$('#closeSeasonModal').onclick=$('#cancelSeason').onclick=()=>$('#seasonModal').close();$('#seasonForm').onsubmit=e=>{e.preventDefault();if(!can('structure.manage'))return;const fd=new FormData(e.currentTarget);if(fd.get('endDate')<fd.get('startDate')){alert('La fecha fin no puede ser anterior.');return}seasons.push({id:uid('s'),name:fd.get('name'),startDate:fd.get('startDate'),endDate:fd.get('endDate'),active:true});saveSeasons();recordAudit('Temporada creada','',fd.get('name'));$('#seasonModal').close();renderStructure()};
 
 
 // V93: una sesion autenticada no implica que el estado cargado en memoria siga vigente.
@@ -3571,8 +3579,8 @@ async function refreshHotContextPreservingNavigation(){
     else if(view==='medicalView')await renderRemoteMedical({refresh:true});
     else if(view==='coachesView'){markListMetric('coaches','remoteRefreshes');renderCoaches();}
     else if(view==='structureView'){/* Sin repintado: loadSupabaseStructure ya actualizo los datos fuente. */}
-    else if(view==='personsView'&&currentRole==='admin')await renderRemotePersons()
-    else if(view==='usersView'&&currentRole==='admin'){/* Vista derivada local: conservar DOM si no cambia el contexto. */}
+    else if(view==='personsView'&&can('people.manage'))await renderRemotePersons()
+    else if(view==='usersView'&&can('people.manage')){/* Vista derivada local: conservar DOM si no cambia el contexto. */}
   }
 
   // Perfil propio: conservar exactamente la subpestana abierta y refrescar su contenido.

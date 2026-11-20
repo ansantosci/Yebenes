@@ -1,4 +1,12 @@
-# V96.6.2 - Canonical role validity for RBAC (backend 102)
+# V96.6.3 - RBAC phase 2.1 common authorization guards
+
+
+## V96.6.3 - RBAC phase 2.1 common authorization guards
+
+- Frontend-only convergence of clear historical authorization guards to effective database capabilities.
+- Sponsors use `sponsors.manage`; People/access mutations use `people.manage`; Coaches management uses `coaches.manage`; Structure/team/season management uses `structure.manage`.
+- Role names remain only where they express identity, context, presentation or routing; they are not used by this patch to grant the migrated operations.
+- No backend migration: capability catalog/matrix remains backend 102. Plantillas remains blocked until the Phase 2 gate is complete.
 
 - Centralizes persona_roles temporal validity: NULL fecha_desde = no lower bound; NULL fecha_hasta = no upper bound.
 - RBAC mis_capacidades()/has_capability() consume the canonical rule.
