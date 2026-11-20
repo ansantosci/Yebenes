@@ -11,8 +11,18 @@ begin
   select count(*) into identity_count from private.demo_access_identities;
   if identity_count = 0 then
     raise notice 'DEMO-ACCESS not provisioned: skipping operational bindings.';
-  elsif identity_count <> 6 then
-    raise exception 'DEMO-ACCESS contract failed: expected 6 identities, found %', identity_count;
+  elsif identity_count <> 12 then
+    raise exception 'DEMO-ACCESS contract failed: expected 12 identities (6 historical + 6 family tutors), found %', identity_count;
+  end if;
+
+  if (select count(*) from private.demo_access_identities
+      where key in ('club','coach','coach_player','multiprofile','tutor','adult_player')) <> 6 then
+    raise exception 'DEMO-ACCESS contract failed: historical protected access set is incomplete';
+  end if;
+
+  if (select count(*) from private.demo_access_identities
+      where key in ('tutor_family_1','tutor_family_2','tutor_family_3','tutor_family_4','tutor_family_5','tutor_family_6')) <> 6 then
+    raise exception 'DEMO-ACCESS contract failed: expected 6 authenticated family tutor identities';
   end if;
 end $$;
 
