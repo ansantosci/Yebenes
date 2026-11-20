@@ -1,4 +1,4 @@
-# V96.4.25 - Lazy loading y reducción de memoria
+# V96.4.26 - Lazy loading y reducción de memoria
 
 - Reduce la huella inicial por pestaña: Club/Admin ya no precargan Entrenadores ni Personas durante el bootstrap.
 - `showApp` deja de renderizar/cargar RRMM, Entrenadores, Estructura y Patrocinadores cuando sus vistas están ocultas.
