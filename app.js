@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.24';
+const APP_VERSION='96.4.25';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -713,8 +713,10 @@ async function loadSupabaseStructure(){
   dbFederationIntegrations=fedRes.data||[];
   dbStructureLoaded=true;
   renderSeasonContextHeader();
-  await loadSupabaseCoaches();
-  if((currentUser.roles||[]).includes('admin')) await loadSupabasePersons();
+  // V96.4.25: keep bootstrap lightweight. Rich coach/person domains are loaded
+  // only by the views/operations that need them. Coach role needs assignments
+  // immediately to scope the default player list to its own teams.
+  if(currentRole==='coach') await loadSupabaseCoaches();
 }
 async function loadSupabasePersons(){
   if(!sb||!currentUser||!(currentRole&&['admin','club'].includes(currentRole))&&!(currentUser.roles||[]).some(r=>['admin','club'].includes(r)))return [];
@@ -2234,7 +2236,11 @@ function showApp(options={}){
   if(clubNav)clubNav.style.gridTemplateColumns=isCoach?'repeat(2,1fr)':currentRole==='admin'?'repeat(7,1fr)':'repeat(6,1fr)';
   if(clubHeroTitle)clubHeroTitle.textContent=isCoach?'Jugadores de mis equipos':'Control de fichas federativas';
   if(clubHeroText)clubHeroText.textContent=isCoach?'Consulta los jugadores asignados a tus equipos con una asignación vigente.':'Revisa inscripciones, representación, equipos, reconocimientos y preparación federativa.';
-  renderClub();if(!isCoach){renderMedical();renderCoaches();renderStructure();loadSponsorAdmin().catch(err=>console.error('Patrocinadores',err))}if(currentRole==='admin'){renderClubUsers();if(activeClubViewId()==='personsView')renderPersons();}
+  // V96.4.25: render/load only the active view. Hidden sections used to preload
+  // Club + RRMM + Coaches + Structure + Sponsors (+ Persons for Admin), retaining
+  // several production-sized domains in every tab even when never opened.
+  const activeView=activeClubViewId()||'clubView';
+  if(activeView==='clubView')renderClub();
 }
 
 function renderFamily(){
@@ -3327,7 +3333,7 @@ $('#rffmResultsNavButton')?.addEventListener('click',openRffmResultsView);
 $('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
 $('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
-$$('[data-club-view]').forEach(b=>b.onclick=()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;const view=b.dataset.clubView;setView(view);if(view==='clubView')renderClub();if(view==='medicalView')renderMedical();if(view==='coachesView'){if(currentUser?.source==='supabase'&&!dbCoachesLoaded){loadSupabaseCoaches().then(()=>{markListMetric('coaches','remoteRefreshes');renderCoaches()}).catch(err=>{console.error('Recarga entrenadores',err);renderCoaches()})}else renderCoaches();}if(view==='structureView')renderStructure();if(view==='sponsorsView')loadSponsorAdmin().catch(err=>{console.error('Patrocinadores',err);alert('No se han podido cargar los patrocinadores.')});if(view==='usersView')renderClubUsers();if(view==='personsView')renderPersons();scrollActiveListToStart(view)});
+$$('[data-club-view]').forEach(b=>b.onclick=async()=>{if(currentRole==='coach'&&b.dataset.clubView!=='clubView')return;if(['usersView','personsView'].includes(b.dataset.clubView)&&currentRole!=='admin')return;const view=b.dataset.clubView;setView(view);try{if(view==='clubView')renderClub();else if(view==='medicalView')renderMedical();else if(view==='coachesView'){if(currentUser?.source==='supabase'&&!dbCoachesLoaded){await loadSupabaseCoaches();markListMetric('coaches','remoteRefreshes')}renderCoaches();}else if(view==='structureView')renderStructure();else if(view==='sponsorsView')await loadSponsorAdmin();else if(view==='usersView')renderClubUsers();else if(view==='personsView'){if(currentUser?.source==='supabase'&&!dbPersons.length)await loadSupabasePersons();renderPersons();}}catch(err){console.error('Carga diferida de vista',view,err);if(view==='sponsorsView')alert('No se han podido cargar los patrocinadores.')}scrollActiveListToStart(view)});
 
 function setFamilyMainTab(tab){
   $$('[data-family-tab]').forEach(x=>x.classList.toggle('active',x.dataset.familyTab===tab));

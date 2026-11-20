@@ -1,4 +1,9 @@
-# V96.4.24 - Consulta RFFM y verificación automática
+# V96.4.25 - Lazy loading y reducción de memoria
+
+- Reduce la huella inicial por pestaña: Club/Admin ya no precargan Entrenadores ni Personas durante el bootstrap.
+- `showApp` deja de renderizar/cargar RRMM, Entrenadores, Estructura y Patrocinadores cuando sus vistas están ocultas.
+- Cada dominio pesado se carga al entrar en su vista; el perfil Entrenador conserva la carga inicial de asignaciones necesaria para limitar sus jugadores.
+- Mantiene íntegros V96.4.24, snapshots RFFM 098 y actualización general 099.
 
 - Añade migración 098 con snapshots JSONB RFFM deduplicados por hash y estado de última consulta.
 - La Edge Function `rffm-resultados` persiste la última fotografía válida sin acoplar el esquema relacional a clasificación/partidos/goleadores.
