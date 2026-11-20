@@ -1,4 +1,4 @@
-# V96.4.23 - Resultados RFFM persistentes
+# V96.4.24 - Consulta RFFM y verificación automática
 
 - Añade migración 098 con snapshots JSONB RFFM deduplicados por hash y estado de última consulta.
 - La Edge Function `rffm-resultados` persiste la última fotografía válida sin acoplar el esquema relacional a clasificación/partidos/goleadores.
