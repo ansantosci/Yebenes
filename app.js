@@ -1,4 +1,4 @@
-const APP_VERSION='96.4.21';
+const APP_VERSION='96.4.24';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2219,10 +2219,11 @@ function showApp(options={}){
   $('#familyNav').classList.toggle('hidden',!familyLike);$('#clubNav').classList.toggle('hidden',familyLike);$('#familyView').classList.toggle('active',familyLike);
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
   $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';$('#equipmentNavButton')?.classList.toggle('hidden',!equipmentAllowed());
-  const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),sponsorsNavButton=$('#sponsorsNavButton'),openCoachModal=$('#openCoachModal');
+  const medicalNavButton=$('#medicalNavButton'),coachesNavButton=$('#coachesNavButton'),structureNavButton=$('#structureNavButton'),rffmResultsNavButton=$('#rffmResultsNavButton'),usersNavButton=$('#usersNavButton'),personsNavButton=$('#personsNavButton'),sponsorsNavButton=$('#sponsorsNavButton'),openCoachModal=$('#openCoachModal');
   if(medicalNavButton)medicalNavButton.style.display=isCoach?'none':'flex';
   if(coachesNavButton)coachesNavButton.style.display=isCoach?'none':'flex';
   if(structureNavButton)structureNavButton.style.display=isCoach?'none':'flex';
+  if(rffmResultsNavButton)rffmResultsNavButton.style.display=['admin','club'].includes(currentRole)?'flex':'none';
   // V61 consolidó Usuarios dentro de Personas. usersNavButton es opcional para mantener compatibilidad con HTML anterior.
   if(usersNavButton)usersNavButton.style.display=currentRole==='admin'?'flex':'none';
   if(personsNavButton)personsNavButton.style.display=currentRole==='admin'?'flex':'none';
@@ -2835,6 +2836,7 @@ async function registerEconomicPayment(){const v=remoteClubPlayers.find(x=>x.id=
 async function setClubberInstallments(valid){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId);if(!v)return;if(valid&&!confirm('Confirma que el club ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.'))return;if(!valid&&!confirm('¿Revocar la validación del fraccionamiento Cluber?'))return;try{const {error}=await sb.rpc('validar_fraccionamiento_clubber',{p_inscripcion_id:v.inscription.id,p_validado:valid,p_observaciones:null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se ha podido actualizar el fraccionamiento: ${err.message||err}`)}}
 let selectedRffmTeamId=null;
 let rffmResultsByTeam=new Map();
+let rffmLastBulkUpdate=null;
 function rffmIntegrationFor(teamId){return dbFederationIntegrations.find(x=>x.equipo_id===teamId&&x.proveedor==='RFFM')||null}
 function rffmConfigState(x){if(!x)return '<span class="status pending">Sin configurar</span>';if(x.ultima_validacion_ok===true)return '<span class="status complete">Verificado</span>';if(x.ultima_validacion_ok===false)return '<span class="status returned">Error</span>';return '<span class="status pending">Sin verificar</span>'}
 function rffmGameTypeLabel(v){return ({'1':'F11','2':'F7','4':'F5'}[String(v)]||String(v||'—'))}
@@ -2848,6 +2850,22 @@ async function invokeRffm(body){
   if(data?.ok===false||data?.error){const e=new Error(data?.message||data?.error||'Error RFFM');e.code=data?.code;e.phase=data?.phase;throw e}
   return data
 }
+function rffmAgeLabel(value,prefix='Actualizado'){if(!value)return '';const dt=new Date(value),ms=Date.now()-dt.getTime();if(!Number.isFinite(ms))return '';const min=Math.max(0,Math.round(ms/60000));if(min<2)return `${prefix} ahora`;if(min<60)return `${prefix} hace ${min} min`;const h=Math.round(min/60);if(h<24)return `${prefix} hace ${h} h`;const d=Math.round(h/24);if(d===1)return `${prefix} ayer · ${dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;return `${prefix} hace ${d} días`}
+function rffmCacheAgeLabel(value){return rffmAgeLabel(value,'Actualizado')}
+function rffmConsultAgeLabel(value){return rffmAgeLabel(value,'Consultado')}
+function rffmRelativeAge(value){const label=rffmAgeLabel(value,'');return label.trim().replace(/^hace /,'hace ').replace(/^ayer/,'ayer').replace(/^ahora$/,'ahora')}
+async function loadRffmCachedResults(){
+  if(!['admin','club'].includes(currentRole))return;
+  const integrations=dbFederationIntegrations.filter(x=>x.proveedor==='RFFM'&&x.activo),ids=integrations.map(x=>x.id);if(!ids.length)return;
+  const season=dbContextSeason();
+  const bulkPromise=season?.id?sb.from('rffm_actualizaciones_generales').select('id,temporada_id,finalizado_at,equipos_total,equipos_ok,equipos_error,estado').eq('temporada_id',season.id).order('finalizado_at',{ascending:false}).limit(1).maybeSingle():Promise.resolve({data:null,error:null});
+  const [{data:states,error},bulk]=await Promise.all([sb.from('rffm_resultados_estado').select('integracion_id,ultimo_snapshot_id,ultimo_intento_at,ultimo_exito_at,ultimo_error').in('integracion_id',ids),bulkPromise]);if(error)throw error;if(bulk?.error)throw bulk.error;rffmLastBulkUpdate=bulk?.data||null;
+  const snapshotIds=(states||[]).map(x=>x.ultimo_snapshot_id).filter(Boolean);let snapshots=[];
+  if(snapshotIds.length){const q=await sb.from('rffm_resultados_snapshots').select('id,payload,obtenido_at').in('id',snapshotIds);if(q.error)throw q.error;snapshots=q.data||[]}
+  const snapById=new Map(snapshots.map(x=>[x.id,x])),integrationById=new Map(integrations.map(x=>[x.id,x]));
+  for(const st of states||[]){const integ=integrationById.get(st.integracion_id),snap=snapById.get(st.ultimo_snapshot_id);if(!integ||!snap?.payload)continue;rffmResultsByTeam.set(integ.equipo_id,{...snap.payload,_cache:{obtenidoAt:snap.obtenido_at,ultimoExitoAt:st.ultimo_exito_at,ultimoIntentoAt:st.ultimo_intento_at,ultimoError:st.ultimo_error}})}
+}
+async function openRffmResultsView(){if(!['admin','club'].includes(currentRole))return;const dialog=$('#rffmResultsModal');ModalUI.open(dialog);const out=$('#rffmResultsContent');try{if(out)out.innerHTML='<div class="info-card">Cargando última información guardada…</div>';await loadRffmCachedResults();renderRffmResults()}catch(err){console.error('Carga caché RFFM',err);renderRffmResults();if(out&&!out.innerHTML)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar la última información guardada.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}}
 function renderRffmStructure(){
   const list=$('#rffmTeamConfigList'),out=$('#rffmResultsContent');if(!dbStructureLoaded)return;if(!list){renderRffmResults();return;}
   const teams=sortTeamsByCategoryAge(dbSeasonTeams(),true);const can=['admin','club'].includes(currentRole);
@@ -2888,6 +2906,25 @@ async function persistRffmValidation(teamId,ok,message){
   const idx=dbFederationIntegrations.findIndex(x=>x.id===existing.id);
   if(idx>=0)dbFederationIntegrations[idx]=data;
   return data;
+}
+async function verifyRffmConnection(teamId,status){
+  ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros guardados…'});
+  try{
+    const data=await invokeRffm({action:'validate',team_id:teamId,force:true});
+    const message=`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;
+    await persistRffmValidation(teamId,true,message);
+    renderStructure();fillTeamRffmPane(teamId);
+    ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message});
+    ModalUI.setActionEnabled($('#consultTeamRffm'),true);
+    return {ok:true,data};
+  }catch(err){
+    const message=String(err.message||err);
+    try{if(rffmIntegrationFor(teamId)?.id)await persistRffmValidation(teamId,false,message)}catch(persistErr){console.warn('No se pudo persistir el error de validación RFFM',persistErr)}
+    renderStructure();fillTeamRffmPane(teamId);
+    ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de verificación',message:`La configuración se ha guardado, pero no se ha podido verificar: ${message}`});
+    ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');
+    return {ok:false,error:err};
+  }
 }
 async function testRffmCurrent(){
   const f=$('#rffmConfigForm');try{await saveRffmConfig(f);const data=await invokeRffm({action:'validate',team_id:selectedRffmTeamId});await loadSupabaseStructure();renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Conexión correcta · ${data.teamName||'equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;}catch(err){await loadSupabaseStructure().catch(()=>{});renderStructure();openRffmConfig(selectedRffmTeamId);$('#rffmValidationHint').textContent=`Error de validación: ${err.message||err}`;}
@@ -2952,21 +2989,40 @@ async function hydrateRffmScorerPhotos(root=$('#rffmResultsContent')){
 }
 function rffmTeamCardHtml(t){
   const d=rffmResultsByTeam.get(t.id),loading=d?.loading===true,disabled=rffmBulkRefreshing||loading;
-  const officialTeam=d?.teamName||d?.classification?.teamName||'';const competition=d?.competitionName||'';
-  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span></div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
+  const officialTeam=d?.teamName||d?.classification?.teamName||'';const competition=d?.competitionName||'',cacheLabel=rffmConsultAgeLabel(d?._cache?.ultimoExitoAt||d?._cache?.obtenidoAt),cacheWarn=d?._cache?.ultimoError&&d?._cache?.ultimoIntentoAt&&new Date(d._cache.ultimoIntentoAt)>new Date(d?._cache?.ultimoExitoAt||0),attemptLabel=cacheWarn?rffmAgeLabel(d._cache.ultimoIntentoAt,'Error al actualizar'):'';
+  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span>${cacheLabel?`<small class="rffm-cache-time ${cacheWarn?'stale':''}">${esc(cacheWarn?`${attemptLabel} · última consulta correcta ${rffmRelativeAge(d?._cache?.ultimoExitoAt||d?._cache?.obtenidoAt)}`:cacheLabel)}</small>`:''}</div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
+}
+function rffmGeneralAgeLabel(value){const label=rffmCacheAgeLabel(value);return label?label.replace(/^Actualizado\s*/,'').replace(/^hace /,'hace '):''}
+function updateRffmResultsHeader(override=''){
+  const el=$('#rffmStructureStatus');if(!el)return;const total=rffmCategoryGroups().reduce((n,g)=>n+g.teams.length,0);
+  if(override){el.textContent=override;return}
+  const b=rffmLastBulkUpdate;if(!b){el.textContent=`${total} equipos · Sin actualización general`;return}
+  const age=rffmGeneralAgeLabel(b.finalizado_at)||new Date(b.finalizado_at).toLocaleString('es-ES');
+  if(b.estado==='completa')el.textContent=`${total} equipos · Última actualización general ${age}`;
+  else if(b.estado==='parcial')el.textContent=`${total} equipos · Última actualización general parcial ${age} · ${b.equipos_ok}/${b.equipos_total}`;
+  else el.textContent=`${total} equipos · Última actualización general con error ${age}`;
+}
+async function persistRffmBulkSummary(total,ok,error){
+  const season=dbContextSeason();if(!season?.id)return null;const estado=error===0?'completa':ok===0?'error':'parcial';
+  const row={temporada_id:season.id,equipos_total:total,equipos_ok:ok,equipos_error:error,estado,finalizado_at:new Date().toISOString()};
+  const {data, error:dbError}=await sb.from('rffm_actualizaciones_generales').insert(row).select('id,temporada_id,finalizado_at,equipos_total,equipos_ok,equipos_error,estado').single();if(dbError)throw dbError;rffmLastBulkUpdate=data;return data;
 }
 function renderRffmResults(){
   const out=$('#rffmResultsContent');if(!out)return;const groups=rffmCategoryGroups();
   out.innerHTML=groups.map(g=>{const mods=[...new Set(g.teams.map(t=>t.modality).filter(Boolean))].join('/');return `<section class="rffm-category-group" data-rffm-category="${esc(g.label)}"><header class="rffm-category-head"><h3>${esc(g.label)}</h3><span>${g.teams.length} ${g.teams.length===1?'equipo':'equipos'}${mods?' · '+esc(mods):''}</span></header><div class="rffm-category-grid">${g.teams.map(rffmTeamCardHtml).join('')}</div></section>`}).join('')||'<div class="info-card">No hay equipos con integración RFFM activa en esta temporada.</div>';
   $$('.rffm-card-refresh',out).forEach(b=>b.onclick=()=>{if(!rffmBulkRefreshing)loadRffmTeam(b.dataset.team,true)});
   const all=$('#rffmRefreshAll');if(all)all.disabled=rffmBulkRefreshing;
+  if(!rffmBulkRefreshing)updateRffmResultsHeader();
   hydrateRffmScorerPhotos(out);
 }
-async function loadRffmTeam(teamId,force=false,{deferRender=false}={}){rffmResultsByTeam.set(teamId,{loading:true});if(!deferRender)renderRffmResults();try{const data=await invokeRffm({action:'team',team_id:teamId,force});rffmResultsByTeam.set(teamId,data)}catch(err){rffmResultsByTeam.set(teamId,{error:String(err?.message||err)})}renderRffmResults()}
+async function loadRffmTeam(teamId,force=false,{deferRender=false}={}){const previous=rffmResultsByTeam.get(teamId);rffmResultsByTeam.set(teamId,{...(previous||{}),loading:true});if(!deferRender)renderRffmResults();try{const data=await invokeRffm({action:'team',team_id:teamId,force});const now=new Date().toISOString(),cache=data?._cache?{obtenidoAt:data._cache.obtenidoAt,ultimoExitoAt:now,ultimoIntentoAt:now,ultimoError:null}:previous?._cache;rffmResultsByTeam.set(teamId,{...data,_cache:cache});renderRffmResults();return {ok:true}}catch(err){if(previous)rffmResultsByTeam.set(teamId,{...previous,loading:false,_cache:{...(previous._cache||{}),ultimoIntentoAt:new Date().toISOString(),ultimoError:String(err?.message||err)}});else rffmResultsByTeam.set(teamId,{error:String(err?.message||err)});renderRffmResults();return {ok:false,error:err}}}
 async function loadAllRffm(){
-  if(rffmBulkRefreshing)return;const ids=rffmCategoryGroups().flatMap(g=>g.teams.map(t=>t.id)),status=$('#rffmStructureStatus'),button=$('#rffmRefreshAll');
+  if(rffmBulkRefreshing)return;const ids=rffmCategoryGroups().flatMap(g=>g.teams.map(t=>t.id)),button=$('#rffmRefreshAll');let ok=0,errors=0;
   rffmBulkRefreshing=true;renderRffmResults();
-  try{for(let i=0;i<ids.length;i++){if(status)status.textContent=`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`;if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;await loadRffmTeam(ids[i],true,{deferRender:true});}if(status)status.textContent=`Actualizado · ${new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}`;}finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
+  try{
+    for(let i=0;i<ids.length;i++){updateRffmResultsHeader(`Actualizando ${i+1}/${ids.length} · esperando respuesta RFFM…`);if(button)button.textContent=`Actualizando ${i+1}/${ids.length}…`;const result=await loadRffmTeam(ids[i],true,{deferRender:true});if(result?.ok)ok++;else errors++;}
+    try{await persistRffmBulkSummary(ids.length,ok,errors)}catch(err){console.error('No se pudo guardar el resumen de actualización general RFFM',err);updateRffmResultsHeader(`Actualización terminada · ${ok} correctos · ${errors} con error · resumen no persistido`);return}
+  }finally{rffmBulkRefreshing=false;if(button){button.disabled=false;button.textContent='Actualizar todos'}renderRffmResults();}
 }
 function rffmPdfClassificationHtml(c){
   if(!c?.position)return '<div class="rffm-empty">Clasificación no localizada.</div>';
@@ -3258,8 +3314,8 @@ function scrollActiveListToStart(view){
   const id=map[view];if(!id)return;requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'auto',block:'start'}));
 }
 $$('[data-team-config-tab]').forEach(b=>b.addEventListener('click',()=>setTeamConfigTab(b.dataset.teamConfigTab)));
-$('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus');if(form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Guardando…'});try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'success',title:'Configuración guardada',message:'Los parámetros RFFM se han guardado correctamente. Puedes probar la conexión.'});renderStructure();}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
-$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(!form||form.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Comprobando…'});try{await saveRffmConfig(form,{test:true});ModalUI.setStatus(status,{tone:'neutral',title:'Comprobando conexión',message:'Consultando RFFM con los parámetros que acabas de guardar…'});const data=await invokeRffm({action:'validate',team_id:editingTeamId,force:true});const message=`${data.teamName||'Equipo localizado'}${data.classification?.position?` · ${data.classification.position}.º`:''}`;await persistRffmValidation(editingTeamId,true,message);renderStructure();fillTeamRffmPane(editingTeamId);ModalUI.setStatus(status,{tone:'success',title:'Conexión verificada',message});ModalUI.setActionEnabled($('#consultTeamRffm'),true);}catch(err){const message=String(err.message||err);try{if(rffmIntegrationFor(editingTeamId)?.id)await persistRffmValidation(editingTeamId,false,message)}catch(persistErr){console.warn('No se pudo persistir el error de validación RFFM',persistErr)}renderStructure();ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'Error de conexión',message});ModalUI.setActionEnabled($('#consultTeamRffm'),false,'Primero valida correctamente la conexión RFFM.');}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#teamRffmForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,status=$('#teamRffmValidationStatus'),saveButton=form.querySelector('button[type="submit"]');if(form.dataset.modalBusy==='1')return;const idle=saveButton?.textContent;ModalUI.setBusy(form,true);if(saveButton)saveButton.textContent='Guardando…';try{await saveRffmConfig(form);ModalUI.setStatus(status,{tone:'warning',title:'Configuración guardada · pendiente de verificar',message:'Verificando automáticamente la nueva configuración con RFFM…'});if(saveButton)saveButton.textContent='Verificando…';await verifyRffmConnection(editingTeamId,status);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);if(saveButton&&idle)saveButton.textContent=idle;ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
+$('#testTeamRffm')?.addEventListener('click',async()=>{const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus'),button=$('#testTeamRffm');if(!form||form.dataset.modalBusy==='1')return;const idle=button?.textContent;ModalUI.setBusy(form,true);if(button)button.textContent='Comprobando…';try{await saveRffmConfig(form,{test:true});await verifyRffmConnection(editingTeamId,status);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:'No se ha podido guardar',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);if(button&&idle)button.textContent=idle;ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 $('#consultTeamRffm')?.addEventListener('click',async()=>{if(!editingTeamId)return;const form=$('#teamRffmForm'),status=$('#teamRffmValidationStatus');if(form?.dataset.modalBusy==='1')return;ModalUI.setBusy(form,true,{label:'Consultando…'});try{const data=await invokeRffm({action:'team',team_id:editingTeamId,force:true});rffmResultsByTeam.set(editingTeamId,data);renderTeamRffmResult(editingTeamId);}catch(err){ModalUI.setStatus(status,{tone:'danger',title:err?.code==='TIMEOUT'?'Tiempo de espera agotado':'No se han podido consultar los resultados',message:String(err.message||err)});}finally{ModalUI.setBusy(form,false);ModalUI.setActionEnabled($('#consultTeamRffm'),rffmIntegrationFor(editingTeamId)?.ultima_validacion_ok===true,'Primero valida correctamente la conexión RFFM.');}});
 function mountRffmResultsModal(){
   const dialog=$('#rffmResultsModal');if(!dialog)return;
@@ -3267,7 +3323,7 @@ function mountRffmResultsModal(){
   const identity=dialog.querySelector('.app-modal__identity .meta');if(identity)identity.id='rffmStructureStatus';
 }
 mountRffmResultsModal();
-$('#openRffmResults')?.addEventListener('click',()=>{const dialog=$('#rffmResultsModal');ModalUI.open(dialog);try{renderRffmResults()}catch(err){console.error('Render Resultados RFFM',err);const out=$('#rffmResultsContent');if(out)out.innerHTML=`<div class="info-card"><strong>No se ha podido cargar el contenido de resultados.</strong><br><span>${esc(String(err?.message||err))}</span></div>`}});
+$('#rffmResultsNavButton')?.addEventListener('click',openRffmResultsView);
 $('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
 $('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
