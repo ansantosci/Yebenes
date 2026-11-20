@@ -1,4 +1,4 @@
-# V96.6.1 - Canonical role validity for RBAC (backend 102)
+# V96.6.2 - Canonical role validity for RBAC (backend 102)
 
 - Centralizes persona_roles temporal validity: NULL fecha_desde = no lower bound; NULL fecha_hasta = no upper bound.
 - RBAC mis_capacidades()/has_capability() consume the canonical rule.
@@ -1689,7 +1689,7 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Se reutilizan UPDATE + RLS Club/Admin existentes en 096; no hay cambio de backend ni de esquema.
 
 
-## V96.6.1 - RBAC frontend convergence phase 1
+## V96.6.2 - RBAC frontend convergence phase 1
 - Capability maps remain keyed by canonical `roles.codigo` values returned by Supabase.
 - Supabase identities retain canonical profiles (`roleCode`) alongside temporary legacy routing aliases.
 - `can()` derives authorization from the active profile's canonical role code; legacy role names are not permission keys.

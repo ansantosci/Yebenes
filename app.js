@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.1';
+const APP_VERSION='96.6.2';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -218,7 +218,7 @@ function capabilitiesForRole(role=currentRole){
 }
 function can(capability,role=currentRole){return capabilitiesForRole(role).has(capability)}
 function canAny(...capabilities){const owned=capabilitiesForRole();return capabilities.some(c=>owned.has(c))}
-function elementCapabilityAllowed(el){const raw=String(el?.dataset?.capabilityAny||'').trim();return !raw||raw.split(/\s+/).some(can)}
+function elementCapabilityAllowed(el){const raw=String(el?.dataset?.capabilityAny||'').trim();return !raw||raw.split(/\s+/).some(capability=>can(capability))}
 const DEFAULT_VISUAL_THEME={
   nombre_club:'C.D. Los Yebenes San Bruno',
   logo_url:'https://losyebenessanbruno.es/wp-content/uploads/2023/03/cvncvn.png',
