@@ -1,7 +1,9 @@
-const APP_VERSION='96.4.25';
+const APP_VERSION='96.4.27';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
+const YEBENES_STORAGE_ENV=String(window.YEBENES_ENVIRONMENT||YEBENES_CONFIG?.name||'demo').trim().toLowerCase();
+const ENV_STORAGE_SUFFIX=`-${YEBENES_STORAGE_ENV}`;
 
 // V94.2.1: paginacion comun para listados principales.
 const LIST_PAGE_SIZE_KEY='yebenes-list-page-size-v1';
@@ -178,12 +180,24 @@ if(!YEBENES_CONFIG){
 
 const SUPABASE_URL=YEBENES_CONFIG.supabaseUrl;
 const SUPABASE_PUBLISHABLE_KEY=YEBENES_CONFIG.supabasePublishableKey;
+const SUPABASE_PROJECT_REF=(()=>{try{return new URL(SUPABASE_URL).hostname.split('.')[0]||''}catch{return ''}})();
+const LEGACY_SUPABASE_AUTH_STORAGE_KEY=SUPABASE_PROJECT_REF?`sb-${SUPABASE_PROJECT_REF}-auth-token`:'';
+const SUPABASE_AUTH_STORAGE_KEY=`yebenes-${YEBENES_STORAGE_ENV}-auth-token`;
+// V96.4.26: each web environment owns an independent Auth storage key. DEVELOP and TEST
+// share a Supabase project but must not refresh/revalidate each other through localStorage.
+try{
+  if(!localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY)&&LEGACY_SUPABASE_AUTH_STORAGE_KEY){
+    const legacySession=localStorage.getItem(LEGACY_SUPABASE_AUTH_STORAGE_KEY);
+    if(legacySession)localStorage.setItem(SUPABASE_AUTH_STORAGE_KEY,legacySession);
+  }
+}catch{}
 
 const sb=window.supabase?.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY,
   {
     auth:{
+      storageKey:SUPABASE_AUTH_STORAGE_KEY,
       persistSession:true,
       autoRefreshToken:true,
       detectSessionInUrl:true
@@ -338,7 +352,7 @@ const K={
   seasons:`yebenes-seasons-v${DATA_VERSION}`,categories:`yebenes-categories-v${DATA_VERSION}`,teams:`yebenes-teams-v${DATA_VERSION}`,
   inscriptions:`yebenes-inscriptions-v${DATA_VERSION}`,reps:`yebenes-representations-v${DATA_VERSION}`,playerTeams:`yebenes-player-teams-v${DATA_VERSION}`,
   medicals:`yebenes-medicals-v${DATA_VERSION}`,coaches:`yebenes-coaches-v${DATA_VERSION}`,statusHistory:`yebenes-status-history-v${DATA_VERSION}`,
-  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}`,persons:'yebenes-persons-v1',authLastActivity:'yebenes-auth-last-activity-v1',authSessionStarted:'yebenes-auth-session-started-v1',authDiag:'yebenes-auth-diagnostic-v1',navResume:'yebenes-navigation-resume-v1',navLive:'yebenes-navigation-live-v1',telemetryDevice:'yebenes-telemetry-device-v1',contextSeason:'yebenes-context-season-v1'
+  audit:`yebenes-audit-v${DATA_VERSION}`,currentSeason:`yebenes-current-season-v${DATA_VERSION}`,sessionRole:`yebenes-session-role-v${DATA_VERSION}${ENV_STORAGE_SUFFIX}`,persons:'yebenes-persons-v1',authLastActivity:`yebenes-auth-last-activity-v1${ENV_STORAGE_SUFFIX}`,authSessionStarted:`yebenes-auth-session-started-v1${ENV_STORAGE_SUFFIX}`,authDiag:`yebenes-auth-diagnostic-v1${ENV_STORAGE_SUFFIX}`,navResume:`yebenes-navigation-resume-v1${ENV_STORAGE_SUFFIX}`,navLive:`yebenes-navigation-live-v1${ENV_STORAGE_SUFFIX}`,telemetryDevice:'yebenes-telemetry-device-v1',contextSeason:`yebenes-context-season-v1${ENV_STORAGE_SUFFIX}`
 };
 const LEGACY={users:'yebenes-users-v6',players:'yebenes-players-v6',coaches:'yebenes-coaches-v8',teams:'yebenes-teams-v8'};
 const V12={users:'yebenes-users-v12',players:'yebenes-players-v12',seasons:'yebenes-seasons-v12',categories:'yebenes-categories-v12',teams:'yebenes-teams-v12',inscriptions:'yebenes-inscriptions-v12',reps:'yebenes-representations-v12',playerTeams:'yebenes-player-teams-v12',medicals:'yebenes-medicals-v12',coaches:'yebenes-coaches-v12',statusHistory:'yebenes-status-history-v12',audit:'yebenes-audit-v12',currentSeason:'yebenes-current-season-v12'};
@@ -404,7 +418,7 @@ function authDiag(event,detail={}){
   remoteSessionTelemetry(event,detail);
 }
 function authTokenStoragePresent(){
-  try{return Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'))}catch{return false}
+  try{return Boolean(localStorage.getItem(SUPABASE_AUTH_STORAGE_KEY))}catch{return false}
 }
 async function tracedSignOut(reason,options){
   authDiag('SIGNOUT_REQUESTED',{reason:reason||'unspecified',options:options||null,token_present_before:authTokenStoragePresent(),storage:authStorageSummary()});
@@ -3649,13 +3663,18 @@ window.addEventListener('pagehide',()=>authDiag('PAGEHIDE',{storage:authStorageS
 window.addEventListener('pageshow',e=>authDiag('PAGESHOW',{persisted:Boolean(e.persisted),storage:authStorageSummary()}));
 window.addEventListener('storage',e=>{
   const key=String(e.key||'');
-  const authStorageChange=key.startsWith('sb-')&&key.endsWith('-auth-token');
-  authDiag('STORAGE_EVENT',{key:key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,auth_storage_change:authStorageChange,token_present:authTokenStoragePresent(),storage:authStorageSummary()});
-  // V94.0: localStorage es compartido por /, /test/ y /develop/. No reconstruir la UI
-  // por cambios auxiliares de otra pestana (navegacion, diagnostico, actividad, etc.).
-  // Supabase gestiona su propia persistencia; solo una mutacion real del token Auth
-  // provoca una revalidacion serializada de la sesion actual.
-  if(authStorageChange&&currentUser?.source==='supabase')revalidateActiveSession('storage');
+  // V96.4.27: never diagnose writes to the diagnostic channel itself. storage events are
+  // delivered to the OTHER tabs on the same origin; logging such an event back to
+  // localStorage creates an endless cross-tab ping-pong (diag -> storage -> diag -> ...).
+  if(key.startsWith('yebenes-auth-diagnostic-v1'))return;
+  const ownAuthStorageChange=key===SUPABASE_AUTH_STORAGE_KEY;
+  const relevantSessionKey=ownAuthStorageChange||key===K.authLastActivity||key===K.authSessionStarted||key===K.sessionRole||key===K.navResume||key===K.navLive;
+  if(relevantSessionKey)authDiag('STORAGE_EVENT',{key:key||null,old_present:e.oldValue!==null,new_present:e.newValue!==null,auth_storage_change:ownAuthStorageChange,token_present:authTokenStoragePresent()});
+  // V96.4.26: ignore Auth/session writes from the other Yebenes environments. Supabase
+  // already synchronizes token refreshes; a token mutation must not rebuild the application.
+  // Only disappearance of THIS environment's persisted session requires revalidation/logout.
+  if(ownAuthStorageChange&&e.oldValue!==null&&e.newValue===null&&currentUser?.source==='supabase')
+    revalidateActiveSession('storage-session-removed');
 });
 
 let authTokenWasPresent=authTokenStoragePresent();
