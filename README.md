@@ -1,3 +1,12 @@
+# V96.6.8 - Phase 2 RBAC: RFFM actions and active-profile People guard
+
+- Frontend-only sobre backend 102.
+- RFFM configuration/validation now uses `rffm.config.manage`.
+- RFFM refresh actions use `rffm.results.update_all` / `rffm.results.update_assigned`; assigned scope remains constrained by active coach assignments.
+- `loadSupabasePersons()` now fails closed on `people.manage` of the active profile; it no longer authorizes from the union of roles attached to the identity.
+- Preserves V96.6.7 scoped UI reset and V96.6.6 all-vs-assigned behavior.
+- Plantillas remains blocked until the Phase 2 RBAC gate is complete.
+
 # V96.6.7 - Clear scoped UI before identity/profile render
 
 - PATCH frontend-only sobre backend 102.
