@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.6';
+const APP_VERSION='96.6.7';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2282,10 +2282,20 @@ function resetClubViewForIdentityChange(message='Cargando datos del perfil…'){
   const paginationTop=$('#clubPaginationTop');if(paginationTop)paginationTop.innerHTML='';
   const count=$('#clubResultCount');if(count)count.textContent='';
 }
+function resetMedicalViewForIdentityChange(message='Cargando datos del perfil…'){
+  ['medicalTotal','medicalOk','medicalSoon','medicalExpired'].forEach(id=>{const el=$('#'+id);if(el)el.textContent='—'});
+  const search=$('#medicalSearch');if(search)search.value='';
+  const filter=$('#medicalFilter');if(filter)filter.value='all';
+  medicalQuickFilter='all';resetListPage('medical');
+  const table=$('#medicalTable');if(table)table.innerHTML=`<tr><td colspan="6">${esc(message)}</td></tr>`;
+  const pagination=$('#medicalPagination');if(pagination)pagination.innerHTML='';
+  const paginationTop=$('#medicalPaginationTop');if(paginationTop)paginationTop.innerHTML='';
+}
 function resetSensitiveContextForIdentityChange(message='Cargando datos del perfil…'){
   identityContextGeneration++;
   remoteClubPlayers=[];remoteMedicalRows=[];remoteMedicalAppointments=[];rffmResultsByTeam.clear();rffmLastBulkUpdate=null;rffmLastCoachRefresh=null;
   resetClubViewForIdentityChange(message);
+  resetMedicalViewForIdentityChange(message);
   const results=$('#rffmResultsContent');if(results)results.innerHTML='';
 }
 function showRoleChooser(force=false){

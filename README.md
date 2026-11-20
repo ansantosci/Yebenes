@@ -1,3 +1,10 @@
+# V96.6.7 - Clear scoped UI before identity/profile render
+
+- PATCH frontend-only sobre backend 102.
+- Vacía sincrónicamente Fichas, RRMM y Resultados al cambiar identidad o perfil.
+- RRMM ya no puede pintar temporalmente el dataset del contexto anterior mientras carga el nuevo scope.
+- Mantiene intacta la resolución RBAC all vs assigned de V96.6.6 y la invalidación de cargas asíncronas.
+
 # V96.6.6 - Invalidate stale profile-scoped loads
 
 ## V96.6.6 - Invalidate stale profile-scoped loads
