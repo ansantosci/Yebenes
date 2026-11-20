@@ -121,6 +121,48 @@ union all
 select 'DEMO-S', 'asignaciones_jugador_equipo', private.demo_uuid('access-player-team:minor_player')
 on conflict do nothing;
 
+
+-- Every operational player assignment must also have the canonical player participation
+-- for the same active season/category. ACCESS Personas remain outside DEMO-S; this seasonal
+-- relation is owned by DEMO-S and is removed with the dataset.
+with target_profiles(key, jugador_id) as (values
+  ('minor_player', private.demo_uuid('access-player:minor_player')),
+  ('coach_player', private.demo_uuid('access-player:coach_player')),
+  ('multiprofile', private.demo_uuid('access-player:multiprofile')),
+  ('adult_player', private.demo_uuid('access-player:adult_player'))
+), selected as (
+  select p.key,j.persona_id,i.temporada_id,i.categoria_id
+  from target_profiles p
+  join public.jugadores j on j.id=p.jugador_id
+  join public.inscripciones i on i.id=private.demo_uuid('access-inscription:'||p.key) and i.jugador_id=j.id
+)
+insert into public.persona_participaciones_temporada(
+  id,persona_id,temporada_id,faceta,origen,estado,categoria_prevista_id,aceptada_at,observaciones
+)
+select private.demo_uuid('access-player-participation:'||s.key),s.persona_id,s.temporada_id,
+       'jugador','administrativa','aceptada',s.categoria_id,now(),'Caso operacional DEMO-ACCESS'
+from selected s
+on conflict(persona_id,temporada_id,faceta) do update
+set estado='aceptada',
+    categoria_prevista_id=excluded.categoria_prevista_id,
+    aceptada_at=coalesce(public.persona_participaciones_temporada.aceptada_at,excluded.aceptada_at),
+    baja_at=null,motivo_baja=null,
+    observaciones=excluded.observaciones;
+
+insert into private.demo_dataset_entities(dataset_id,table_name,entity_id)
+select 'DEMO-S','persona_participaciones_temporada',ppt.id
+from public.persona_participaciones_temporada ppt
+join public.inscripciones i on i.temporada_id=ppt.temporada_id and i.categoria_id=ppt.categoria_prevista_id
+join public.jugadores j on j.id=i.jugador_id and j.persona_id=ppt.persona_id
+where ppt.faceta='jugador'
+  and i.id in (
+    private.demo_uuid('access-inscription:minor_player'),
+    private.demo_uuid('access-inscription:coach_player'),
+    private.demo_uuid('access-inscription:multiprofile'),
+    private.demo_uuid('access-inscription:adult_player')
+  )
+on conflict do nothing;
+
 -- Coach-capable profiles receive visible, deterministic seasonal assignments.
 with target_profiles(key, position) as (values
   ('coach', 1), ('coach_player', 2), ('multiprofile', 3)
@@ -174,5 +216,20 @@ select 'DEMO-S', 'asignaciones_entrenador_equipo', private.demo_uuid('access-coa
 from private.test_access_identities
 where key in ('coach', 'coach_player', 'multiprofile')
 on conflict do nothing;
+
+
+do $$
+declare missing integer;
+begin
+  select count(*) into missing
+  from (values ('minor_player'),('coach_player'),('multiprofile'),('adult_player')) p(key)
+  join public.inscripciones i on i.id=private.demo_uuid('access-inscription:'||p.key)
+  join public.jugadores j on j.id=i.jugador_id
+  where not exists (
+    select 1 from public.persona_participaciones_temporada ppt
+    where ppt.persona_id=j.persona_id and ppt.temporada_id=i.temporada_id and ppt.faceta='jugador'
+  );
+  if missing<>0 then raise exception 'DEMO operational matrix: % player profiles missing canonical participation',missing; end if;
+end $$;
 
 commit;
