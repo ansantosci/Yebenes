@@ -1,5 +1,11 @@
-# V96.6.3 - RBAC phase 2.1 common authorization guards
+# V96.6.4 - Fix Structure RBAC render regression
 
+
+## V96.6.4 - Fix Structure RBAC render regression
+
+- Fixes a V96.6.3 frontend regression in `renderStructure()`: a local variable named `can` shadowed the global RBAC `can()` helper and aborted rendering before seasons/teams were populated.
+- Renames the local state to `canManageStructure`; authorization remains derived from `structure.manage`.
+- No backend change; backend remains 102.
 
 ## V96.6.3 - RBAC phase 2.1 common authorization guards
 
