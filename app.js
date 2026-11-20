@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.5';
+const APP_VERSION='96.6.6';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -718,6 +718,7 @@ function familyAccessPlayers(){
   return players.filter(p=>ids.includes(p.id));
 }
 function activeCoachAssignments(userId){const c=coaches.find(x=>x.userId===userId);return c&&c.active!==false?(c.assignments||[]).filter(a=>isBetween(isoToday(),a.startDate,a.endDate)):[]}
+function activeProfileCoachAssignments(){return activeCoachAssignments(currentUser?.authUserId||currentUser?.id)}
 function visiblePlayers(){
   if(currentRole!=='coach')return players.filter(p=>inscriptionFor(p.id));
   const teamIds=activeCoachAssignments(currentUser.id).map(a=>a.teamId);return players.filter(p=>p.active!==false).filter(p=>{const a=activeTeamAssignment(p.id);return a&&teamIds.includes(a.teamId)})
@@ -1531,10 +1532,13 @@ async function loadRemoteClubData(){
   });
   if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
   let scopedClubPlayers=loadedClubPlayers;
-  if(loadRole==='coach'){
-    const coachAssignments=activeCoachAssignments(currentUser.authUserId||currentUser.id);
-    const allowedTeams=new Set(coachAssignments.map(a=>a.teamId));
+  const canReadAllPlayers=can('players.read_all');
+  const canReadAssignedPlayers=can('players.read_assigned');
+  if(!canReadAllPlayers&&canReadAssignedPlayers){
+    const allowedTeams=new Set(activeProfileCoachAssignments().map(a=>a.teamId));
     scopedClubPlayers=scopedClubPlayers.filter(v=>v.assignment&&allowedTeams.has(v.assignment.equipo_id));
+  }else if(!canReadAllPlayers&&!canReadAssignedPlayers){
+    scopedClubPlayers=[];
   }
   if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
   remoteClubPlayers=scopedClubPlayers;
@@ -2934,7 +2938,7 @@ function rffmConsultAgeLabel(value){return rffmAgeLabel(value,'Consultado')}
 function rffmRelativeAge(value){const label=rffmAgeLabel(value,'');return label.trim().replace(/^hace /,'hace ').replace(/^ayer/,'ayer').replace(/^ahora$/,'ahora')}
 async function loadRffmCachedResults(){
   if(!['admin','club','coach'].includes(currentRole))return;
-  const allowed=rffmCoachTeamIds();
+  const allowed=rffmAllowedTeamIds();
   const integrations=dbFederationIntegrations.filter(x=>x.proveedor==='RFFM'&&x.activo&&(!allowed||allowed.has(x.equipo_id))),ids=integrations.map(x=>x.id);if(!ids.length)return;
   const season=dbContextSeason();
   const bulkPromise=currentRole!=='coach'&&season?.id?sb.from('rffm_actualizaciones_generales').select('id,temporada_id,finalizado_at,equipos_total,equipos_ok,equipos_error,estado').eq('temporada_id',season.id).order('finalizado_at',{ascending:false}).limit(1).maybeSingle():Promise.resolve({data:null,error:null});
@@ -3036,13 +3040,14 @@ function rffmFederationCategoryLabel(team){
   return dbCategoryName(team?.categoryId)||'SIN CATEGORÍA';
 }
 function rffmCategoryRank(label){const n=normalizeRffmText(label);const ix=RFFM_CATEGORY_ORDER.indexOf(n);return ix>=0?ix:998}
-function rffmCoachTeamIds(){
-  if(currentRole!=='coach')return null;
-  const seasonId=dbContextSeason()?.id||dbActiveSeason()?.id||null,me=coaches.find(c=>c.active&&c.userId===currentUser?.id);
-  return new Set((me?.assignments||[]).filter(a=>assignmentState(a)==='active'&&(!seasonId||dbTeams.find(t=>t.id===a.teamId)?.seasonId===seasonId)).map(a=>a.teamId));
+function rffmAllowedTeamIds(){
+  if(can('rffm.results.read_all'))return null;
+  if(!can('rffm.results.read_assigned'))return new Set();
+  const seasonId=dbContextSeason()?.id||dbActiveSeason()?.id||null;
+  return new Set(activeProfileCoachAssignments().filter(a=>assignmentState(a)==='active'&&(!seasonId||dbTeams.find(t=>t.id===a.teamId)?.seasonId===seasonId)).map(a=>a.teamId));
 }
 function rffmCategoryGroups(){
-  const allowed=rffmCoachTeamIds();
+  const allowed=rffmAllowedTeamIds();
   const teams=dbSeasonTeams().filter(t=>(!allowed||allowed.has(t.id))&&rffmIntegrationFor(t.id)?.activo),by=new Map();
   for(const t of teams){const label=rffmFederationCategoryLabel(t),key=normalizeRffmText(label);if(!by.has(key))by.set(key,{key,label,teams:[]});by.get(key).teams.push(t)}
   const groups=[...by.values()];

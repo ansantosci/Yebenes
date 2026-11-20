@@ -1,15 +1,15 @@
-# V96.6.5 - Invalidate stale profile-scoped loads
+# V96.6.6 - Invalidate stale profile-scoped loads
 
-## V96.6.5 - Invalidate stale profile-scoped loads
+## V96.6.6 - Invalidate stale profile-scoped loads
 - Invalida cargas de Fichas iniciadas bajo un perfil anterior al cambiar de perfil.
 - Evita que una respuesta Club en vuelo repueble Fichas después de seleccionar Entrenador.
 - Mantiene el scope de Entrenador por asignaciones vigentes; no convierte contexto en autorización por rol.
 - Backend permanece en 102.
 
-# V96.6.5 - Fix Structure RBAC render regression
+# V96.6.6 - Fix Structure RBAC render regression
 
 
-## V96.6.5 - Fix Structure RBAC render regression
+## V96.6.6 - Fix Structure RBAC render regression
 
 - Fixes a V96.6.3 frontend regression in `renderStructure()`: a local variable named `can` shadowed the global RBAC `can()` helper and aborted rendering before seasons/teams were populated.
 - Renames the local state to `canManageStructure`; authorization remains derived from `structure.manage`.
