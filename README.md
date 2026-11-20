@@ -1,4 +1,4 @@
-# V96.4.31 - Coach context reset and canonical navigation
+# V96.4.32 - Coach context reset and canonical navigation
 
 - Coach menu is limited to Fichas, RRMM, Resultados and Perfil until Plantillas replaces the coach-facing Fichas/Resultados experience.
 - Identity/profile changes immediately clear player KPIs, filters, pagination and prior rows before asynchronous authorized data loads.
