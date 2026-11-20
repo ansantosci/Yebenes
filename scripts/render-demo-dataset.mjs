@@ -98,11 +98,36 @@ if (kind === 'reset') {
       throw new Error('COMPLETO renderer: cross-module pack selection is not recipient-safe');
     }
 
-    // DEMO may contain permanent historical players. Matrix v2 owns only DEMO-S players.
-    const matrixNeedle = `from public.jugadores j\njoin public.inscripciones i on i.jugador_id=j.id`;
-    const matrixReplacement = `from public.jugadores j\njoin private.demo_dataset_entities matrix_owner on matrix_owner.dataset_id='DEMO-S' and matrix_owner.table_name='jugadores' and matrix_owner.entity_id=j.id\njoin public.inscripciones i on i.jugador_id=j.id`;
-    if (!sql.includes(matrixNeedle)) throw new Error('COMPLETO renderer: matrix player query anchor not found');
+    // DEMO Matrix must be built from the canonical DEMO-S roster/economy population only.
+    // Rehearsal also owns one temporary operational minor fixture; keep it resettable but outside Matrix.
+    const matrixNeedle = `create temporary table test_matrix_players on commit drop as
+select j.id jugador_id,j.persona_id,i.temporada_id,e.id equipo_id,e.codigo equipo_codigo,
+       row_number() over(order by e.codigo,j.id) rn
+from public.jugadores j
+join public.inscripciones i on i.jugador_id=j.id
+join public.temporadas t on t.id=i.temporada_id and t.estado='activa'
+join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id
+ and aje.fecha_desde<=current_date and (aje.fecha_hasta is null or aje.fecha_hasta>=current_date)
+join public.equipos e on e.id=aje.equipo_id and e.temporada_id=i.temporada_id
+where j.activo;`;
+    const matrixReplacement = `create temporary table test_matrix_players on commit drop as
+select j.id jugador_id,j.persona_id,i.temporada_id,e.id equipo_id,e.codigo equipo_codigo,
+       row_number() over(order by e.codigo,j.id) rn
+from public.jugadores j
+join private.demo_dataset_entities matrix_owner
+  on matrix_owner.dataset_id='DEMO-S' and matrix_owner.table_name='jugadores' and matrix_owner.entity_id=j.id
+join public.inscripciones i on i.jugador_id=j.id
+join public.temporadas t on t.id=i.temporada_id and t.estado='activa'
+join public.asignaciones_jugador_equipo aje on aje.inscripcion_id=i.id
+ and aje.fecha_desde<=current_date and (aje.fecha_hasta is null or aje.fecha_hasta>=current_date)
+join public.equipos e on e.id=aje.equipo_id and e.temporada_id=i.temporada_id
+where j.activo
+  and j.id<>private.demo_uuid('access-player:minor_player');`;
+    if (!sql.includes(matrixNeedle)) throw new Error('COMPLETO renderer: canonical Matrix table anchor not found');
     sql = sql.replace(matrixNeedle, matrixReplacement);
+    if (!sql.includes("matrix_owner.dataset_id='DEMO-S'") || !sql.includes("j.id<>private.demo_uuid('access-player:minor_player')")) {
+      throw new Error('COMPLETO renderer: canonical DEMO Matrix population guard was not rendered');
+    }
 
     const integrityNeedle = `where j.activo\n      and not exists(`;
     const integrityReplacement = `where j.activo\n      and exists (select 1 from private.demo_dataset_entities owner where owner.dataset_id='DEMO-S' and owner.table_name='jugadores' and owner.entity_id=j.id)\n      and not exists(`;
