@@ -1375,3 +1375,5 @@ button.ghost.small:hover{background:#f0f7fb}
     border-radius:2mm!important;
   }
 }
+
+.rffm-cache-time{display:block!important;margin-top:3px;font-size:.64rem!important;color:#6b7d8c!important;font-weight:650}.rffm-cache-time.stale{color:#9a6700!important}

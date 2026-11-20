@@ -1,3 +1,10 @@
+# V96.4.22 - Resultados RFFM persistentes
+
+- Añade migración 098 con snapshots JSONB RFFM deduplicados por hash y estado de última consulta.
+- La Edge Function `rffm-resultados` persiste la última fotografía válida sin acoplar el esquema relacional a clasificación/partidos/goleadores.
+- Resultados pasa a ser una opción propia del menú para Club/Admin; la configuración RFFM permanece dentro de Estructura > Equipo.
+- La vista abre con el último snapshot guardado, muestra cuándo se actualizó y conserva el último dato válido si una recarga falla.
+
 # V96.4.12 - RFFM federation hierarchy, scorers and branded ResultsView
 
 - Federation category order from Aficionado down to Debutante, with Veteranos last.
