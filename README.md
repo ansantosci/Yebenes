@@ -1,11 +1,13 @@
-# V96.6.8 - Phase 2 RBAC: RFFM actions and active-profile People guard
+# V96.6.9 - Phase 2 RBAC: player/medical management guards
 
-- Frontend-only sobre backend 102.
-- RFFM configuration/validation now uses `rffm.config.manage`.
-- RFFM refresh actions use `rffm.results.update_all` / `rffm.results.update_assigned`; assigned scope remains constrained by active coach assignments.
-- `loadSupabasePersons()` now fails closed on `people.manage` of the active profile; it no longer authorizes from the union of roles attached to the identity.
-- Preserves V96.6.7 scoped UI reset and V96.6.6 all-vs-assigned behavior.
-- Plantillas remains blocked until the Phase 2 RBAC gate is complete.
+- Frontend-only sobre backend 102; parte de la baseline V96.6.8 validada en DEVELOP.
+- Carga de contexto de entrenadores deja de autorizar por la union de roles y se habilita por capacidades efectivas del perfil activo.
+- Selector de temporada operativa usa `structure.manage`.
+- Gestión de requisitos federativos, workflow, asignación de equipo, baja/reactivación y bloque económico actual usan `players.manage`.
+- Gestión de citas/RRMM y lectura de notificaciones asociadas usan `medical.manage`.
+- `loadRemoteClubData()` deja de tener whitelist `admin/club/coach` y entra por capacidades `players.*` / `medical.*`.
+- Se mantienen los usos de rol que expresan identidad, contexto o presentación (familia/jugador/entrenador), no autorización.
+- Plantillas sigue bloqueada hasta superar el gate completo de Fase 2.
 
 # V96.6.7 - Clear scoped UI before identity/profile render
 
@@ -1734,3 +1736,11 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - Capability selection is dynamic on every active-profile change/restore, avoiding stale or prematurely calculated effective permissions.
 - Navigation remains capability-declared and fail-closed; a profile/capability mismatch emits a diagnostic warning.
 - No backend migration: backend baseline remains 102.
+
+## Correccion RFFM A/B incluida antes de despliegue
+- Se corrige `supabase/functions/rffm-resultados/index.ts` para evitar que equipos del mismo club y grupo (p. ej. Benjamin A/B) se confundan cuando `external_team_id` es NULL.
+- `external_team_id`, cuando existe, sigue siendo evidencia preferente y exclusiva.
+- Sin ID externo, la Edge Function carga el nombre canonico del equipo Yebenes y discrimina la letra A/B/C frente al nombre devuelto por RFFM.
+- La correccion se aplica a resultados/jornadas, clasificacion y goleadores, no solo a la tarjeta visual.
+- La cache RFFM queda aislada tambien por `equipo_id`; equipos A/B del mismo grupo ya no comparten una misma entrada de cache cuando no tienen `external_team_id`.
+- No hay migracion SQL nueva; backend de esquema permanece en 102. La Edge Function debe desplegarse junto con este candidato.

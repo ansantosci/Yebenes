@@ -19,7 +19,22 @@ async function persistAttemptError(sb:any,cfg:any,message:string){if(!cfg?.id)re
 
 function norm(s:any){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toUpperCase()}
 function canonical(s:any){return norm(s).replace(/^(C\.D\.|CD|CDE|CDB)\s+/,'').trim()}
-function teamMatches(name:any, externalId:any, configuredId:any){const idOk=Boolean(configuredId&&externalId!=null&&String(externalId)===String(configuredId));const got=canonical(name), wanted=canonical(CLUB_KEY);return idOk||got.includes(wanted)}
+function teamDiscriminator(name:any){
+  const s=norm(name);
+  const quoted=s.match(/[\"']([A-Z])['\"]\s*$/);
+  if(quoted)return quoted[1];
+  const plain=s.match(/(?:^|\s)([A-Z])\s*$/);
+  return plain?plain[1]:'';
+}
+function teamMatches(name:any, externalId:any, configuredId:any, expectedName:any=null){
+  const idOk=Boolean(configuredId&&externalId!=null&&String(externalId)===String(configuredId));
+  if(configuredId)return idOk;
+  const got=canonical(name),wanted=canonical(CLUB_KEY);
+  if(!got.includes(wanted))return false;
+  const expectedDiscriminator=teamDiscriminator(expectedName);
+  if(!expectedDiscriminator)return true;
+  return teamDiscriminator(name)===expectedDiscriminator;
+}
 function walk(obj:any):any[]{const out:any[]=[];const rec=(x:any)=>{if(Array.isArray(x))x.forEach(rec);else if(x&&typeof x==='object'){out.push(x);Object.values(x).forEach(rec)}};rec(obj);return out}
 function pick(d:any,...names:string[]){const low=new Map(Object.entries(d||{}).map(([k,v])=>[k.toLowerCase(),v]));for(const n of names){if(low.has(n.toLowerCase()))return low.get(n.toLowerCase())}return null}
 function num(v:any){const n=Number(String(v??'').trim());return Number.isFinite(n)?n:null}
@@ -27,7 +42,7 @@ function dateValue(s:any){const m=String(s||'').match(/^(\d{2})[\/-](\d{2})[\/-]
 function logoUrl(path:any){const p=String(path||'').trim();return p.startsWith('/pnfg/pimg/Clubes/')?`https://appweb.rffm.es${p}`:null}
 async function getPageProps(url:string){const r=await fetch(url,{headers:HEADERS});if(!r.ok)throw new Error(`RFFM HTTP ${r.status}`);const html=await r.text();const m=html.match(/<script[^>]+id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);if(!m)throw new Error('RFFM no devolvió datos de competición');const data=JSON.parse(m[1]);return data?.props?.pageProps||{}}
 function cfgUrl(cfg:any,path:string,extra=''){const season=String(cfg?.config?.season_id||'22');return `${BASE}${path}?competicion=${encodeURIComponent(cfg.competition_id)}&grupo=${encodeURIComponent(cfg.group_id)}&temporada=${encodeURIComponent(season)}&tipojuego=${encodeURIComponent(cfg.game_type)}${extra}`}
-async function parseRound(cfg:any,jornada:number){const url=cfgUrl(cfg,'/competicion/resultados-y-jornadas',`&jornada=${jornada}`), pp=await getPageProps(url), results=pp?.results||{}, out:any[]=[];for(const p of results?.partidos||[]){const home=p.Nombre_equipo_local||'',away=p.Nombre_equipo_visitante||'';const homeIs=teamMatches(home,p.CodEquipo_local,cfg.external_team_id),awayIs=teamMatches(away,p.CodEquipo_visitante,cfg.external_team_id);if(!homeIs&&!awayIs)continue;let score=null;if(p.Goles_casa!==null&&p.Goles_casa!==''&&p.Goles_visitante!==null&&p.Goles_visitante!=='')score=[String(p.Goles_casa),String(p.Goles_visitante)];out.push({jornada,date:p.fecha,time:p.hora,score,home,away,teamName:homeIs?home:away,opponent:homeIs?away:home,place:String(p.campojuego||'').trim(),teamId:homeIs?p.CodEquipo_local:p.CodEquipo_visitante,homeLogo:logoUrl(p.url_img_local),awayLogo:logoUrl(p.url_img_visitante),matchId:p.codacta})}return {matches:out,results}}
+async function parseRound(cfg:any,jornada:number){const url=cfgUrl(cfg,'/competicion/resultados-y-jornadas',`&jornada=${jornada}`), pp=await getPageProps(url), results=pp?.results||{}, out:any[]=[];for(const p of results?.partidos||[]){const home=p.Nombre_equipo_local||'',away=p.Nombre_equipo_visitante||'';const homeIs=teamMatches(home,p.CodEquipo_local,cfg.external_team_id,cfg.expected_team_name),awayIs=teamMatches(away,p.CodEquipo_visitante,cfg.external_team_id,cfg.expected_team_name);if(!homeIs&&!awayIs)continue;let score=null;if(p.Goles_casa!==null&&p.Goles_casa!==''&&p.Goles_visitante!==null&&p.Goles_visitante!=='')score=[String(p.Goles_casa),String(p.Goles_visitante)];out.push({jornada,date:p.fecha,time:p.hora,score,home,away,teamName:homeIs?home:away,opponent:homeIs?away:home,place:String(p.campojuego||'').trim(),teamId:homeIs?p.CodEquipo_local:p.CodEquipo_visitante,homeLogo:logoUrl(p.url_img_local),awayLogo:logoUrl(p.url_img_visitante),matchId:p.codacta})}return {matches:out,results}}
 async function classification(cfg:any){
   const url=cfgUrl(cfg,'/competicion/clasificaciones');
   const page=await getPageProps(url);
@@ -85,7 +100,7 @@ async function classification(cfg:any){
   let currentIdx:number|null=null;
   for(let i=0;i<rows.length;i++){
     const r=rows[i];
-    if((configuredId&&r.teamId===configuredId)||teamMatches(r.team,r.teamId,cfg.external_team_id)){currentIdx=i;break}
+    if((configuredId&&r.teamId===configuredId)||teamMatches(r.team,r.teamId,cfg.external_team_id,cfg.expected_team_name)){currentIdx=i;break}
   }
 
   const result:any={url};
@@ -154,7 +169,7 @@ async function scorers(cfg:any,jornada:number|null=null){
     for(const d of walk(page)){
       if(!d||typeof d!=='object'||Array.isArray(d))continue;
       const player=scorerName(d),team=scorerTeam(d),goals=scorerGoals(d);
-      if(!player||!team||goals===null||!teamMatches(team,pick(d,'CodEquipo','codigo_equipo','equipo_id'),cfg.external_team_id))continue;
+      if(!player||!team||goals===null||!teamMatches(team,pick(d,'CodEquipo','codigo_equipo','equipo_id'),cfg.external_team_id,cfg.expected_team_name))continue;
       const key=`${norm(player)}|${norm(team)}`;if(seen.has(key))continue;seen.add(key);
       rows.push({player,team,goals,penalties:scorerPenalties(d)});
     }
@@ -179,4 +194,9 @@ async function teamData(cfg:any){
 }
 
 function fail(status:number,code:string,phase:string,message:string,details:any=null){return Response.json({ok:false,error:message,message,code,phase,details},{status})}
-export default {fetch:withSupabase({auth:'user'},async(req,ctx)=>{let phase='request',cfg:any=null;try{if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED',phase,'Método no permitido');const body=await req.json().catch(()=>({})),teamId=String(body?.team_id||''),action=String(body?.action||'team');if(!teamId)return fail(400,'TEAM_ID_REQUIRED',phase,'team_id obligatorio');phase='authorization';const {data:canRead,error:authError}=await ctx.supabase.rpc('puede_consultar_rffm_equipo',{p_equipo_id:teamId});if(authError)throw authError;if(canRead!==true)return fail(403,'RFFM_TEAM_FORBIDDEN',phase,'No tienes permiso para consultar RFFM de este equipo');if(action==='validate'){const {data:canManage,error:manageError}=await ctx.supabase.rpc('puede_gestionar_rffm');if(manageError)throw manageError;if(canManage!==true)return fail(403,'RFFM_CONFIG_FORBIDDEN',phase,'Solo Club o Administrador pueden validar la configuración RFFM');}phase='config';const {data:cfgRow,error}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').select('*').eq('equipo_id',teamId).eq('proveedor','RFFM').maybeSingle();if(error)throw error;cfg=cfgRow;if(!cfg||!cfg.activo)return fail(404,'RFFM_CONFIG_NOT_ACTIVE',phase,'El equipo no tiene integración RFFM activa');phase='fetch';const key=`${cfg.competition_id}|${cfg.group_id}|${cfg.game_type}|${cfg.external_team_id||''}`,hit=cache.get(key);let data=hit&&Date.now()-hit.at<CACHE_MS&&!body?.force?hit.data:null;if(!data){data=await teamData(cfg);cache.set(key,{at:Date.now(),data})}phase='snapshot-write';const snapshot=await persistSnapshot(ctx.supabaseAdmin,cfg,data);phase='validate';if(action==='validate'){const ok=Boolean(data.teamName||data.classification?.position);const msg=ok?`Equipo localizado${data.teamName?`: ${data.teamName}`:''}`:'No se ha localizado el equipo en resultados o clasificación';phase='validation-write';const {error:writeError}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').update({ultima_validacion_at:new Date().toISOString(),ultima_validacion_ok:ok,ultima_validacion_mensaje:msg}).eq('id',cfg.id);if(writeError)throw writeError;if(!ok)return fail(422,'TEAM_NOT_FOUND','validation',msg,{competition_id:cfg.competition_id,group_id:cfg.group_id,game_type:cfg.game_type,external_team_id:cfg.external_team_id});return Response.json({ok:true,...data,_cache:snapshot})}return Response.json({ok:true,...data,_cache:snapshot})}catch(e){const message=String((e as any)?.message||e);try{await persistAttemptError(ctx.supabaseAdmin,cfg,message)}catch{}return fail(500,'RFFM_INTERNAL_ERROR',phase,message)}})}
+export default {fetch:withSupabase({auth:'user'},async(req,ctx)=>{let phase='request',cfg:any=null;try{if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED',phase,'Método no permitido');const body=await req.json().catch(()=>({})),teamId=String(body?.team_id||''),action=String(body?.action||'team');if(!teamId)return fail(400,'TEAM_ID_REQUIRED',phase,'team_id obligatorio');phase='authorization';const {data:canRead,error:authError}=await ctx.supabase.rpc('puede_consultar_rffm_equipo',{p_equipo_id:teamId});if(authError)throw authError;if(canRead!==true)return fail(403,'RFFM_TEAM_FORBIDDEN',phase,'No tienes permiso para consultar RFFM de este equipo');if(action==='validate'){const {data:canManage,error:manageError}=await ctx.supabase.rpc('puede_gestionar_rffm');if(manageError)throw manageError;if(canManage!==true)return fail(403,'RFFM_CONFIG_FORBIDDEN',phase,'Solo Club o Administrador pueden validar la configuración RFFM');}phase='config';const {data:cfgRow,error}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').select('*').eq('equipo_id',teamId).eq('proveedor','RFFM').maybeSingle();if(error)throw error;cfg=cfgRow;if(!cfg||!cfg.activo)return fail(404,'RFFM_CONFIG_NOT_ACTIVE',phase,'El equipo no tiene integración RFFM activa');
+phase='team-context';
+const {data:teamRow,error:teamError}=await ctx.supabaseAdmin.from('equipos').select('nombre,codigo').eq('id',teamId).maybeSingle();
+if(teamError)throw teamError;
+cfg={...cfg,expected_team_name:teamRow?.nombre||teamRow?.codigo||null};
+phase='fetch';const key=`${cfg.equipo_id}|${cfg.competition_id}|${cfg.group_id}|${cfg.game_type}|${cfg.external_team_id||''}`,hit=cache.get(key);let data=hit&&Date.now()-hit.at<CACHE_MS&&!body?.force?hit.data:null;if(!data){data=await teamData(cfg);cache.set(key,{at:Date.now(),data})}phase='snapshot-write';const snapshot=await persistSnapshot(ctx.supabaseAdmin,cfg,data);phase='validate';if(action==='validate'){const ok=Boolean(data.teamName||data.classification?.position);const msg=ok?`Equipo localizado${data.teamName?`: ${data.teamName}`:''}`:'No se ha localizado el equipo en resultados o clasificación';phase='validation-write';const {error:writeError}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').update({ultima_validacion_at:new Date().toISOString(),ultima_validacion_ok:ok,ultima_validacion_mensaje:msg}).eq('id',cfg.id);if(writeError)throw writeError;if(!ok)return fail(422,'TEAM_NOT_FOUND','validation',msg,{competition_id:cfg.competition_id,group_id:cfg.group_id,game_type:cfg.game_type,external_team_id:cfg.external_team_id});return Response.json({ok:true,...data,_cache:snapshot})}return Response.json({ok:true,...data,_cache:snapshot})}catch(e){const message=String((e as any)?.message||e);try{await persistAttemptError(ctx.supabaseAdmin,cfg,message)}catch{}return fail(500,'RFFM_INTERNAL_ERROR',phase,message)}})}
