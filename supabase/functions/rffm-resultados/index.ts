@@ -28,7 +28,7 @@ function teamDiscriminator(name:any){
 }
 function teamMatches(name:any, externalId:any, configuredId:any, expectedName:any=null){
   const idOk=Boolean(configuredId&&externalId!=null&&String(externalId)===String(configuredId));
-  if(configuredId)return idOk;
+  if(configuredId&&externalId!=null&&String(externalId).trim()!=='')return idOk;
   const got=canonical(name),wanted=canonical(CLUB_KEY);
   if(!got.includes(wanted))return false;
   const expectedDiscriminator=teamDiscriminator(expectedName);
@@ -98,9 +98,28 @@ async function classification(cfg:any){
 
   const configuredId=String(cfg?.external_team_id||'');
   let currentIdx:number|null=null;
-  for(let i=0;i<rows.length;i++){
-    const r=rows[i];
-    if((configuredId&&r.teamId===configuredId)||teamMatches(r.team,r.teamId,cfg.external_team_id,cfg.expected_team_name)){currentIdx=i;break}
+
+  // 1) Strong identity: use the external RFFM team id whenever the standings expose it.
+  if(configuredId){
+    const exactIdx=rows.findIndex(r=>String(r.teamId||'')===configuredId);
+    if(exactIdx>=0)currentIdx=exactIdx;
+  }
+
+  // 2) Name fallback. Preserve A/B/C discrimination when RFFM exposes the suffix.
+  if(currentIdx===null){
+    const clubRows=rows
+      .map((r,i)=>({r,i}))
+      .filter(x=>canonical(x.r.team).includes(canonical(CLUB_KEY)));
+    const expectedDiscriminator=teamDiscriminator(cfg.expected_team_name);
+    if(expectedDiscriminator){
+      const discriminated=clubRows.filter(x=>teamDiscriminator(x.r.team)===expectedDiscriminator);
+      if(discriminated.length===1)currentIdx=discriminated[0].i;
+      // Some standings payloads omit the A/B suffix and also omit CodEquipo.
+      // Relax only when there is a single Los Yebenes candidate; never when A/B coexist.
+      else if(discriminated.length===0&&clubRows.length===1)currentIdx=clubRows[0].i;
+    }else if(clubRows.length===1){
+      currentIdx=clubRows[0].i;
+    }
   }
 
   const result:any={url};
