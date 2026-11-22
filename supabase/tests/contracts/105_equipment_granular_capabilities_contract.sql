@@ -1,0 +1,13 @@
+-- 105 contract - granular Equipment RBAC.
+do $$
+declare v_def text;
+begin
+  if exists (select 1 from private.rol_capacidades where rol_codigo='entrenador' and capacidad_codigo like 'equipment.%manage') then raise exception '105: entrenador received equipment management'; end if;
+  if (select count(*) from private.rol_capacidades where rol_codigo='club' and capacidad_codigo in ('equipment.manage','equipment.stock.manage','equipment.fulfillment.manage','equipment.procurement.manage')) <> 4 then raise exception '105: club equipment capability set incomplete'; end if;
+  if (select count(*) from private.rol_capacidades where rol_codigo='administrador' and capacidad_codigo in ('equipment.manage','equipment.stock.manage','equipment.fulfillment.manage','equipment.procurement.manage')) <> 4 then raise exception '105: admin equipment capability set incomplete'; end if;
+  select pg_get_functiondef('public.equipacion_guardar_pedido_borrador(uuid,uuid,jsonb,uuid,text,text)'::regprocedure) into v_def; if v_def not like '%equipment.procurement.manage%' or v_def like '%has_any_role%' then raise exception '105: order draft not converged'; end if;
+  select pg_get_functiondef('public.equipacion_cursar_pedido(uuid)'::regprocedure) into v_def; if v_def not like '%equipment.procurement.manage%' or v_def like '%has_any_role%' then raise exception '105: place order not converged'; end if;
+  select pg_get_functiondef('public.equipacion_registrar_recepcion_pedido(uuid,jsonb,date,text,text)'::regprocedure) into v_def; if v_def not like '%equipment.stock.manage%' or v_def like '%has_any_role%' then raise exception '105: reception not converged'; end if;
+  select pg_get_functiondef('public.equipacion_registrar_stock_existente(uuid,text,integer,uuid,uuid,uuid,uuid,text,text,text)'::regprocedure) into v_def; if v_def not like '%equipment.stock.manage%' or v_def like '%has_any_role%' then raise exception '105: existing stock not converged'; end if;
+  if exists (select 1 from pg_policies where schemaname='public' and tablename like 'equipacion%' and coalesce(qual,'') like '%has_any_role%administrador%club%') then raise exception '105: legacy equipment role policy remains'; end if;
+end $$;
