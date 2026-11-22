@@ -218,7 +218,10 @@ async function teamData(cfg:any){
   const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
   const latestScorerRound=past.length?past[past.length-1].n:(jornadas.length?jornadas[jornadas.length-1].n:null);
   const [cls,sc]=await Promise.all([classification(cfg),scorers(cfg,latestScorerRound)]);
-  return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,classification:cls,teamName:(completed.at(-1)||upcoming[0])?.teamName||cls?.teamName||null,competitionName:meta.competitionName||null,scorers:sc.top};
+  const calendarMatches=unique
+    .filter(m=>dateValue(m.date))
+    .sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+  return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,calendarMatches,classification:cls,teamName:(completed.at(-1)||upcoming[0])?.teamName||cls?.teamName||null,competitionName:meta.competitionName||null,scorers:sc.top};
 }
 
 function fail(status:number,code:string,phase:string,message:string,details:any=null){return Response.json({ok:false,error:message,message,code,phase,details},{status})}

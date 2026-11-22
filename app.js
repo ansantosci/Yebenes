@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.14';
+const APP_VERSION='96.6.15';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3227,20 +3227,64 @@ function parseRffmPdfDate(m){
   const tm=String(m?.time||'').match(/(\d{1,2}):(\d{2})/);if(!tm)return null;
   return new Date(+x[3],+x[2]-1,+x[1],+tm[1],+tm[2]);
 }
-function rffmSchedulePageHtml(teams){
-  let items=teams.map(t=>({t,d:rffmResultsByTeam.get(t.id)||{}})).filter(x=>x.d?.nextMatch).map(x=>({...x,dt:parseRffmPdfDate(x.d.nextMatch)})).filter(x=>x.dt).sort((a,b)=>a.dt-b.dt);
-  if(!items.length)return '';
-  const first=items[0].dt,offset=(first.getDay()+2)%7,friday=new Date(first.getFullYear(),first.getMonth(),first.getDate()-offset),monday=new Date(friday.getFullYear(),friday.getMonth(),friday.getDate()+3);
-  items=items.filter(x=>x.dt>=friday&&x.dt<monday);
-  const seen=new Set();items=items.filter(x=>{const m=x.d.nextMatch||{},key=[x.dt.getTime(),normalizeRffmText(m.home||''),normalizeRffmText(m.away||''),normalizeRffmText(m.place||'')].join('|');if(seen.has(key))return false;seen.add(key);return true});
-  if(!items.length)return '';
-  const months=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-  const days=[[5,'VIERNES'],[6,'SÁBADO'],[0,'DOMINGO']];
-  const blocks=days.map(([dow,label])=>{const rows=items.filter(x=>x.dt.getDay()===dow);if(!rows.length)return '';const dt=rows[0].dt;return `<section class="rffm-schedule-day"><h2>${label}, ${dt.getDate()} DE ${months[dt.getMonth()]} ${dt.getFullYear()}</h2><div class="rffm-schedule-head"><span>HORA</span><span>EQUIPO LOCAL</span><span>EQUIPO VISITANTE</span><span>CAMPO</span></div>${rows.map(({t,d,dt})=>{const m=d.nextMatch,appName=String(t.name||'').toUpperCase();let home=m.home||'',away=m.away||'';if(normalizeRffmText(home).includes('YEBENES'))home=appName;if(normalizeRffmText(away).includes('YEBENES'))away=appName;const teamCell=(n,logo)=>{const own=normalizeRffmText(n)===normalizeRffmText(appName);return `<span class="rffm-schedule-team ${own?'is-own':''}">${logo?rffmLogoHtml(logo,n):''}<span>${esc(n)}</span></span>`};return `<div class="rffm-schedule-row"><span>${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}</span><span>${teamCell(home,m.homeLogo)}</span><span>${teamCell(away,m.awayLogo)}</span><span>${esc(m.place||'')}</span></div>`}).join('')}</section>`}).join('');
-  return `<section class="rffm-pdf-page rffm-pdf-schedule-page"><div class="rffm-schedule-poster"><header><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><h1>C.D. LOS YÉBENES<br>SAN BRUNO</h1><p>HORARIOS DE PARTIDOS</p></div></header>${blocks}</div></section>`;
+function rffmPdfMatchDate(m){
+  const raw=String(m?.date||'');const x=raw.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);if(!x)return null;
+  const tm=String(m?.time||'').match(/(\d{1,2}):(\d{2})/);
+  return new Date(+x[3],+x[2]-1,+x[1],tm?+tm[1]:12,tm?+tm[2]:0);
 }
-
-
+function rffmWeekendStart(dt){
+  const d=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()),dow=d.getDay();
+  const delta=dow===0?-2:dow===6?-1:dow===5?0:5-dow;
+  d.setDate(d.getDate()+delta);return d;
+}
+function rffmAddDays(dt,n){const d=new Date(dt);d.setDate(d.getDate()+n);return d}
+function rffmSameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
+function rffmWeekendKey(dt){return rffmWeekendStart(dt).toISOString().slice(0,10)}
+function rffmWeekendLabel(friday){
+  const months=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'],sun=rffmAddDays(friday,2);
+  return `${friday.getDate()}${friday.getMonth()!==sun.getMonth()?` DE ${months[friday.getMonth()]}`:''} – ${sun.getDate()} DE ${months[sun.getMonth()]} ${sun.getFullYear()}`;
+}
+function rffmScheduleTeamName(t,m,name){
+  const appName=String(t.name||'').toUpperCase();
+  return normalizeRffmText(name).includes('YEBENES')?appName:name;
+}
+function rffmScheduleRowHtml(item,mode){
+  const {t,m,dt}=item,home=rffmScheduleTeamName(t,m,m.home||''),away=rffmScheduleTeamName(t,m,m.away||''),appName=String(t.name||'').toUpperCase();
+  const teamCell=(n,logo)=>{const own=normalizeRffmText(n)===normalizeRffmText(appName);return `<span class="rffm-schedule-team ${own?'is-own':''}">${logo?rffmLogoHtml(logo,n):''}<span>${esc(n)}</span></span>`};
+  const time=String(m.time||'').match(/\d{1,2}:\d{2}/)?.[0]||'—';
+  const result=m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:'VS';
+  return `<div class="rffm-schedule-row rffm-schedule-row--score"><span>${esc(time)}</span><span>${teamCell(home,m.homeLogo)}</span><span class="rffm-schedule-result">${result}</span><span>${teamCell(away,m.awayLogo)}</span><span>${esc(m.place||'')}</span></div>`;
+}
+function rffmScheduleWeekPageHtml(teams,friday,{title,mode}){
+  const monday=rffmAddDays(friday,3),teamRows=[],rests=[],pending=[];
+  for(const t of teams){
+    const d=rffmResultsByTeam.get(t.id)||{},calendar=Array.isArray(d.calendarMatches)?d.calendarMatches:[d.lastMatch,d.nextMatch].filter(Boolean);
+    const rows=calendar.map(m=>({t,m,dt:rffmPdfMatchDate(m)})).filter(x=>x.dt&&x.dt>=friday&&x.dt<monday);
+    const explicitRest=rows.find(x=>/descansa/i.test(String(x.m.home||''))||/descansa/i.test(String(x.m.away||''))||/descansa/i.test(String(x.m.opponent||'')));
+    const matches=rows.filter(x=>!/descansa/i.test(`${x.m.home||''} ${x.m.away||''} ${x.m.opponent||''}`));
+    if(matches.length)teamRows.push(...matches);
+    else if(explicitRest)rests.push(t);
+    else pending.push(t);
+  }
+  const seen=new Set(),items=teamRows.filter(x=>{const k=[x.t.id,x.dt.getTime(),x.m.matchId||'',x.m.home||'',x.m.away||''].join('|');if(seen.has(k))return false;seen.add(k);return true}).sort((a,b)=>a.dt-b.dt);
+  const months=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'],days=[[5,'VIERNES'],[6,'SÁBADO'],[0,'DOMINGO']];
+  const blocks=days.map(([dow,label])=>{const rows=items.filter(x=>x.dt.getDay()===dow);if(!rows.length)return '';const dt=rows[0].dt;return `<section class="rffm-schedule-day"><h2>${label}, ${dt.getDate()} DE ${months[dt.getMonth()]} ${dt.getFullYear()}</h2><div class="rffm-schedule-head rffm-schedule-head--score"><span>HORA</span><span>EQUIPO LOCAL</span><span>MARCADOR</span><span>EQUIPO VISITANTE</span><span>CAMPO</span></div>${rows.map(x=>rffmScheduleRowHtml(x,mode)).join('')}</section>`}).join('');
+  const list=(label,arr,cls)=>arr.length?`<section class="rffm-schedule-status ${cls}"><h2>${label}</h2><div>${arr.map(t=>`<span>${esc(String(t.name||'').toUpperCase())}</span>`).join('')}</div></section>`:'';
+  const restLabel=mode==='previous'?'DESCANSARON':'DESCANSAN';
+  return `<section class="rffm-pdf-page rffm-pdf-schedule-page"><div class="rffm-schedule-poster"><header><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><h1>C.D. LOS YÉBENES<br>SAN BRUNO</h1><p>${esc(title)}</p><small>${esc(rffmWeekendLabel(friday))}</small></div></header>${blocks||'<div class="rffm-schedule-empty">No hay partidos publicados para este fin de semana.</div>'}${list(restLabel,rests,'is-rest')}${list('PENDIENTE DE HORARIO',pending,'is-pending')}</div></section>`;
+}
+function rffmSchedulePagesHtml(teams){
+  const now=new Date(),today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const all=teams.flatMap(t=>{const d=rffmResultsByTeam.get(t.id)||{},calendar=Array.isArray(d.calendarMatches)?d.calendarMatches:[d.lastMatch,d.nextMatch].filter(Boolean);return calendar.map(m=>({t,m,dt:rffmPdfMatchDate(m)})).filter(x=>x.dt)});
+  const pending=all.filter(x=>!x.m.score&&x.dt>=today).sort((a,b)=>a.dt-b.dt);
+  const activeFriday=pending.length?rffmWeekendStart(pending[0].dt):rffmWeekendStart(today);
+  const previousFriday=rffmAddDays(activeFriday,-7),nextFriday=rffmAddDays(activeFriday,7);
+  return [
+    rffmScheduleWeekPageHtml(teams,previousFriday,{title:'RESULTADOS · FIN DE SEMANA ANTERIOR',mode:'previous'}),
+    rffmScheduleWeekPageHtml(teams,activeFriday,{title:'HORARIOS · FIN DE SEMANA VIGENTE',mode:'current'}),
+    rffmScheduleWeekPageHtml(teams,nextFriday,{title:'HORARIOS · PRÓXIMO FIN DE SEMANA',mode:'next'})
+  ].join('');
+}
 
 let rffmPreparedPdfReport=null;
 let rffmPreparedPdfOldTitle='';
@@ -3281,7 +3325,7 @@ async function exportRffmPdf(){
   document.getElementById('rffmPrintReport')?.remove();
   const report=document.createElement('div');report.id='rffmPrintReport';report.className='rffm-print-report';
   for(const g of groups)for(const t of g.teams){const data=rffmResultsByTeam.get(t.id)||{};const page=document.createElement('section');page.className='rffm-pdf-page rffm-pdf-team-page';page.innerHTML=`<div class="rffm-pdf-page-inner"><header class="rffm-pdf-brand"><img src="${esc(visualTheme.logo_url||DEFAULT_VISUAL_THEME.logo_url)}" alt="Escudo C.D. Los Yébenes San Bruno"><div><strong>C.D. Los Yébenes San Bruno</strong><span>Temporada 2026/2027 · Resultados RFFM</span></div></header><header class="rffm-pdf-category">${esc(g.label)}</header>${rffmPdfTeamHtml(t,data)}</div>`;report.appendChild(page)}
-  report.insertAdjacentHTML('beforeend',rffmSchedulePageHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
+  report.insertAdjacentHTML('beforeend',rffmSchedulePagesHtml(teams));document.body.appendChild(report);document.documentElement.classList.add('rffm-pdf-mode');
   try{
     rffmPdfPreparing=true;rffmPreparedPdfReport=report;rffmPreparedPdfOldTitle=oldTitle;
     const btn=rffmExportButton();
