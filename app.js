@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.10';
+const APP_VERSION='96.6.11';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1484,6 +1484,11 @@ async function loadRemoteClubData(){
   const loadGeneration=identityContextGeneration,loadRole=currentRole;
   if(!sb||!currentUser||!canAny('players.read_all','players.read_assigned','medical.read_all','medical.read_assigned'))return remoteClubPlayers;
   if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
+  const needsAssignedScope=!canAny('players.read_all','medical.read_all')&&canAny('players.read_assigned','medical.read_assigned');
+  if(needsAssignedScope&&!dbCoachesLoaded){
+    await loadSupabaseCoaches();
+    if(loadGeneration!==identityContextGeneration||loadRole!==currentRole)return remoteClubPlayers;
+  }
   remoteClubPlayers=[];
   const season=dbActiveSeason();if(!season)return remoteClubPlayers;
   const {data:insRows,error:insErr}=await sb.from('inscripciones').select('id,jugador_id,temporada_id,categoria_id,fecha_solicitud,estado,observaciones,documento_identidad_usado_id,representacion_usada_id').eq('temporada_id',season.id);
