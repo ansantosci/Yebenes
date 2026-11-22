@@ -1382,3 +1382,28 @@ button.ghost.small:hover{background:#f0f7fb}
 #clubSidebar #clubNav .nav-item.hidden {
   display: none !important;
 }
+
+/* V96.6.15 — three-week RFFM PDF calendar */
+@media print{
+  html.rffm-pdf-mode .rffm-pdf-schedule-page{break-after:page!important;page-break-after:always!important}
+  html.rffm-pdf-mode .rffm-pdf-schedule-page:last-child{break-after:auto!important;page-break-after:auto!important}
+  html.rffm-pdf-mode .rffm-schedule-poster>header small{display:block;margin-top:1.4mm;font-size:9pt;font-weight:800;color:#fff}
+  html.rffm-pdf-mode .rffm-schedule-head--score,
+  html.rffm-pdf-mode .rffm-schedule-row--score{grid-template-columns:12mm 1.2fr 18mm 1.2fr 1fr!important}
+  html.rffm-pdf-mode .rffm-schedule-result{text-align:center;font-weight:900;font-size:8pt}
+  html.rffm-pdf-mode .rffm-schedule-status{margin-top:3mm;padding:2mm 2.5mm;background:#fff;border-radius:2mm;color:#0b2444}
+  html.rffm-pdf-mode .rffm-schedule-status h2{margin:0 0 1.5mm;font-size:9pt}
+  html.rffm-pdf-mode .rffm-schedule-status>div{display:flex;flex-wrap:wrap;gap:1.2mm 3mm}
+  html.rffm-pdf-mode .rffm-schedule-status span{font-size:7pt;font-weight:800}
+  html.rffm-pdf-mode .rffm-schedule-empty{background:#fff;color:#0b2444;padding:3mm;border-radius:2mm;font-weight:800}
+}
+
+/* V96.6.16 — RFFM calendar quality semaphore */
+.rffm-quality{display:inline-flex;align-items:center;white-space:nowrap;padding:.38rem .62rem;border-radius:999px;font-size:.76rem;font-weight:800}
+.rffm-quality--ok{background:#dcfce7;color:#166534}
+.rffm-quality--warning{background:#fef3c7;color:#92400e}
+.rffm-quality--error{background:#fee2e2;color:#991b1b}
+.rffm-quality--info{background:#e5e7eb;color:#475569}
+
+/* V96.6.19 — PDF agenda labels */
+@media print{html.rffm-pdf-mode .rffm-schedule-row--score .rffm-schedule-result{font-size:6.5pt;line-height:1.05;white-space:normal}}

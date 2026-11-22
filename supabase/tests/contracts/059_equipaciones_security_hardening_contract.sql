@@ -34,20 +34,30 @@ begin
     raise exception '059 security contract failed: % new tables without RLS',missing_rls;
   end if;
 
+  -- 105 supersedes the stock policies with capability-based names.
+  -- Keep the original persona/season policy check, and accept only the
+  -- capability-based stock policies introduced by 105 for stock objects.
   select count(*) into missing_policy
   from (values
-    ('equipacion_personas_temporada','equipacion_personas_temporada_club_manage'),
-    ('equipacion_stock_lotes','equipacion_stock_lotes_club_manage'),
-    ('equipacion_stock_lote_vigencia','equipacion_stock_lote_vigencia_club_manage')
-  ) v(tablename,policyname)
+    ('equipacion_personas_temporada','equipacion_personas_temporada_equipment_manage','equipment.manage'),
+    ('equipacion_stock_lotes','equipacion_stock_lotes_stock_manage','equipment.stock.manage'),
+    ('equipacion_stock_lote_vigencia','equipacion_stock_lote_vigencia_stock_manage','equipment.stock.manage')
+  ) v(tablename,policyname,capability)
   where not exists (
     select 1 from pg_policies p
     where p.schemaname='public'
       and p.tablename=v.tablename
       and p.policyname=v.policyname
+      and (
+        v.capability is null
+        or (
+          coalesce(p.qual,'') like '%has_capability%'||v.capability||'%'
+          and coalesce(p.with_check,'') like '%has_capability%'||v.capability||'%'
+        )
+      )
   );
   if missing_policy <> 0 then
-    raise exception '059 security contract failed: % club policies missing',missing_policy;
+    raise exception '059 security contract failed: % required Equipaciones policies missing or not capability-based',missing_policy;
   end if;
 
   if has_function_privilege('anon','private.equipacion_validar_necesidad_confirmada()','EXECUTE')
