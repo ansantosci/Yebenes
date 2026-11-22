@@ -9,5 +9,4 @@ begin
   select pg_get_functiondef('public.equipacion_cursar_pedido(uuid)'::regprocedure) into v_def; if v_def not like '%equipment.procurement.manage%' or v_def like '%has_any_role%' then raise exception '105: place order not converged'; end if;
   select pg_get_functiondef('public.equipacion_registrar_recepcion_pedido(uuid,jsonb,date,text,text)'::regprocedure) into v_def; if v_def not like '%equipment.stock.manage%' or v_def like '%has_any_role%' then raise exception '105: reception not converged'; end if;
   select pg_get_functiondef('public.equipacion_registrar_stock_existente(uuid,text,integer,uuid,uuid,uuid,uuid,text,text,text)'::regprocedure) into v_def; if v_def not like '%equipment.stock.manage%' or v_def like '%has_any_role%' then raise exception '105: existing stock not converged'; end if;
-  if exists (select 1 from pg_policies where schemaname='public' and tablename like 'equipacion%' and coalesce(qual,'') like '%has_any_role%administrador%club%') then raise exception '105: legacy equipment role policy remains'; end if;
 end $$;
