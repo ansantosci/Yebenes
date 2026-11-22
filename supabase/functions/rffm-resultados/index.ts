@@ -202,8 +202,17 @@ async function teamData(cfg:any){
   for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){const n=Number(j.codjornada);if(Number.isFinite(n))jornadas.push({n,date:dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'))})}
   const today=new Date(),past=jornadas.filter(x=>!x.date||x.date<=today).slice(-3),future=jornadas.filter(x=>x.date&&x.date>today).slice(0,3),targets=[...new Set([...past,...future].map(x=>x.n))];
   let matches:any[]=[];
-  for(const j of targets){try{matches.push(...(await parseRound(cfg,j)).matches)}catch{}}
-  if(!matches.length){for(const j of jornadas.slice(0,40)){try{matches.push(...(await parseRound(cfg,j.n)).matches)}catch{}if(matches.length>=2)break}}
+  const collectRounds=async(rounds:number[])=>{
+    const settled=await Promise.allSettled(rounds.map(j=>parseRound(cfg,j)));
+    for(const r of settled)if(r.status==='fulfilled')matches.push(...r.value.matches);
+  };
+  await collectRounds(targets);
+  // Bounded fallback: avoid serially scanning up to 40 remote rounds for one team.
+  if(!matches.length){
+    const targetSet=new Set(targets);
+    const fallback=jornadas.map(x=>x.n).filter(n=>!targetSet.has(n)).slice(0,12);
+    for(let i=0;i<fallback.length&&!matches.length;i+=4)await collectRounds(fallback.slice(i,i+4));
+  }
   const unique:any[]=[],sig=new Set<string>();for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}
   const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
   const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
