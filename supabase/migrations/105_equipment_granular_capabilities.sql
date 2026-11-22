@@ -7,9 +7,14 @@ insert into private.capacidades(codigo,nombre,descripcion) values
  ('equipment.procurement.manage','Gestionar compras de equipaciones','Gestionar proveedores y pedidos de equipación.')
 on conflict (codigo) do update set nombre=excluded.nombre,descripcion=excluded.descripcion;
 
-insert into private.rol_capacidades(rol_codigo,capacidad_codigo) values
+with matrix(rol_codigo, capacidad_codigo) as (values
  ('administrador','equipment.stock.manage'),('administrador','equipment.fulfillment.manage'),('administrador','equipment.procurement.manage'),
  ('club','equipment.stock.manage'),('club','equipment.fulfillment.manage'),('club','equipment.procurement.manage')
+)
+insert into private.rol_capacidades(rol_id,capacidad_codigo)
+select r.id,mx.capacidad_codigo
+from matrix mx
+join public.roles r on r.codigo=mx.rol_codigo
 on conflict do nothing;
 
 drop policy if exists equipacion_articulos_admin_write on public.equipacion_articulos;
