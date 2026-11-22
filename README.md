@@ -1,3 +1,74 @@
+# V96.6.12 - Phase 2 RBAC: player/medical management guards
+
+- Frontend-only sobre backend 102; parte de la baseline V96.6.8 validada en DEVELOP.
+- Carga de contexto de entrenadores deja de autorizar por la union de roles y se habilita por capacidades efectivas del perfil activo.
+- Selector de temporada operativa usa `structure.manage`.
+- Gestión de requisitos federativos, workflow, asignación de equipo, baja/reactivación y bloque económico actual usan `players.manage`.
+- Gestión de citas/RRMM y lectura de notificaciones asociadas usan `medical.manage`.
+- `loadRemoteClubData()` deja de tener whitelist `admin/club/coach` y entra por capacidades `players.*` / `medical.*`.
+- Se mantienen los usos de rol que expresan identidad, contexto o presentación (familia/jugador/entrenador), no autorización.
+- Plantillas sigue bloqueada hasta superar el gate completo de Fase 2.
+
+# V96.6.7 - Clear scoped UI before identity/profile render
+
+- PATCH frontend-only sobre backend 102.
+- Vacía sincrónicamente Fichas, RRMM y Resultados al cambiar identidad o perfil.
+- RRMM ya no puede pintar temporalmente el dataset del contexto anterior mientras carga el nuevo scope.
+- Mantiene intacta la resolución RBAC all vs assigned de V96.6.6 y la invalidación de cargas asíncronas.
+
+# V96.6.6 - Invalidate stale profile-scoped loads
+
+## V96.6.6 - Invalidate stale profile-scoped loads
+- Invalida cargas de Fichas iniciadas bajo un perfil anterior al cambiar de perfil.
+- Evita que una respuesta Club en vuelo repueble Fichas después de seleccionar Entrenador.
+- Mantiene el scope de Entrenador por asignaciones vigentes; no convierte contexto en autorización por rol.
+- Backend permanece en 102.
+
+# V96.6.6 - Fix Structure RBAC render regression
+
+
+## V96.6.6 - Fix Structure RBAC render regression
+
+- Fixes a V96.6.3 frontend regression in `renderStructure()`: a local variable named `can` shadowed the global RBAC `can()` helper and aborted rendering before seasons/teams were populated.
+- Renames the local state to `canManageStructure`; authorization remains derived from `structure.manage`.
+- No backend change; backend remains 102.
+
+## V96.6.3 - RBAC phase 2.1 common authorization guards
+
+- Frontend-only convergence of clear historical authorization guards to effective database capabilities.
+- Sponsors use `sponsors.manage`; People/access mutations use `people.manage`; Coaches management uses `coaches.manage`; Structure/team/season management uses `structure.manage`.
+- Role names remain only where they express identity, context, presentation or routing; they are not used by this patch to grant the migrated operations.
+- No backend migration: capability catalog/matrix remains backend 102. Plantillas remains blocked until the Phase 2 gate is complete.
+
+- Centralizes persona_roles temporal validity: NULL fecha_desde = no lower bound; NULL fecha_hasta = no upper bound.
+- RBAC mis_capacidades()/has_capability() consume the canonical rule.
+- Does not rewrite historical role dates or seeds.
+- Backend 102; frontend version bump only for release baseline/cache coherence.
+
+# V96.5.0 - Capability-based authorization
+
+## V96.5.0 - Capability-based authorization (backend 101)
+
+- Supabase becomes the canonical source of application capabilities through RBAC role-to-capability mappings.
+- The frontend builds navigation and enables actions from effective capabilities of the active profile, not role-name literals.
+- RFFM backend authorization starts consuming the same capability matrix.
+- Existing RLS remains in place and will migrate incrementally to capabilities to minimize release risk.
+- Establishes `teams.roster.read_assigned` as the authorization basis for the upcoming Coach Plantillas experience.
+
+
+- Coach menu is limited to Fichas, RRMM, Resultados and Perfil until Plantillas replaces the coach-facing Fichas/Resultados experience.
+- Identity/profile changes immediately clear player KPIs, filters, pagination and prior rows before asynchronous authorized data loads.
+- No backend or schema changes.
+
+# V96.4.29 - Resultados RFFM para Entrenador
+
+- Reutiliza la vista persistente de Resultados RFFM para el perfil Entrenador, limitada a sus asignaciones activas de la temporada de contexto.
+- El entrenador puede actualizar individualmente sus equipos o usar `Actualizar mis equipos`; los snapshots son los mismos que consume Club/Admin.
+- La migración 100 amplía RLS de snapshots/estado únicamente a equipos asignados al entrenador y añade autorización canónica por equipo.
+- `rffm-resultados` valida autorización antes de consultar con service role; `validate` sigue reservado a Club/Admin.
+- No crea tablas de resultados nuevas ni duplica cachés; 098/099 siguen siendo la fuente única.
+- Mantiene V96.4.25-27: lazy loading, aislamiento de sesión por entorno y corrección del bucle cross-tab.
+
 # V96.4.27 - Corte de bucle cross-tab de diagnóstico
 
 - Reduce la huella inicial por pestaña: Club/Admin ya no precargan Entrenadores ni Personas durante el bootstrap.
@@ -1656,3 +1727,20 @@ La raiz del repositorio debe conservar un unico `README.md`. Los README tecnicos
 - `Probar conexión` persiste ahora el resultado real en `ultima_validacion_at`, `ultima_validacion_ok` y `ultima_validacion_mensaje`.
 - El listado de Estructura refleja inmediatamente `Verificado` o `Error`; guardar/importar configuración continúa sin equivaler a validarla.
 - Se reutilizan UPDATE + RLS Club/Admin existentes en 096; no hay cambio de backend ni de esquema.
+
+
+## V96.6.2 - RBAC frontend convergence phase 1
+- Capability maps remain keyed by canonical `roles.codigo` values returned by Supabase.
+- Supabase identities retain canonical profiles (`roleCode`) alongside temporary legacy routing aliases.
+- `can()` derives authorization from the active profile's canonical role code; legacy role names are not permission keys.
+- Capability selection is dynamic on every active-profile change/restore, avoiding stale or prematurely calculated effective permissions.
+- Navigation remains capability-declared and fail-closed; a profile/capability mismatch emits a diagnostic warning.
+- No backend migration: backend baseline remains 102.
+
+## Correccion RFFM A/B incluida antes de despliegue
+- Se corrige `supabase/functions/rffm-resultados/index.ts` para evitar que equipos del mismo club y grupo (p. ej. Benjamin A/B) se confundan cuando `external_team_id` es NULL.
+- `external_team_id`, cuando existe, sigue siendo evidencia preferente y exclusiva.
+- Sin ID externo, la Edge Function carga el nombre canonico del equipo Yebenes y discrimina la letra A/B/C frente al nombre devuelto por RFFM.
+- La correccion se aplica a resultados/jornadas, clasificacion y goleadores, no solo a la tarjeta visual.
+- La cache RFFM queda aislada tambien por `equipo_id`; equipos A/B del mismo grupo ya no comparten una misma entrada de cache cuando no tienen `external_team_id`.
+- No hay migracion SQL nueva; backend de esquema permanece en 102. La Edge Function debe desplegarse junto con este candidato.
