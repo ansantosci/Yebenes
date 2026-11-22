@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.15';
+const APP_VERSION='96.6.16';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3124,10 +3124,17 @@ async function hydrateRffmScorerPhotos(root=$('#rffmResultsContent')){
   if(!root)return;const nodes=[...root.querySelectorAll('[data-rffm-scorer-avatar]')];
   await Promise.all(nodes.map(async node=>{if(node.dataset.photoHydrated==='1')return;node.dataset.photoHydrated='1';const player=rffmMatchedPlayer(node.dataset.team,node.dataset.scorer);const url=await rffmPlayerPhotoUrl(player);if(url){node.innerHTML=`<img src="${esc(url)}" alt="${esc(player?.name||node.dataset.scorer||'Jugador')}" />`;node.classList.add('has-photo');const img=node.querySelector('img');if(img&&!img.complete)await new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,2500)})}}));
 }
+function rffmCalendarQualityHtml(d){
+  if(d?.error)return '<span class="rffm-quality rffm-quality--error" title="Error de consulta RFFM">● Error</span>';
+  const c=d?.calendarCoverage;if(!c)return '<span class="rffm-quality rffm-quality--info" title="Snapshot anterior sin diagnóstico de calendario">● Sin diagnóstico</span>';
+  const tone=c.quality==='warning'?'warning':c.quality==='ok'?'ok':'info';
+  const detail=(c.issues||[]).join(' ')||`Jornadas consultadas: ${(c.queriedRounds||[]).join(', ')||'—'}`;
+  return `<span class="rffm-quality rffm-quality--${tone}" title="${esc(detail)}">● ${esc(c.qualityLabel||'Calendario')}</span>`;
+}
 function rffmTeamCardHtml(t){
   const d=rffmResultsByTeam.get(t.id),loading=d?.loading===true,canUpdate=rffmCanUpdateTeam(t.id),disabled=rffmBulkRefreshing||loading||!canUpdate;
   const officialTeam=d?.teamName||d?.classification?.teamName||'';const competition=d?.competitionName||'',cacheLabel=rffmConsultAgeLabel(d?._cache?.ultimoExitoAt||d?._cache?.obtenidoAt),cacheWarn=d?._cache?.ultimoError&&d?._cache?.ultimoIntentoAt&&new Date(d._cache.ultimoIntentoAt)>new Date(d?._cache?.ultimoExitoAt||0),attemptLabel=cacheWarn?rffmAgeLabel(d._cache.ultimoIntentoAt,'Error al actualizar'):'';
-  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span>${cacheLabel?`<small class="rffm-cache-time ${cacheWarn?'stale':''}">${esc(cacheWarn?`${attemptLabel} · última consulta correcta ${rffmRelativeAge(d?._cache?.ultimoExitoAt||d?._cache?.obtenidoAt)}`:cacheLabel)}</small>`:''}</div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
+  return `<article class="rffm-result-card" data-team="${esc(t.id)}"><header><div class="rffm-team-identity"><strong>${esc(t.name)}</strong>${officialTeam?`<span class="rffm-official-team">${esc(officialTeam)}</span>`:''}<span>${competition?esc(competition)+' · ':''}${esc(t.modality||'—')}${String(t.gender||'').toLowerCase()==='femenino'?' · Femenino':''}</span>${cacheLabel?`<small class="rffm-cache-time ${cacheWarn?'stale':''}">${esc(cacheWarn?`${attemptLabel} · última consulta correcta ${rffmRelativeAge(d?._cache?.ultimoExitoAt||d?._cache?.obtenidoAt)}`:cacheLabel)}</small>`:''}</div><div class="rffm-card-actions">${rffmConfigState(rffmIntegrationFor(t.id))}${rffmCalendarQualityHtml(d)}<button type="button" class="secondary tiny rffm-card-refresh" data-team="${esc(t.id)}" ${disabled?'disabled':''} aria-label="Actualizar resultados de ${esc(t.name)}">${loading?'Actualizando…':'Actualizar'}</button></div></header>${!d?'<div class="rffm-empty">Pendiente de consulta.</div>':loading?'<div class="rffm-empty">Consultando RFFM…</div>':d.error?`<div class="rffm-empty">${esc(d.error)}</div>`:`${rffmClassificationHtml(d.classification)}${rffmMatchHtml(d.lastMatch,'ÚLTIMO PARTIDO')}${rffmMatchHtml(d.nextMatch,'PRÓXIMO PARTIDO')}${rffmScorersHtml(t.id,d.scorers)}`}</article>`;
 }
 function rffmGeneralAgeLabel(value){const label=rffmCacheAgeLabel(value);return label?label.replace(/^Actualizado\s*/,'').replace(/^hace /,'hace '):''}
 function rffmFreshnessSummary(){
