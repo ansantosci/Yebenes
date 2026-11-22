@@ -39,7 +39,7 @@ begin
   -- capability-based stock policies introduced by 105 for stock objects.
   select count(*) into missing_policy
   from (values
-    ('equipacion_personas_temporada','equipacion_personas_temporada_club_manage',null::text),
+    ('equipacion_personas_temporada','equipacion_personas_temporada_equipment_manage','equipment.manage'),
     ('equipacion_stock_lotes','equipacion_stock_lotes_stock_manage','equipment.stock.manage'),
     ('equipacion_stock_lote_vigencia','equipacion_stock_lote_vigencia_stock_manage','equipment.stock.manage')
   ) v(tablename,policyname,capability)
