@@ -1377,3 +1377,8 @@ button.ghost.small:hover{background:#f0f7fb}
 }
 
 .rffm-cache-time{display:block!important;margin-top:3px;font-size:.64rem!important;color:#6b7d8c!important;font-weight:650}.rffm-cache-time.stale{color:#9a6700!important}
+
+/* V96.4.32: role-hidden club navigation items must override sidebar layout display rules. */
+#clubSidebar #clubNav .nav-item.hidden {
+  display: none !important;
+}
