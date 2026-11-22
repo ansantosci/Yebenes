@@ -1404,3 +1404,6 @@ button.ghost.small:hover{background:#f0f7fb}
 .rffm-quality--warning{background:#fef3c7;color:#92400e}
 .rffm-quality--error{background:#fee2e2;color:#991b1b}
 .rffm-quality--info{background:#e5e7eb;color:#475569}
+
+/* V96.6.19 — PDF agenda labels */
+@media print{html.rffm-pdf-mode .rffm-schedule-row--score .rffm-schedule-result{font-size:6.5pt;line-height:1.05;white-space:normal}}

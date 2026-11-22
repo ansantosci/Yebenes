@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.18';
+const APP_VERSION='96.6.19';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3259,7 +3259,8 @@ function rffmScheduleRowHtml(item,mode){
   const {t,m,dt}=item,home=rffmScheduleTeamName(t,m,m.home||''),away=rffmScheduleTeamName(t,m,m.away||''),appName=String(t.name||'').toUpperCase();
   const teamCell=(n,logo)=>{const own=normalizeRffmText(n)===normalizeRffmText(appName);return `<span class="rffm-schedule-team ${own?'is-own':''}">${logo?rffmLogoHtml(logo,n):''}<span>${esc(n)}</span></span>`};
   const time=String(m.time||'').match(/\d{1,2}:\d{2}/)?.[0]||'—';
-  const result=m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:'VS';
+  const pastWithoutResult=!m.score&&dt&&dt<new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate());
+  const result=m.score?`${esc(m.score[0])} - ${esc(m.score[1])}`:(pastWithoutResult?'RESULTADO PDTE. RFFM':'VS');
   return `<div class="rffm-schedule-row rffm-schedule-row--score"><span>${esc(time)}</span><span>${teamCell(home,m.homeLogo)}</span><span class="rffm-schedule-result">${result}</span><span>${teamCell(away,m.awayLogo)}</span><span>${esc(m.place||'')}</span></div>`;
 }
 function rffmScheduleWeekPageHtml(teams,friday,{title,mode}){
@@ -3287,9 +3288,9 @@ function rffmSchedulePagesHtml(teams){
   const activeFriday=pending.length?rffmWeekendStart(pending[0].dt):rffmWeekendStart(today);
   const previousFriday=rffmAddDays(activeFriday,-7),nextFriday=rffmAddDays(activeFriday,7);
   return [
-    rffmScheduleWeekPageHtml(teams,previousFriday,{title:'RESULTADOS · FIN DE SEMANA ANTERIOR',mode:'previous'}),
-    rffmScheduleWeekPageHtml(teams,activeFriday,{title:'HORARIOS · FIN DE SEMANA VIGENTE',mode:'current'}),
-    rffmScheduleWeekPageHtml(teams,nextFriday,{title:'HORARIOS · PRÓXIMO FIN DE SEMANA',mode:'next'})
+    rffmScheduleWeekPageHtml(teams,previousFriday,{title:'ÚLTIMOS RESULTADOS',mode:'previous'}),
+    rffmScheduleWeekPageHtml(teams,activeFriday,{title:'HORARIOS DE ESTA SEMANA',mode:'current'}),
+    rffmScheduleWeekPageHtml(teams,nextFriday,{title:'HORARIOS PRÓXIMA SEMANA',mode:'next'})
   ].join('');
 }
 
