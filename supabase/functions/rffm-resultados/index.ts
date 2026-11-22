@@ -252,7 +252,8 @@ async function teamData(cfg:any){
   const played=Number(cls?.played);
   const issues:string[]=[];
   if(Number.isFinite(played)&&played>0&&!completed.length)issues.push(`La clasificación indica ${played} PJ pero no se ha localizado ningún partido disputado en la ventana consultada.`);
-  const pastWithoutScore=calendarMatches.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!<day0);
+  const isRest=(m:any)=>/descansa/i.test(`${m?.home||''} ${m?.away||''} ${m?.opponent||''}`);
+  const pastWithoutScore=calendarMatches.filter(m=>!isRest(m)&&!m.score&&dateValue(m.date)&&dateValue(m.date)!<day0);
   if(pastWithoutScore.length)issues.push(`${pastWithoutScore.length} partido${pastWithoutScore.length===1?'':'s'} con fecha pasada sigue${pastWithoutScore.length===1?'':'n'} sin marcador en RFFM.`);
   if(errors.length)issues.push(`${errors.length} jornada${errors.length===1?'':'s'} no se pudieron consultar.`);
   const coversPast=loaded.some(x=>x.date&&new Date(x.date)<=day0);
