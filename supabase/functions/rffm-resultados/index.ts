@@ -240,15 +240,20 @@ async function teamData(cfg:any){
   for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}
   const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
   const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=day0).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
-  const pastRounds=jornadas.filter(x=>!x.date||x.date<=today);
-  const latestScorerRound=pastRounds.length?pastRounds.at(-1).n:(reference?.n??null);
-  const [cls,sc]=await Promise.all([classification(cfg),scorers(cfg,latestScorerRound)]);
+  const lastRealMatch=completed.at(-1)||null;
+  const scorerRound=lastRealMatch?.jornada??reference?.n??null;
+  const clsPromise=classification(cfg);
+  let sc=await scorers(cfg,scorerRound);
+  if(!sc.top?.length&&scorerRound!==null)sc=await scorers(cfg,null);
+  const cls=await clsPromise;
   const calendarMatches=unique.filter(m=>dateValue(m.date)).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
 
   const loaded=roundCoverage.filter(x=>x.status==='loaded'),errors=roundCoverage.filter(x=>x.status==='error');
   const played=Number(cls?.played);
   const issues:string[]=[];
   if(Number.isFinite(played)&&played>0&&!completed.length)issues.push(`La clasificación indica ${played} PJ pero no se ha localizado ningún partido disputado en la ventana consultada.`);
+  const pastWithoutScore=calendarMatches.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!<day0);
+  if(pastWithoutScore.length)issues.push(`${pastWithoutScore.length} partido${pastWithoutScore.length===1?'':'s'} con fecha pasada sigue${pastWithoutScore.length===1?'':'n'} sin marcador en RFFM.`);
   if(errors.length)issues.push(`${errors.length} jornada${errors.length===1?'':'s'} no se pudieron consultar.`);
   const coversPast=loaded.some(x=>x.date&&new Date(x.date)<=day0);
   const coversFuture=loaded.some(x=>x.date&&new Date(x.date)>=day0);
