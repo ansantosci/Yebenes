@@ -1,4 +1,4 @@
-# V96.6.19 - Phase 2 RBAC: player/medical management guards
+# V96.6.20 - Phase 2 RBAC: player/medical management guards
 
 - Frontend-only sobre backend 102; parte de la baseline V96.6.8 validada en DEVELOP.
 - Carga de contexto de entrenadores deja de autorizar por la union de roles y se habilita por capacidades efectivas del perfil activo.
