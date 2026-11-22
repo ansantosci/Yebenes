@@ -24,7 +24,15 @@ begin
     select pg_get_functiondef(fn) into src;
     if position('SECURITY DEFINER' in src)=0 then raise exception '094: RPC is not SECURITY DEFINER'; end if;
     if not exists(select 1 from pg_proc p where p.oid=fn and coalesce(array_to_string(p.proconfig,','),'') like '%search_path=%') then raise exception '094: RPC search_path not fixed'; end if;
-    if position('private.has_any_role' in src)=0 then raise exception '094: RPC lacks Club/Admin authorization'; end if;
+    if position('private.has_any_role' in src)>0 then raise exception '094: RPC still uses legacy role authorization'; end if;
+    if fn in (
+      'public.equipacion_guardar_pedido_borrador(uuid,uuid,jsonb,uuid,text,text)'::regprocedure::oid,
+      'public.equipacion_cursar_pedido(uuid)'::regprocedure::oid
+    ) then
+      if position('equipment.procurement.manage' in src)=0 then raise exception '094: procurement RPC lacks equipment.procurement.manage'; end if;
+    else
+      if position('equipment.stock.manage' in src)=0 then raise exception '094: stock RPC lacks equipment.stock.manage'; end if;
+    end if;
   end loop;
   if has_function_privilege('anon','private.equipacion_crear_lote_recepcion()','EXECUTE')
      or has_function_privilege('authenticated','private.equipacion_crear_lote_recepcion()','EXECUTE')

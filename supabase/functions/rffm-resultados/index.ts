@@ -198,20 +198,81 @@ async function scorers(cfg:any,jornada:number|null=null){
 }
 async function teamData(cfg:any){
   const probe=await getPageProps(cfgUrl(cfg,'/competicion/resultados-y-jornadas')),results=probe?.results||{},meta=competitionMeta(probe);
-  const jornadas:any[]=[];
-  for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){const n=Number(j.codjornada);if(Number.isFinite(n))jornadas.push({n,date:dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'))})}
-  const today=new Date(),past=jornadas.filter(x=>!x.date||x.date<=today).slice(-3),future=jornadas.filter(x=>x.date&&x.date>today).slice(0,3),targets=[...new Set([...past,...future].map(x=>x.n))];
-  let matches:any[]=[];
-  for(const j of targets){try{matches.push(...(await parseRound(cfg,j)).matches)}catch{}}
-  if(!matches.length){for(const j of jornadas.slice(0,40)){try{matches.push(...(await parseRound(cfg,j.n)).matches)}catch{}if(matches.length>=2)break}}
-  const unique:any[]=[],sig=new Set<string>();for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}
-  const completed=unique.filter(m=>m.score&&dateValue(m.date)&&dateValue(m.date)!<=today).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
-  const upcoming=unique.filter(m=>!m.score&&dateValue(m.date)&&dateValue(m.date)!>=new Date(today.toISOString().slice(0,10))).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
-  const latestScorerRound=past.length?past[past.length-1].n:(jornadas.length?jornadas[jornadas.length-1].n:null);
-  const [cls,sc]=await Promise.all([classification(cfg),scorers(cfg,latestScorerRound)]);
-  return {lastMatch:completed.at(-1)||null,nextMatch:upcoming[0]||null,classification:cls,teamName:(completed.at(-1)||upcoming[0])?.teamName||cls?.teamName||null,competitionName:meta.competitionName||null,scorers:sc.top};
-}
+  const byRound=new Map<number,any>();
+  for(const block of results?.listado_jornadas||[])for(const j of block?.jornadas||[]){
+    const n=Number(j.codjornada);if(!Number.isFinite(n))continue;
+    const dt=dateValue(String(j.fecha_jornada||'').replace(/-/g,'/'));
+    const prev=byRound.get(n);
+    if(!prev||(dt&&!prev.date))byRound.set(n,{n,date:dt});
+  }
+  const jornadas=[...byRound.values()].sort((a,b)=>a.n-b.n);
+  const today=new Date(),day0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+  const windowStart=new Date(day0);windowStart.setDate(windowStart.getDate()-16);
+  const windowEnd=new Date(day0);windowEnd.setDate(windowEnd.getDate()+22);
 
+  // Reference round: closest dated RFFM round to today. Round number guarantees
+  // continuity; the date is only used to anchor that contiguous window in time.
+  const dated=jornadas.filter(x=>x.date).sort((a,b)=>Math.abs(a.date.getTime()-day0.getTime())-Math.abs(b.date.getTime()-day0.getTime())||a.n-b.n);
+  const reference=dated[0]||jornadas[0]||null;
+  const minRound=jornadas[0]?.n??null,maxRound=jornadas.at(-1)?.n??null;
+  const wanted=new Set<number>();
+  if(reference&&minRound!==null&&maxRound!==null){
+    for(let n=Math.max(minRound,reference.n-4);n<=Math.min(maxRound,reference.n+4);n++)wanted.add(n);
+    // Include any listed rounds whose official date is inside the three-week PDF window.
+    for(const j of jornadas)if(j.date&&j.date>=windowStart&&j.date<=windowEnd)wanted.add(j.n);
+  }
+
+  let matches:any[]=[],roundCoverage:any[]=[];
+  const collectRounds=async(rounds:number[])=>{
+    const settled=await Promise.allSettled(rounds.map(j=>parseRound(cfg,j)));
+    settled.forEach((r,i)=>{
+      const n=rounds[i],metaRound=byRound.get(n);
+      if(r.status==='fulfilled'){
+        const own=r.value.matches||[];matches.push(...own);
+        roundCoverage.push({round:n,date:metaRound?.date?metaRound.date.toISOString():null,status:'loaded',teamEntries:own.length});
+      }else roundCoverage.push({round:n,date:metaRound?.date?metaRound.date.toISOString():null,status:'error',teamEntries:0});
+    });
+  };
+  const initial=[...wanted].sort((a,b)=>a-b);
+  for(let i=0;i<initial.length;i+=4)await collectRounds(initial.slice(i,i+4));
+
+  const unique:any[]=[],sig=new Set<string>();
+  for(const m of matches){const k=`${m.jornada}|${m.matchId}|${m.home}|${m.away}`;if(!sig.has(k)){sig.add(k);unique.push(m)}}
+  const isRest=(m:any)=>/descansa/i.test(`${m?.home||''} ${m?.away||''} ${m?.opponent||''}`);
+  const pastMatches=unique.filter(m=>!isRest(m)&&dateValue(m.date)&&dateValue(m.date)!<day0).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+  const completed=pastMatches.filter(m=>m.score);
+  const upcoming=unique.filter(m=>!isRest(m)&&!m.score&&dateValue(m.date)&&dateValue(m.date)!>=day0).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+  const lastRealMatch=pastMatches.at(-1)||null;
+  const scorerRound=lastRealMatch?.jornada??reference?.n??null;
+  const clsPromise=classification(cfg);
+  let sc=await scorers(cfg,scorerRound);
+  if(!sc.top?.length&&scorerRound!==null)sc=await scorers(cfg,null);
+  const cls=await clsPromise;
+  const calendarMatches=unique.filter(m=>dateValue(m.date)).sort((a,b)=>(dateValue(a.date)?.getTime()||0)-(dateValue(b.date)?.getTime()||0));
+
+  const loaded=roundCoverage.filter(x=>x.status==='loaded'),errors=roundCoverage.filter(x=>x.status==='error');
+  const played=Number(cls?.played);
+  const issues:string[]=[];
+  if(Number.isFinite(played)&&played>0&&!completed.length)issues.push(`La clasificación indica ${played} PJ pero no se ha localizado ningún partido disputado en la ventana consultada.`);
+  const pastWithoutScore=calendarMatches.filter(m=>!isRest(m)&&!m.score&&dateValue(m.date)&&dateValue(m.date)!<day0);
+  if(pastWithoutScore.length)issues.push(`${pastWithoutScore.length} partido${pastWithoutScore.length===1?'':'s'} con fecha pasada sigue${pastWithoutScore.length===1?'':'n'} sin marcador en RFFM.`);
+  if(errors.length)issues.push(`${errors.length} jornada${errors.length===1?'':'s'} no se pudieron consultar.`);
+  const coversPast=loaded.some(x=>x.date&&new Date(x.date)<=day0);
+  const coversFuture=loaded.some(x=>x.date&&new Date(x.date)>=day0);
+  let quality='ok',qualityLabel='Calendario OK';
+  if(issues.length){quality='warning';qualityLabel='Calendario incompleto'}
+  else if(!coversPast&&!completed.length){quality='info';qualityLabel='Sin histórico publicado en la ventana'}
+  else if(!coversFuture&&!upcoming.length){quality='info';qualityLabel='Sin próximas jornadas publicadas en la ventana'}
+
+  const calendarCoverage={
+    quality,qualityLabel,issues,
+    referenceRound:reference?.n??null,minRound,maxRound,
+    queriedRounds:[...new Set(roundCoverage.map(x=>x.round))].sort((a,b)=>a-b),
+    roundCoverage:roundCoverage.sort((a,b)=>a.round-b.round),
+    windowStart:windowStart.toISOString(),windowEnd:windowEnd.toISOString()
+  };
+  return {lastMatch:lastRealMatch,nextMatch:upcoming[0]||null,calendarMatches,calendarCoverage,classification:cls,teamName:(lastRealMatch||upcoming[0])?.teamName||cls?.teamName||null,competitionName:meta.competitionName||null,scorers:sc.top};
+}
 function fail(status:number,code:string,phase:string,message:string,details:any=null){return Response.json({ok:false,error:message,message,code,phase,details},{status})}
 export default {fetch:withSupabase({auth:'user'},async(req,ctx)=>{let phase='request',cfg:any=null;try{if(req.method!=='POST')return fail(405,'METHOD_NOT_ALLOWED',phase,'Método no permitido');const body=await req.json().catch(()=>({})),teamId=String(body?.team_id||''),action=String(body?.action||'team');if(!teamId)return fail(400,'TEAM_ID_REQUIRED',phase,'team_id obligatorio');phase='authorization';const {data:canRead,error:authError}=await ctx.supabase.rpc('puede_consultar_rffm_equipo',{p_equipo_id:teamId});if(authError)throw authError;if(canRead!==true)return fail(403,'RFFM_TEAM_FORBIDDEN',phase,'No tienes permiso para consultar RFFM de este equipo');if(action==='validate'){const {data:canManage,error:manageError}=await ctx.supabase.rpc('puede_gestionar_rffm');if(manageError)throw manageError;if(canManage!==true)return fail(403,'RFFM_CONFIG_FORBIDDEN',phase,'Solo Club o Administrador pueden validar la configuración RFFM');}phase='config';const {data:cfgRow,error}=await ctx.supabaseAdmin.from('equipo_integraciones_federacion').select('*').eq('equipo_id',teamId).eq('proveedor','RFFM').maybeSingle();if(error)throw error;cfg=cfgRow;if(!cfg||!cfg.activo)return fail(404,'RFFM_CONFIG_NOT_ACTIVE',phase,'El equipo no tiene integración RFFM activa');
 phase='team-context';
