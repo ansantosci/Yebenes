@@ -1407,3 +1407,54 @@ button.ghost.small:hover{background:#f0f7fb}
 
 /* V96.6.19 — PDF agenda labels */
 @media print{html.rffm-pdf-mode .rffm-schedule-row--score .rffm-schedule-result{font-size:6.5pt;line-height:1.05;white-space:normal}}
+
+
+/* V96.6.22 — cross-browser RFFM PDF pagination.
+   Do not force 297mm team-page height: iOS/WebKit reserves print header/footer space
+   and would overflow that physical height into an extra blank page. */
+@media print{
+  @page{size:A4 portrait;margin:0}
+  html.rffm-pdf-mode,
+  html.rffm-pdf-mode body{
+    margin:0!important;
+    padding:0!important;
+    width:210mm!important;
+    background:#fff!important;
+  }
+  html.rffm-pdf-mode #rffmPrintReport{
+    width:210mm!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  html.rffm-pdf-mode .rffm-pdf-team-page{
+    box-sizing:border-box!important;
+    width:210mm!important;
+    min-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    break-before:auto!important;
+    break-after:page!important;
+    break-inside:avoid-page!important;
+    page-break-after:always!important;
+    page-break-inside:avoid!important;
+  }
+  html.rffm-pdf-mode .rffm-pdf-team-page .rffm-pdf-page-inner,
+  html.rffm-pdf-mode .rffm-pdf-team-page .rffm-pdf-team-card,
+  html.rffm-pdf-mode .rffm-pdf-team-page .rffm-result-card{
+    break-inside:avoid-page!important;
+    page-break-inside:avoid!important;
+  }
+  html.rffm-pdf-mode .rffm-pdf-team-page .rffm-pdf-page-inner{
+    box-sizing:border-box!important;
+    width:210mm!important;
+    min-height:0!important;
+    padding:4mm 7mm 7mm!important;
+  }
+  html.rffm-pdf-mode .rffm-pdf-schedule-page{
+    width:210mm!important;
+    margin:0!important;
+    break-inside:avoid-page!important;
+    page-break-inside:avoid!important;
+  }
+}
