@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.26';
+const APP_VERSION='96.6.27';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -62,9 +62,13 @@ function renderListPagination(key,total,totalAll,rerender){
 
 const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();
 
-// V96.6.26: feedback común. Reutiliza la anatomía/tonos de StatusPanel también fuera de modales.
+// V96.6.27: feedback común. FeedbackUI posee la implementación base; ModalUI solo delega.
 const FeedbackUI={
-  setStatus(el,options={}){FeedbackUI.setStatus(el,options)},
+  setStatus(el,{tone='neutral',title='',message=''}={}){
+    if(!el)return;
+    el.className=`app-status-panel app-status-panel--${tone}`;
+    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
+  },
   show({tone='neutral',title='',message='',duration=3200}={}){
     let root=document.querySelector('#appFeedbackRegion');
     if(!root){root=document.createElement('div');root.id='appFeedbackRegion';root.className='app-feedback-region';root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','true');document.body.appendChild(root)}
@@ -131,11 +135,8 @@ const ModalUI={
     root._modalSelectTab=select;
     return select;
   },
-  setStatus(el,{tone='neutral',title='',message=''}={}){
-    if(!el)return;
-    el.className=`app-status-panel app-status-panel--${tone}`;
-    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
-  },
+  setStatus(el,options={}){return FeedbackUI.setStatus(el,options)},
+
   setActionEnabled(button,enabled,reason=''){
     if(!button)return;button.disabled=!enabled;button.setAttribute('aria-disabled',String(!enabled));button.title=!enabled&&reason?reason:'';
   },

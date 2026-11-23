@@ -123,12 +123,19 @@ if app_path.is_file():
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
 
-# V96.6.26 — feedback común: no volver a alert() de éxito en Guardar entrenador ni duplicar StatusPanel.
+# V96.6.27 — FeedbackUI es la implementación base; ModalUI delega sin ciclos.
 _app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
 if "const FeedbackUI=" not in _app_js or "FeedbackUI.success('Entrenador guardado correctamente')" not in _app_js:
-    errors.append('V96.6.26: Guardar entrenador debe usar FeedbackUI común para confirmar éxito.')
-if "setStatus(el,options={}){FeedbackUI.setStatus(el,options)}" not in _app_js:
-    errors.append('V96.6.26: ModalUI.setStatus debe delegar en FeedbackUI para mantener un único componente de feedback.')
+    errors.append('V96.6.27: Guardar entrenador debe usar FeedbackUI común para confirmar éxito.')
+if "setStatus(el,options={}){return FeedbackUI.setStatus(el,options)}" not in _app_js:
+    errors.append('V96.6.27: ModalUI.setStatus debe delegar unidireccionalmente en FeedbackUI.')
+feedback_start = _app_js.find('const FeedbackUI=')
+modal_start = _app_js.find('const ModalUI=')
+feedback_block = _app_js[feedback_start:modal_start] if feedback_start >= 0 and modal_start > feedback_start else ''
+if "FeedbackUI.setStatus(el,options)" in feedback_block or "this.setStatus(el,options)" in feedback_block:
+    errors.append('V96.6.27: FeedbackUI.setStatus no puede autorreferenciarse; provocaría recursión infinita.')
+if "el.className=`app-status-panel app-status-panel--${tone}`" not in feedback_block:
+    errors.append('V96.6.27: FeedbackUI debe poseer la implementación canónica de StatusPanel.')
 
 if errors:
  for e in errors: print('ERROR',e,file=sys.stderr)

@@ -1,3 +1,9 @@
+# V96.6.27 - Corrige autorrecursión de FeedbackUI y refuerza guardrail
+
+- FeedbackUI posee la implementación base de StatusPanel; ModalUI.setStatus delega unidireccionalmente.
+- El guardrail falla ante autorrecursión de FeedbackUI o delegación invertida.
+- Sin cambios backend.
+
 # V96.6.26 - FeedbackUI global reutilizable y confirmación de guardado de entrenador
 
 - Frontend-only sobre backend 102; parte de la baseline V96.6.8 validada en DEVELOP.
