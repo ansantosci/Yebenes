@@ -75,6 +75,22 @@ cfg=ROOT/'supabase/config'
 if cfg.is_dir():
  for p in cfg.iterdir():
   if p.is_file() and p.suffix.lower() not in {'.md','.json','.example','.txt'}: err(f'unexpected config artifact: {p.relative_to(ROOT)}')
+# CI/CD runtime invariants: prevent reintroduction of Actions known to target Node 20
+# and prevent floating runner images. These checks are intentionally narrow and
+# deterministic; authorization/RBAC semantics remain enforced by DB contracts 101+.
+wdir=ROOT/'.github'/'workflows'
+if wdir.is_dir():
+ for p in sorted(wdir.glob('*.yml'))+sorted(wdir.glob('*.yaml')):
+  txt=p.read_text(errors='ignore')
+  rel=p.relative_to(ROOT)
+  if re.search(r'actions/checkout@v(?:[1-4])\b',txt):
+   err(f'CI runtime regression: checkout before v5 may target Node 20: {rel}')
+  if re.search(r'actions/upload-artifact@v(?:[1-5])\b',txt):
+   err(f'CI runtime regression: upload-artifact before v6 targets Node 20: {rel}')
+  if re.search(r'actions/download-artifact@v(?:[1-6])\b',txt):
+   err(f'CI runtime regression: download-artifact before v7 may target Node 20: {rel}')
+  if re.search(r'\bruns-on\s*:\s*ubuntu-latest\b',txt):
+   err(f'CI runner regression: ubuntu-latest is forbidden; pin the approved runner: {rel}')
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
 if errors:
