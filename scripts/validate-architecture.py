@@ -122,6 +122,14 @@ if app_path.is_file():
 
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
+
+# V96.6.26 — feedback común: no volver a alert() de éxito en Guardar entrenador ni duplicar StatusPanel.
+_app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
+if "const FeedbackUI=" not in _app_js or "FeedbackUI.success('Entrenador guardado correctamente')" not in _app_js:
+    errors.append('V96.6.26: Guardar entrenador debe usar FeedbackUI común para confirmar éxito.')
+if "setStatus(el,options={}){FeedbackUI.setStatus(el,options)}" not in _app_js:
+    errors.append('V96.6.26: ModalUI.setStatus debe delegar en FeedbackUI para mantener un único componente de feedback.')
+
 if errors:
  for e in errors: print('ERROR',e,file=sys.stderr)
  print(f'ARCHITECTURE FAIL: {len(errors)} issue(s)',file=sys.stderr); sys.exit(1)

@@ -1458,3 +1458,8 @@ button.ghost.small:hover{background:#f0f7fb}
     page-break-inside:avoid!important;
   }
 }
+
+/* V96.6.26 — FeedbackUI global: misma anatomía visual que StatusPanel. */
+.app-feedback-region{position:fixed;top:18px;right:18px;z-index:12000;width:min(92vw,420px);pointer-events:none}
+.app-feedback-region .app-feedback-item{box-shadow:0 14px 38px rgba(16,24,40,.20);background:#fff;pointer-events:auto}
+@media(max-width:640px){.app-feedback-region{top:12px;left:12px;right:12px;width:auto}}
