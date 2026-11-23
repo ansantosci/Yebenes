@@ -105,6 +105,19 @@ if app_path.is_file():
  if "openCoachModal.style.display=can('people.manage')" in app:
   err('coach RBAC regression: + Add coach must not depend on people.manage')
 
+
+# Runtime business-data source invariants (V96.6.24): Supabase is canonical.
+# Browser storage may keep UI/session preferences, never a fallback business database.
+app_path=ROOT/'app.js'
+if app_path.is_file():
+ app=app_path.read_text(errors='ignore')
+ for forbidden in ['seedUsers','seedPlayers','seedTeams','seedInscriptions','seedReps','seedPlayerTeams','seedMedicals','seedCoaches','function initData(','function migrateLegacy(','function migrateV11(','function migrateV12(','function reloadCore(']:
+  if forbidden in app: err(f'legacy runtime business-data regression: forbidden {forbidden}')
+ if "initHiddenSupportMode();initData()" in app: err('legacy runtime business-data regression: bootstrap must not initialize local business data')
+ if "else if(snap.view==='coachesView')await loadAndRenderCoachesView();" not in app: err('coach bootstrap regression: navigation restore must use canonical coach loader')
+ if "else if(view==='coachesView'){await loadAndRenderCoachesView();}" not in app: err('coach navigation regression: menu must use canonical coach loader')
+ if "if(currentUser?.source==='supabase'&&!dbCoachesLoaded)" not in app: err('coach loading regression: Supabase view must guard against rendering before remote load')
+
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
 if errors:
