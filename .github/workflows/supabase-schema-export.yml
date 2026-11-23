@@ -40,7 +40,7 @@ jobs:
           wc -l supabase/export/demo-schema-complete.sql
 
       - name: Upload schema as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: supabase-demo-schema-complete
           path: supabase/export/demo-schema-complete.sql
