@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.22';
+const APP_VERSION='96.6.28';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -62,6 +62,15 @@ function renderListPagination(key,total,totalAll,rerender){
 
 const YEBENES_ENVIRONMENT=String(window.YEBENES_ENVIRONMENT||'demo').toLowerCase();
 
+// V96.6.27: feedback común. FeedbackUI posee la implementación base; ModalUI solo delega.
+const FeedbackUI={
+  setStatus(el,{tone='neutral',title='',message=''}={}){
+    if(!el)return;
+    el.className=`app-status-panel app-status-panel--${tone}`;
+    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
+  }
+};
+
 // V96.4.3: familia de componentes de ventana. Toda nueva ventana compone sobre ModalUI.
 const ModalUI={
   enhance(dialog,{size='default'}={}){
@@ -115,11 +124,8 @@ const ModalUI={
     root._modalSelectTab=select;
     return select;
   },
-  setStatus(el,{tone='neutral',title='',message=''}={}){
-    if(!el)return;
-    el.className=`app-status-panel app-status-panel--${tone}`;
-    el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
-  },
+  setStatus(el,options={}){return FeedbackUI.setStatus(el,options)},
+
   setActionEnabled(button,enabled,reason=''){
     if(!button)return;button.disabled=!enabled;button.setAttribute('aria-disabled',String(!enabled));button.title=!enabled&&reason?reason:'';
   },
@@ -547,69 +553,8 @@ const workflowLabel=k=>WORKFLOW.find(x=>x.key===k)?.label||'Pendiente de revisi�
 const coachRoleLabel=v=>v==='first'?'Entrenador principal':v==='second'?'Segundo entrenador':v==='goalkeeper'?'Entrenador de porteros':v==='fitness'?'Preparador físico':String(v||'—');
 const uid=p=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
 
-const seedSeasons=[{id:'s-2026',name:'2026/2027',startDate:'2026-07-01',endDate:'2027-06-30',active:true},{id:'s-2027',name:'2027/2028',startDate:'2027-07-01',endDate:'2028-06-30',active:false}];
-const seedCategories=[
-  {id:'cat-chu',name:'Chupetín',active:true},{id:'cat-pb',name:'Prebenjamín',active:true},{id:'cat-ben',name:'Benjamín',active:true},
-  {id:'cat-ale',name:'Alevín',active:true},{id:'cat-inf',name:'Infantil',active:true},{id:'cat-cad',name:'Cadete',active:true},
-  {id:'cat-juv',name:'Juvenil',active:true},{id:'cat-sen',name:'Senior',active:true}
-];
-const seedUsers=[
-  {id:'u-admin',name:'Administrador del Club',email:'admin@yebenes.demo',phone:'',password:'demo123',roles:['admin'],active:true},
-  {id:'u-club',name:'Usuario del Club',email:'club@yebenes.demo',phone:'',password:'demo123',roles:['club'],active:true},
-  {id:'u-coach',name:'Carlos Martín López',email:'entrenador@yebenes.demo',phone:'',password:'demo123',roles:['coach'],active:true},
-  {id:'u-family',name:'Familia Santos',email:'familia@yebenes.demo',phone:'600000000',dni:'12345678Z',password:'demo123',roles:['family'],active:true},
-  {id:'u-player',name:'Jorge Adulto Demo',email:'jugador@yebenes.demo',phone:'',password:'demo123',roles:['player'],active:true,playerId:'p-jorge'},
-  {id:'u-multi',name:'Persona Multirol Demo',email:'multi@yebenes.demo',phone:'600111222',password:'demo123',roles:['family','player','coach','club'],active:true,playerId:'p-multi'}
-]
-const seedPlayers=[
-  {id:'p-daniel',name:'Daniel Santos García',birth:'2019-05-12',dni:'',data:true,active:true},
-  {id:'p-alvaro',name:'Álvaro Santos García',birth:'2017-11-03',dni:'',data:true,active:true},
-  {id:'p-hugo',name:'Hugo Pérez Martín',birth:'2015-02-21',dni:'',data:true,active:true},
-  {id:'p-lucia',name:'Lucía Moreno Díaz',birth:'2013-09-14',dni:'',data:true,active:true},
-  {id:'p-jorge',name:'Jorge Adulto Demo',birth:'2008-03-01',dni:'',data:true,active:true},
-  {id:'p-multi',name:'Persona Multirol Demo',birth:'1990-04-10',dni:'',data:true,active:true}
-];
-const seedTeams=[
-  {id:'t-pb-a',seasonId:'s-2026',name:'Prebenjamín A',categoryId:'cat-pb',active:true},
-  {id:'t-pb-b',seasonId:'s-2026',name:'Prebenjamín B',categoryId:'cat-pb',active:true},
-  {id:'t-ben-a',seasonId:'s-2026',name:'Benjamín A',categoryId:'cat-ben',active:true},
-  {id:'t-ale-a',seasonId:'s-2026',name:'Alevín A',categoryId:'cat-ale',active:true},
-  {id:'t-inf-a',seasonId:'s-2026',name:'Infantil A',categoryId:'cat-inf',active:true},
-  {id:'t-sen-a',seasonId:'s-2026',name:'Senior A',categoryId:'cat-sen',active:true}
-];
-const seedInscriptions=[
-  {id:'i-daniel-26',playerId:'p-daniel',seasonId:'s-2026',categoryId:'cat-pb',docs:'Completa',workflow:'ready',federation:'Listo para federar',status:'complete',familyActionRequired:false,returnMessage:'',createdAt:'2026-06-10'},
-  {id:'i-alvaro-26',playerId:'p-alvaro',seasonId:'s-2026',categoryId:'cat-ben',docs:'Falta fotografía',workflow:'review',federation:'Pendiente de revisión',status:'pending',familyActionRequired:false,returnMessage:'',createdAt:'2026-06-11'},
-  {id:'i-hugo-26',playerId:'p-hugo',seasonId:'s-2026',categoryId:'cat-ale',docs:'Falta DNI/NIE',workflow:'review',federation:'Pendiente',status:'pending',familyActionRequired:false,returnMessage:'',createdAt:'2026-06-12'},
-  {id:'i-lucia-26',playerId:'p-lucia',seasonId:'s-2026',categoryId:'cat-inf',docs:'Completa',workflow:'federated',federation:'Ficha tramitada',status:'complete',familyActionRequired:false,returnMessage:'',createdAt:'2026-06-01'},
-  {id:'i-jorge-26',playerId:'p-jorge',seasonId:'s-2026',categoryId:'cat-sen',docs:'Completa',workflow:'initial_ok',federation:'Inscripción validada',status:'pending',familyActionRequired:false,returnMessage:'',createdAt:'2026-07-15'},
-  {id:'i-multi-26',playerId:'p-multi',seasonId:'s-2026',categoryId:'cat-sen',docs:'Completa',workflow:'federated',federation:'Ficha tramitada',status:'complete',familyActionRequired:false,returnMessage:'',createdAt:'2026-07-01'}
-];
-const seedReps=[
-  {id:'r-daniel',playerId:'p-daniel',userId:'u-family',type:'guardian',startDate:'2026-06-10',endDate:'',reason:'Inscripción inicial',legalException:false},
-  {id:'r-alvaro',playerId:'p-alvaro',userId:'u-family',type:'guardian',startDate:'2026-06-11',endDate:'',reason:'Inscripción inicial',legalException:false},
-  {id:'r-jorge',playerId:'p-jorge',userId:'u-player',type:'self',startDate:'2026-03-01',endDate:'',reason:'Mayoría de edad',legalException:false},
-  {id:'r-multi',playerId:'p-multi',userId:'u-multi',type:'self',startDate:'2026-07-01',endDate:'',reason:'Autorregistro adulto',legalException:false}
-];
-const seedPlayerTeams=[
-  {id:'pt-daniel',playerId:'p-daniel',seasonId:'s-2026',teamId:'t-pb-a',startDate:'2026-09-01',endDate:'2027-06-30',reason:'Asignación inicial'},
-  {id:'pt-lucia',playerId:'p-lucia',seasonId:'s-2026',teamId:'t-inf-a',startDate:'2026-09-01',endDate:'2027-06-30',reason:'Asignación inicial'},
-  {id:'pt-jorge',playerId:'p-jorge',seasonId:'s-2026',teamId:'t-sen-a',startDate:'2026-09-01',endDate:'2027-06-30',reason:'Asignación inicial'},
-  {id:'pt-multi',playerId:'p-multi',seasonId:'s-2026',teamId:'t-sen-a',startDate:'2026-09-01',endDate:'2027-06-30',reason:'Asignación inicial'}
-];
-const seedMedicals=[
-  {id:'m-daniel',playerId:'p-daniel',date:'2026-06-15',expiry:'2027-06-15',validatedAt:'2026-06-16'},
-  {id:'m-alvaro',playerId:'p-alvaro',date:'2025-12-10',expiry:'2026-11-20',validatedAt:'2025-12-11'},
-  {id:'m-lucia',playerId:'p-lucia',date:'2025-09-01',expiry:'2026-09-01',validatedAt:'2025-09-02'}
-];
-const seedCoaches=[
-  {id:'c1',userId:'u-coach',name:'Carlos Martín López',assignments:[{teamId:'t-pb-a',coachRole:'first',startDate:'2026-09-01',endDate:'2027-06-30'}],hasLicense:true,licenseType:'UEFA C',delegateCourse:true,active:true},
-  {id:'c2',userId:null,name:'Javier Ruiz Gómez',assignments:[{teamId:'t-pb-b',coachRole:'second',startDate:'2026-09-01',endDate:'2027-06-30'}],hasLicense:false,licenseType:'',delegateCourse:true,active:true},
-  {id:'c3',userId:null,name:'Marta Sánchez Gil',assignments:[{teamId:'t-ale-a',coachRole:'first',startDate:'2026-09-01',endDate:'2027-06-30'}],hasLicense:true,licenseType:'UEFA B',delegateCourse:false,active:true},
-  {id:'c4',userId:null,name:'Luis Moreno Pérez',assignments:[{teamId:'t-inf-a',coachRole:'second',startDate:'2026-09-01',endDate:'2027-06-30'}],hasLicense:true,licenseType:'UEFA C',delegateCourse:true,active:true},
-  {id:'c5',userId:'u-multi',name:'Persona Multirol Demo',assignments:[{teamId:'t-pb-b',coachRole:'first',startDate:'2026-09-01',endDate:'2027-06-30'}],hasLicense:true,licenseType:'UEFA C',delegateCourse:true,active:true}
-];
-
+// V96.6.24: Supabase is the exclusive runtime source of business data.
+// No demo seeds, legacy migrations or localStorage-backed business database are allowed.
 let users=[],players=[],persons=[],seasons=[],categories=[],teams=[],inscriptions=[],representations=[],playerTeams=[],medicals=[],coaches=[],statusHistory=[],audit=[],currentUser=null,currentRole=null,currentSeasonId='s-2026';
 let dbCoachesLoaded=false;
 let clubQuickFilter='all',medicalQuickFilter='all';
@@ -627,6 +572,7 @@ const PENDING_SIGNUP_KEY='yebenes-pending-signup-v1';
 const AUTH_REDIRECT_URL=YEBENES_CONFIG.authRedirectUrl;
 let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,selectedMedicalPersonId=null,selectedMedicalCoachId=null,selectedMedicalContext='player',editingCoachId=null,selectedCoachPersonId=null,editingTeamId=null,selectedPersonAdminId=null,pendingCoachAssignments=[],pendingUserAssignments=[],pendingMinorConsentAction=null;
 
+// Pure domain helpers. These do not load or persist business data; Supabase remains the runtime source of truth.
 function categoryByName(name){return categories.find(c=>c.name===name)}
 function categoryName(id){return categories.find(c=>c.id===id)?.name||'Sin categoría'}
 function teamName(id){return teams.find(t=>t.id===id)?.name||'Sin equipo'}
@@ -651,57 +597,18 @@ function recordAudit(action,playerId='',detail='',actorId=currentUser?.id||'syst
 function addStatusHistory(inscriptionId,playerId,from,to,note=''){statusHistory.unshift({id:uid('h'),date:new Date().toISOString(),actorId:currentUser?.id||'system',inscriptionId,playerId,from,to,note});saveStatusHistory()}
 function actorName(id){return users.find(u=>u.id===id)?.name||(id==='system'?'Sistema':'Usuario')}
 
-function saveAll(){saveUsers();savePlayers();writeJSON(K.persons,persons);saveSeasons();saveCategories();saveTeams();saveInscriptions();saveReps();savePlayerTeams();saveMedicals();saveCoaches();saveStatusHistory();saveAudit()}
-function saveUsers(){writeJSON(K.users,users)} function savePlayers(){writeJSON(K.players,players)} function saveSeasons(){writeJSON(K.seasons,seasons)}
-function saveCategories(){writeJSON(K.categories,categories)} function saveTeams(){writeJSON(K.teams,teams)} function saveInscriptions(){writeJSON(K.inscriptions,inscriptions)}
-function saveReps(){writeJSON(K.reps,representations)} function savePlayerTeams(){writeJSON(K.playerTeams,playerTeams)} function saveMedicals(){writeJSON(K.medicals,medicals)}
-function saveCoaches(){writeJSON(K.coaches,coaches)} function saveStatusHistory(){writeJSON(K.statusHistory,statusHistory)} function saveAudit(){writeJSON(K.audit,audit)}
-
-function migrateLegacy(){
-  const lu=readJSON(LEGACY.users,null),lp=readJSON(LEGACY.players,null),lt=readJSON(LEGACY.teams,null),lc=readJSON(LEGACY.coaches,null);
-  users=Array.isArray(lu)&&lu.length?lu.map(normalizeUser):seedUsers.map(x=>normalizeUser({...x}));
-  if(!users.some(u=>u.id==='u-player'))users.push(normalizeUser({...seedUsers.find(u=>u.id==='u-player')}));
-  if(!users.some(u=>u.id==='u-multi'))users.push(normalizeUser({...seedUsers.find(u=>u.id==='u-multi')}));
-  seasons=seedSeasons.map(x=>({...x}));categories=seedCategories.map(x=>({...x}));
-  teams=Array.isArray(lt)&&lt.length?lt.map(t=>({id:t.id,name:t.name,seasonId:'s-2026',categoryId:categoryByLegacyName(t.category),active:t.active!==false})):seedTeams.map(x=>({...x}));
-  players=[];inscriptions=[];representations=[];playerTeams=[];medicals=[];
-  if(Array.isArray(lp)&&lp.length){
-    lp.forEach((p,idx)=>{
-      const pid=p.id||uid('p');players.push({id:pid,name:p.name,birth:p.birth||'',dni:p.dni||'',data:p.data!==false});
-      const cat=categoryByLegacyName(p.category);const iid=`i-mig-${idx}-${pid}`;inscriptions.push({id:iid,playerId:pid,seasonId:'s-2026',categoryId:cat,docs:p.docs||'Pendiente de documentos',workflow:p.workflow==='data_ok'||p.workflow==='docs_ok'?'initial_ok':(p.workflow||'review'),federation:p.federation||'Pendiente',status:p.status||'pending',familyActionRequired:!!p.familyActionRequired,returnMessage:p.returnMessage||'',createdAt:isoToday()});
-      if(p.ownerUserId)representations.push({id:uid('r'),playerId:pid,userId:p.ownerUserId,type:'guardian',startDate:'2026-06-01',endDate:'',reason:'Migración V10',legalException:false});
-      if(p.teamId)playerTeams.push({id:uid('pt'),playerId:pid,seasonId:'s-2026',teamId:p.teamId,startDate:'2026-09-01',endDate:'2027-06-30',reason:'Migración V10'});
-      if(p.medicalDate||p.medicalExpiry)medicals.push({id:uid('m'),playerId:pid,date:p.medicalDate||'',expiry:p.medicalExpiry||'',validatedAt:''});
-    });
-  }else{players=seedPlayers.map(x=>({...x}));inscriptions=seedInscriptions.map(x=>({...x}));representations=seedReps.map(x=>({...x}));playerTeams=seedPlayerTeams.map(x=>({...x}));medicals=seedMedicals.map(x=>({...x}))}
-  if(!players.some(p=>p.id==='p-jorge')){players.push({...seedPlayers.find(p=>p.id==='p-jorge')});inscriptions.push({...seedInscriptions.find(i=>i.playerId==='p-jorge')});representations.push({...seedReps.find(r=>r.playerId==='p-jorge')});playerTeams.push({...seedPlayerTeams.find(a=>a.playerId==='p-jorge')})}
-  if(!players.some(p=>p.id==='p-multi')){players.push({...seedPlayers.find(p=>p.id==='p-multi')});inscriptions.push({...seedInscriptions.find(i=>i.playerId==='p-multi')});representations.push({...seedReps.find(r=>r.playerId==='p-multi')});playerTeams.push({...seedPlayerTeams.find(a=>a.playerId==='p-multi')})}
-  coaches=Array.isArray(lc)&&lc.length?lc.map(c=>({...c,assignments:Array.isArray(c.assignments)?c.assignments:[]})):seedCoaches.map(x=>({...x,assignments:x.assignments.map(a=>({...a}))}));
-  statusHistory=[];audit=[];currentSeasonId='s-2026';saveAll();writeJSON(K.currentSeason,currentSeasonId);
+// Legacy local save helpers remain inert only for unreachable pre-Supabase branches.
+// They must never persist business entities in browser storage.
+function saveAll(){}
+function saveUsers(){} function savePlayers(){} function saveSeasons(){}
+function saveCategories(){} function saveTeams(){} function saveInscriptions(){}
+function saveReps(){} function savePlayerTeams(){} function saveMedicals(){}
+function saveCoaches(){} function saveStatusHistory(){} function saveAudit(){}
+function reloadSessionContext(){
+  const savedRole=localStorage.getItem(K.sessionRole),roles=currentUser?availableRoles(currentUser):[];
+  currentRole=currentUser&&roles.includes(savedRole)?savedRole:(roles[0]||null);
 }
 
-function migrateV12(){
-  users=readJSON(V12.users,seedUsers).map(normalizeUser);players=readJSON(V12.players,seedPlayers).map(normalizePlayer);seasons=readJSON(V12.seasons,seedSeasons);categories=readJSON(V12.categories,seedCategories);teams=readJSON(V12.teams,seedTeams);
-  inscriptions=readJSON(V12.inscriptions,seedInscriptions);representations=readJSON(V12.reps,seedReps);playerTeams=readJSON(V12.playerTeams,seedPlayerTeams);medicals=readJSON(V12.medicals,seedMedicals);coaches=readJSON(V12.coaches,seedCoaches);statusHistory=readJSON(V12.statusHistory,[]);audit=readJSON(V12.audit,[]);currentSeasonId=readJSON(V12.currentSeason,'s-2026');
-  recalculateSeasonCategories(currentSeasonId);saveAll();writeJSON(K.currentSeason,currentSeasonId);
-}
-function migrateV11(){
-  users=readJSON(V11.users,seedUsers).map(normalizeUser);players=readJSON(V11.players,seedPlayers).map(normalizePlayer);seasons=readJSON(V11.seasons,seedSeasons);categories=readJSON(V11.categories,seedCategories);teams=readJSON(V11.teams,seedTeams);
-  inscriptions=readJSON(V11.inscriptions,seedInscriptions);representations=readJSON(V11.reps,seedReps);playerTeams=readJSON(V11.playerTeams,seedPlayerTeams);medicals=readJSON(V11.medicals,seedMedicals);coaches=readJSON(V11.coaches,seedCoaches);statusHistory=readJSON(V11.statusHistory,[]);audit=readJSON(V11.audit,[]);currentSeasonId=readJSON(V11.currentSeason,'s-2026');
-  saveAll();writeJSON(K.currentSeason,currentSeasonId);
-}
-function categoryByLegacyName(n){return seedCategories.find(c=>c.name===n)?.id||'cat-pb'}
-function normalizePlayer(p){return {...p,active:p.active!==false}}
-function initData(){
-  if(!localStorage.getItem(K.users)){if(localStorage.getItem(V12.users))migrateV12();else if(localStorage.getItem(V11.users))migrateV11();else migrateLegacy()}else reloadCore();
-  players=players.map(normalizePlayer);ensurePersons();recalculateSeasonCategories(currentSeasonId);savePlayers();applyAgeTransitions();
-}
-function reloadCore(){
-  users=readJSON(K.users,seedUsers).map(normalizeUser);players=readJSON(K.players,seedPlayers).map(normalizePlayer);seasons=readJSON(K.seasons,seedSeasons);categories=readJSON(K.categories,seedCategories);teams=readJSON(K.teams,seedTeams);
-  inscriptions=readJSON(K.inscriptions,seedInscriptions);representations=readJSON(K.reps,seedReps);playerTeams=readJSON(K.playerTeams,seedPlayerTeams);medicals=readJSON(K.medicals,seedMedicals);
-  coaches=readJSON(K.coaches,seedCoaches);persons=readJSON(K.persons,[]);statusHistory=readJSON(K.statusHistory,[]);audit=readJSON(K.audit,[]);currentSeasonId=readJSON(K.currentSeason,'s-2026');
-}
-function reload(){reloadCore();const savedRole=localStorage.getItem(K.sessionRole),roles=currentUser?availableRoles(currentUser):[];currentRole=currentUser&&roles.includes(savedRole)?savedRole:(roles[0]||null)}
 function applyAgeTransitions(){
   const today=isoToday();let changed=false;
   players.forEach(p=>{
@@ -1943,12 +1850,13 @@ async function equipmentPrepareAssignment(id){
   try{const {error}=await sb.rpc('equipacion_preparar_asignacion_fifo',{p_asignacion:id});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
   catch(err){alert(`No se ha podido preparar la prenda: ${err.message||err}`)}
 }
-function showAppConfirm({eyebrow='CONFIRMACIÓN',title='Confirmar acción',message='',confirmLabel='Aceptar',cancelLabel='Cancelar',tone='default'}={}){
+function showAppConfirm({eyebrow='CONFIRMACIÓN',title='Confirmar acción',message='',confirmLabel='Aceptar',cancelLabel='Cancelar',tone='default',mode='confirm'}={}){
   const dialog=document.getElementById('appConfirmModal');
   if(!dialog)return Promise.resolve(window.confirm(`${message}\n\n${title}`));
   const eyebrowEl=document.getElementById('appConfirmEyebrow'),titleEl=document.getElementById('appConfirmTitle'),messageEl=document.getElementById('appConfirmMessage'),confirmBtn=document.getElementById('appConfirmAccept'),cancelBtn=document.getElementById('appConfirmCancel');
   eyebrowEl.textContent=eyebrow;titleEl.textContent=title;messageEl.textContent=message;confirmBtn.textContent=confirmLabel;cancelBtn.textContent=cancelLabel;
-  dialog.dataset.tone=tone;
+  const infoMode=mode==='info';cancelBtn.hidden=infoMode;
+  dialog.dataset.tone=tone;dialog.dataset.mode=mode;
   return new Promise(resolve=>{
     let settled=false;
     const finish=value=>{if(settled)return;settled=true;confirmBtn.removeEventListener('click',onConfirm);cancelBtn.removeEventListener('click',onCancel);dialog.removeEventListener('cancel',onCancel);if(dialog.open)dialog.close();resolve(value)};
@@ -2328,7 +2236,7 @@ function showApp(options={}){
   if(familyLike){['clubView','medicalView','coachesView','structureView','usersView','personsView','equipmentView','sponsorsView'].forEach(v=>$('#'+v)?.classList.remove('active'));$('#addPlayerButton').classList.toggle('hidden',currentRole==='player');$('#familyHeroEyebrow').textContent=currentRole==='player'?'Área del jugador':'Área de familias';$('#familyHeroTitle').textContent=currentRole==='player'?'Gestiona tu ficha desde el móvil':'Gestiona la ficha de los menores a tu cargo';$('#familyHeroText').textContent=currentRole==='player'?'Consulta tu inscripción, documentación y estado federativo.':'Completa datos, adjunta documentación y consulta el estado de cada inscripción.';$('#familyTitle').textContent=currentRole==='player'?'Mi ficha':currentUser.name;const fpEyebrow=$('#familyPlayersSection .eyebrow');if(fpEyebrow){fpEyebrow.hidden=currentRole==='player';fpEyebrow.textContent='Mis jugadores';}const fsEyebrow=$('#familyStatusSection .eyebrow');if(fsEyebrow)fsEyebrow.textContent=currentRole==='player'?'Estado de mi ficha':'Estado familiar';(currentUser.source==='supabase'?renderRemoteFamily():renderFamily());return}
   $('#familyView').classList.remove('active');if(!preserveView||!activeClubViewId())setView('clubView');const isCoach=currentRole==='coach';applyCapabilityNavigation();
   const openCoachModal=$('#openCoachModal');
-  if(openCoachModal)openCoachModal.style.display=can('people.manage')?'inline-flex':'none';
+  if(openCoachModal)openCoachModal.style.display=can('coaches.manage')?'inline-flex':'none';
   if($('#paymentPendingStat'))$('#paymentPendingStat').style.display=isCoach?'none':'';if($('#paymentTableHead'))$('#paymentTableHead').style.display=isCoach?'none':'';if(isCoach&&clubQuickFilter==='payment')clubQuickFilter='all';
   const clubNav=$('#clubNav'),clubHeroTitle=$('#clubHeroTitle'),clubHeroText=$('#clubHeroText');
   if(clubNav)clubNav.style.gridTemplateColumns='';
@@ -2510,7 +2418,27 @@ function assignmentStateClass(s){return s==='active'?'complete':s==='upcoming'?'
 function renderAssignmentList(target,arr,cls){const e=$(target);if(!e)return;e.innerHTML=arr.length?arr.map((a,i)=>`<div class="assignment-card"><div><strong>${esc(coachTeamName(a.teamId))}</strong><div class="meta">${esc(coachRoleLabel(a.coachRole))} · ${fmt(a.startDate)} → ${fmt(a.endDate)}</div></div><span class="status ${assignmentStateClass(assignmentState(a))}">${assignmentStateLabel(assignmentState(a))}</span><button type="button" class="secondary tiny ${cls}" data-index="${i}">Quitar</button></div>`).join(''):'<div class="meta">Todavía no hay equipos asignados.</div>'}
 function fillAssignmentTeamSelect(id){const s=$(id);if(!s)return;const source=dbStructureLoaded?sortTeamsByCategoryAge(dbSeasonTeams(),true):sortTeamsByCategoryAge(currentSeasonTeams(),false);s.innerHTML='<option value="">Seleccionar equipo</option>'+source.filter(t=>t.active).map(t=>`<option value="${esc(t.id)}">${esc(t.name)} · ${esc(dbStructureLoaded?dbCategoryName(t.categoryId):categoryName(t.categoryId))}</option>`).join('')}
 function addAssignmentFrom(prefix,target,render){const team=$(`#${prefix}Team`).value,role=$(`#${prefix}Role`).value,startDate=$(`#${prefix}Start`).value,endDate=$(`#${prefix}End`).value;if(!team||!startDate){alert('Selecciona equipo y completa la fecha de inicio.');return false}if(endDate&&endDate<startDate){alert('La fecha de fin no puede ser anterior al inicio.');return false}const newEnd=endDate||'9999-12-31';if(target.some(a=>{const aEnd=a.endDate||'9999-12-31';return a.teamId===team&&!(newEnd<a.startDate||startDate>aEnd)})){alert('Ya existe una asignación solapada para ese equipo.');return false}target.push({teamId:team,coachRole:role,startDate,endDate:endDate||''});render();return true}
+async function loadAndRenderCoachesView(){
+  if(currentUser?.source==='supabase'&&!dbCoachesLoaded){
+    const table=$('#coachesTable');
+    if(table)table.innerHTML='<tr><td colspan="4"><div class="info-card">Cargando entrenadores…</div></td></tr>';
+    try{await loadSupabaseCoaches();markListMetric('coaches','remoteRefreshes')}
+    catch(err){
+      console.error('Carga de entrenadores',err);
+      coaches=[];
+      const out=$('#coachesTable');
+      if(out)out.innerHTML=`<tr><td colspan="4"><div class="info-card"><strong>No se han podido cargar los entrenadores.</strong><br><span>${esc(String(err?.message||err))}</span></div></td></tr>`;
+      return false;
+    }
+  }
+  renderCoaches();return true;
+}
 function renderCoaches(){
+  if(currentUser?.source==='supabase'&&!dbCoachesLoaded){
+    const out=$('#coachesTable');
+    if(out)out.innerHTML='<tr><td colspan="4"><div class="info-card">Cargando entrenadores…</div></td></tr>';
+    return;
+  }
   if(!$('#coachesTable'))return;markListMetric('coaches','localRenders');
   const remote=dbStructureLoaded;
   const teamSource=remote?sortTeamsByCategoryAge(dbSeasonTeams(),true):sortTeamsByCategoryAge(currentSeasonTeams(),false);
@@ -2706,7 +2634,7 @@ function setCoachAssignmentGuard(message='',kind='warning'){
 function openCoachForEdit(id){if(!can('coaches.manage'))return;const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);renderCoachAdminSummary(c);renderCoachAdminMedical(c);renderCoachAdminHistory(c);bindCoachAdminTabs();coachAdminTab('summary');$('#coachModal').showModal()}
 async function saveRemoteCoach(form){
   if(!can('coaches.manage'))return;
-  const fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');
+  const isNewCoach=!editingCoachId,fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');
   if(!personId){alert('Selecciona primero una Persona existente.');return}
   if(!editingCoachId&&!can('coaches.manage')){alert('No tienes capacidad para gestionar entrenadores.');return}
   const person=dbPersons.find(x=>x.id===personId);const personEmail=String(person?.email_contacto||old?.email||fd.get('email')||'').trim().toLowerCase();if(fd.get('active')==='yes'&&!personEmail){alert('Todo entrenador activo necesita un correo electrónico propio antes de completar el alta.');return}
@@ -2714,10 +2642,10 @@ async function saveRemoteCoach(form){
   try{
     const {data:coachId,error}=await sb.rpc('asignar_rol_entrenador',{p_persona_id:personId,p_licencia_tipo:old?.legacyLicenseType||null,p_licencia_numero:old?.legacyLicenseNumber||null,p_curso_delegado:old?.legacyDelegateCourse===true,p_activo:fd.get('active')==='yes',p_observaciones:old?.legacyNotes||null});if(error)throw error;await tryProcessNotifications();
     const linkedAuthUserId=person?.auth_user_id||old?.userId||null;
-    if(!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
+    if(isNewCoach&&!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
     const payload=pendingCoachAssignments.map(a=>({team_id:a.teamId,funcion:a.coachRole,fecha_desde:a.startDate,fecha_hasta:a.endDate||null,reemplazar_principal:a.replacePrincipal===true}));
     const {error:aerr}=await sb.rpc('guardar_asignaciones_entrenador',{p_entrenador_id:coachId,p_asignaciones:payload});if(aerr)throw aerr;
-    await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();
+    await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();await showAppConfirm({mode:'info',tone:'success',eyebrow:'CUERPO TÉCNICO',title:'Entrenador guardado',message:'Los datos del entrenador se han guardado correctamente.',confirmLabel:'Aceptar'});
   }catch(err){
     console.error('Guardar entrenador',err);
     if(editingCoachId){
@@ -3568,7 +3496,7 @@ $('#rffmResultsNavButton')?.addEventListener('click',openRffmResultsView);
 $('#closeRffmResults')?.addEventListener('click',()=>ModalUI.close($('#rffmResultsModal')));
 $('#rffmRefreshAll')?.addEventListener('click',loadAllRffm);
 $('#rffmExportPdf')?.addEventListener('click',exportRffmPdf);
-$$('[data-club-view]').forEach(b=>b.onclick=async()=>{if(!elementCapabilityAllowed(b))return;const view=b.dataset.clubView;setView(view);try{if(view==='clubView')renderClub();else if(view==='medicalView')renderMedical();else if(view==='coachesView'){if(currentUser?.source==='supabase'&&!dbCoachesLoaded){await loadSupabaseCoaches();markListMetric('coaches','remoteRefreshes')}renderCoaches();}else if(view==='structureView')renderStructure();else if(view==='sponsorsView')await loadSponsorAdmin();else if(view==='usersView')renderClubUsers();else if(view==='personsView'){if(currentUser?.source==='supabase'&&!dbPersons.length)await loadSupabasePersons();renderPersons();}}catch(err){console.error('Carga diferida de vista',view,err);if(view==='sponsorsView')alert('No se han podido cargar los patrocinadores.')}scrollActiveListToStart(view)});
+$$('[data-club-view]').forEach(b=>b.onclick=async()=>{if(!elementCapabilityAllowed(b))return;const view=b.dataset.clubView;setView(view);try{if(view==='clubView')renderClub();else if(view==='medicalView')renderMedical();else if(view==='coachesView'){await loadAndRenderCoachesView();}else if(view==='structureView')renderStructure();else if(view==='sponsorsView')await loadSponsorAdmin();else if(view==='usersView')renderClubUsers();else if(view==='personsView'){if(currentUser?.source==='supabase'&&!dbPersons.length)await loadSupabasePersons();renderPersons();}}catch(err){console.error('Carga diferida de vista',view,err);if(view==='sponsorsView')alert('No se han podido cargar los patrocinadores.')}scrollActiveListToStart(view)});
 
 function setFamilyMainTab(tab){
   $$('[data-family-tab]').forEach(x=>x.classList.toggle('active',x.dataset.familyTab===tab));
@@ -3671,7 +3599,7 @@ async function restoreNavigationSnapshot(allowLive=false){
   const maxAge=source==='version'?5*60*1000:24*60*60*1000;
   if(Date.now()-Number(snap.createdAt||0)>maxAge||snap.targetVersion&&snap.targetVersion!==APP_VERSION||snap.role!==currentRole)return false;
   try{
-    if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')renderCoaches();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&can('people.manage')){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&can('people.manage'))renderClubUsers();else if(snap.view==='sponsorsView'&&can('sponsors.manage'))await loadSponsorAdmin();else if(snap.view==='equipmentView'&&equipmentAllowed()){setEquipmentTab(snap.equipmentTab||storedEquipmentTab(),{persist:true});await loadEquipmentData({preserveTab:true,tab:equipmentTab});}}
+    if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')await loadAndRenderCoachesView();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&can('people.manage')){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&can('people.manage'))renderClubUsers();else if(snap.view==='sponsorsView'&&can('sponsors.manage'))await loadSponsorAdmin();else if(snap.view==='equipmentView'&&equipmentAllowed()){setEquipmentTab(snap.equipmentTab||storedEquipmentTab(),{persist:true});await loadEquipmentData({preserveTab:true,tab:equipmentTab});}}
     if(snap.accountOpen){openAccountProfile();if(snap.accountTab)setSimpleTabs('#accountProfileModal',snap.accountTab);}
     if(snap.coachOpen&&snap.coachId&&coaches.some(c=>c.id===snap.coachId)){openCoachForEdit(snap.coachId);if(snap.coachTab)await coachAdminTab(snap.coachTab);}
     authDiag('NAVIGATION_RESTORED',{source,view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
@@ -3905,7 +3833,7 @@ setInterval(()=>{
 },5000);
 
 renderEnvironmentBadge();
-initHiddenSupportMode();initData();reload();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme().then(()=>loadClubSponsors());if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
+initHiddenSupportMode();reloadSessionContext();showSessionRestoring();(async()=>{const themePromise=loadVisualTheme().then(()=>loadClubSponsors());if(await handlePasswordRecovery()){hideSessionRestoring();return;}await restoreSupabaseSession();await themePromise;})();
 
 // V26 development update strategy: deliberately disable Service Workers.
 // During rapid prototyping, always prefer the current GitHub Pages deployment.
