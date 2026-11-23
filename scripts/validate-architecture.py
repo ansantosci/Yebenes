@@ -91,6 +91,20 @@ if wdir.is_dir():
    err(f'CI runtime regression: download-artifact before v7 may target Node 20: {rel}')
   if re.search(r'\bruns-on\s*:\s*ubuntu-latest\b',txt):
    err(f'CI runner regression: ubuntu-latest is forbidden; pin the approved runner: {rel}')
+# Coach-domain frontend RBAC invariants (109): capability controls management UI,
+# and editing an existing coach must not implicitly provision Auth access.
+app_path=ROOT/'app.js'
+if app_path.is_file():
+ app=app_path.read_text(errors='ignore')
+ expected_button="openCoachModal.style.display=can('coaches.manage')?'inline-flex':'none'"
+ if expected_button not in app:
+  err('coach RBAC regression: + Add coach visibility must use coaches.manage')
+ expected_invite="if(isNewCoach&&!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user'"
+ if expected_invite not in app:
+  err('coach access regression: only a new coach may trigger implicit invite_coach_user during save')
+ if "openCoachModal.style.display=can('people.manage')" in app:
+  err('coach RBAC regression: + Add coach must not depend on people.manage')
+
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
 if errors:
