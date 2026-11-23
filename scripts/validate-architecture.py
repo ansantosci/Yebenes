@@ -114,6 +114,8 @@ if app_path.is_file():
  for forbidden in ['seedUsers','seedPlayers','seedTeams','seedInscriptions','seedReps','seedPlayerTeams','seedMedicals','seedCoaches','function initData(','function migrateLegacy(','function migrateV11(','function migrateV12(','function reloadCore(']:
   if forbidden in app: err(f'legacy runtime business-data regression: forbidden {forbidden}')
  if "initHiddenSupportMode();initData()" in app: err('legacy runtime business-data regression: bootstrap must not initialize local business data')
+ for required in ['function currentSeason(){','function categoryName(id){','function teamName(id){','function activeTeamAssignment(','function activeRepresentation(','function inscriptionFor(']:
+  if required not in app: err(f'pure domain helper regression after legacy removal: missing {required}')
  if "else if(snap.view==='coachesView')await loadAndRenderCoachesView();" not in app: err('coach bootstrap regression: navigation restore must use canonical coach loader')
  if "else if(view==='coachesView'){await loadAndRenderCoachesView();}" not in app: err('coach navigation regression: menu must use canonical coach loader')
  if "if(currentUser?.source==='supabase'&&!dbCoachesLoaded)" not in app: err('coach loading regression: Supabase view must guard against rendering before remote load')

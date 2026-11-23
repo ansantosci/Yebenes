@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.24';
+const APP_VERSION='96.6.25';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -565,6 +565,31 @@ let remoteMedicalRows=[];
 const PENDING_SIGNUP_KEY='yebenes-pending-signup-v1';
 const AUTH_REDIRECT_URL=YEBENES_CONFIG.authRedirectUrl;
 let selectedPlayerId=null,editingPlayerId=null,selectedMedicalPlayerId=null,selectedMedicalPersonId=null,selectedMedicalCoachId=null,selectedMedicalContext='player',editingCoachId=null,selectedCoachPersonId=null,editingTeamId=null,selectedPersonAdminId=null,pendingCoachAssignments=[],pendingUserAssignments=[],pendingMinorConsentAction=null;
+
+// Pure domain helpers. These do not load or persist business data; Supabase remains the runtime source of truth.
+function categoryByName(name){return categories.find(c=>c.name===name)}
+function categoryName(id){return categories.find(c=>c.id===id)?.name||'Sin categoría'}
+function teamName(id){return teams.find(t=>t.id===id)?.name||'Sin equipo'}
+function seasonName(id){return seasons.find(s=>s.id===id)?.name||'—'}
+function currentSeason(){return seasons.find(s=>s.id===currentSeasonId)||seasons[0]}
+function seasonStartYear(seasonId=currentSeasonId){const s=seasons.find(x=>x.id===seasonId);return s?.startDate?Number(s.startDate.slice(0,4)):Number(String(s?.name||'').slice(0,4))||new Date().getFullYear()}
+function categoryForBirth(birth,seasonId=currentSeasonId){if(!birth)return null;const y=Number(String(birth).slice(0,4)),sy=seasonStartYear(seasonId);let name='';if(y===sy-4||y===sy-5)name='Chupetín';else if(y===sy-6||y===sy-7)name='Prebenjamín';else if(y===sy-8||y===sy-9)name='Benjamín';else if(y===sy-10||y===sy-11)name='Alevín';else if(y===sy-12||y===sy-13)name='Infantil';else if(y===sy-14||y===sy-15)name='Cadete';else if(y>=sy-18&&y<=sy-16)name='Juvenil';else if(y<=sy-19)name='Senior';return categoryByName(name)||null}
+function syncInscriptionCategory(i){const p=players.find(x=>x.id===i.playerId),cat=categoryForBirth(p?.birth,i.seasonId);if(cat&&i.categoryId!==cat.id){i.categoryId=cat.id;return true}return false}
+function recalculateSeasonCategories(seasonId=currentSeasonId){let changed=false;inscriptions.filter(i=>i.seasonId===seasonId).forEach(i=>{if(syncInscriptionCategory(i))changed=true});if(changed)saveInscriptions();return changed}
+function isBetween(d,start,end){return (!start||d>=start)&&(!end||d<=end)}
+function activeTeamAssignment(playerId,seasonId=currentSeasonId,when=isoToday()){return playerTeams.filter(a=>a.playerId===playerId&&a.seasonId===seasonId&&isBetween(when,a.startDate,a.endDate)).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''))[0]||null}
+function activeRepresentation(playerId,when=isoToday()){return representations.filter(r=>r.playerId===playerId&&isBetween(when,r.startDate,r.endDate)).sort((a,b)=>(b.startDate||'').localeCompare(a.startDate||''))[0]||null}
+function inscriptionFor(playerId,seasonId=currentSeasonId){return inscriptions.find(i=>i.playerId===playerId&&i.seasonId===seasonId)||null}
+function latestMedical(playerId){return medicals.filter(m=>m.playerId===playerId).sort((a,b)=>(b.expiry||b.date||'').localeCompare(a.expiry||a.date||''))[0]||null}
+function ageOn(birth,date=isoToday()){const b=parseDate(birth),d=parseDate(date);if(!b||!d)return null;let a=d.getFullYear()-b.getFullYear();if(d.getMonth()<b.getMonth()||(d.getMonth()===b.getMonth()&&d.getDate()<b.getDate()))a--;return a}
+function eighteenthBirthday(p){return addYears(p.birth,18)}
+function daysTo18(p){const d=eighteenthBirthday(p);return d?dayDiff(isoToday(),d):null}
+function repUserName(r){return users.find(u=>u.id===r?.userId)?.name||'Sin representante'}
+function currentPlayerUser(p){return users.find(u=>hasRole(u,'player')&&u.playerId===p.id)||null}
+function currentSeasonTeams(){return teams.filter(t=>t.seasonId===currentSeasonId)}
+function recordAudit(action,playerId='',detail='',actorId=currentUser?.id||'system'){audit.unshift({id:uid('a'),date:new Date().toISOString(),actorId,action,playerId,detail});saveAudit()}
+function addStatusHistory(inscriptionId,playerId,from,to,note=''){statusHistory.unshift({id:uid('h'),date:new Date().toISOString(),actorId:currentUser?.id||'system',inscriptionId,playerId,from,to,note});saveStatusHistory()}
+function actorName(id){return users.find(u=>u.id===id)?.name||(id==='system'?'Sistema':'Usuario')}
 
 // Legacy local save helpers remain inert only for unreachable pre-Supabase branches.
 // They must never persist business entities in browser storage.
