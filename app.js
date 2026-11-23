@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.27';
+const APP_VERSION='96.6.28';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -68,18 +68,7 @@ const FeedbackUI={
     if(!el)return;
     el.className=`app-status-panel app-status-panel--${tone}`;
     el.innerHTML=`<div class="app-status-panel__icon" aria-hidden="true">${tone==='success'?'✓':tone==='danger'?'!':tone==='warning'?'!':'i'}</div><div><strong>${esc(title)}</strong>${message?`<p>${esc(message)}</p>`:''}</div>`;
-  },
-  show({tone='neutral',title='',message='',duration=3200}={}){
-    let root=document.querySelector('#appFeedbackRegion');
-    if(!root){root=document.createElement('div');root.id='appFeedbackRegion';root.className='app-feedback-region';root.setAttribute('aria-live','polite');root.setAttribute('aria-atomic','true');document.body.appendChild(root)}
-    const item=document.createElement('div');item.className='app-feedback-item';item.setAttribute('role',tone==='danger'?'alert':'status');
-    this.setStatus(item,{tone,title,message});root.replaceChildren(item);
-    window.clearTimeout(root._feedbackTimer);root._feedbackTimer=window.setTimeout(()=>{item.remove();if(!root.children.length)root.remove()},Math.max(1200,Number(duration)||3200));
-    return item;
-  },
-  success(title,message=''){return this.show({tone:'success',title,message})},
-  danger(title,message=''){return this.show({tone:'danger',title,message,duration:5000})},
-  warning(title,message=''){return this.show({tone:'warning',title,message,duration:4500})}
+  }
 };
 
 // V96.4.3: familia de componentes de ventana. Toda nueva ventana compone sobre ModalUI.
@@ -1861,12 +1850,13 @@ async function equipmentPrepareAssignment(id){
   try{const {error}=await sb.rpc('equipacion_preparar_asignacion_fifo',{p_asignacion:id});if(error)throw error;await loadEquipmentData({tab:'deliveries'})}
   catch(err){alert(`No se ha podido preparar la prenda: ${err.message||err}`)}
 }
-function showAppConfirm({eyebrow='CONFIRMACIÓN',title='Confirmar acción',message='',confirmLabel='Aceptar',cancelLabel='Cancelar',tone='default'}={}){
+function showAppConfirm({eyebrow='CONFIRMACIÓN',title='Confirmar acción',message='',confirmLabel='Aceptar',cancelLabel='Cancelar',tone='default',mode='confirm'}={}){
   const dialog=document.getElementById('appConfirmModal');
   if(!dialog)return Promise.resolve(window.confirm(`${message}\n\n${title}`));
   const eyebrowEl=document.getElementById('appConfirmEyebrow'),titleEl=document.getElementById('appConfirmTitle'),messageEl=document.getElementById('appConfirmMessage'),confirmBtn=document.getElementById('appConfirmAccept'),cancelBtn=document.getElementById('appConfirmCancel');
   eyebrowEl.textContent=eyebrow;titleEl.textContent=title;messageEl.textContent=message;confirmBtn.textContent=confirmLabel;cancelBtn.textContent=cancelLabel;
-  dialog.dataset.tone=tone;
+  const infoMode=mode==='info';cancelBtn.hidden=infoMode;
+  dialog.dataset.tone=tone;dialog.dataset.mode=mode;
   return new Promise(resolve=>{
     let settled=false;
     const finish=value=>{if(settled)return;settled=true;confirmBtn.removeEventListener('click',onConfirm);cancelBtn.removeEventListener('click',onCancel);dialog.removeEventListener('cancel',onCancel);if(dialog.open)dialog.close();resolve(value)};
@@ -2655,7 +2645,7 @@ async function saveRemoteCoach(form){
     if(isNewCoach&&!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
     const payload=pendingCoachAssignments.map(a=>({team_id:a.teamId,funcion:a.coachRole,fecha_desde:a.startDate,fecha_hasta:a.endDate||null,reemplazar_principal:a.replacePrincipal===true}));
     const {error:aerr}=await sb.rpc('guardar_asignaciones_entrenador',{p_entrenador_id:coachId,p_asignaciones:payload});if(aerr)throw aerr;
-    await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();FeedbackUI.success('Entrenador guardado correctamente');
+    await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();await showAppConfirm({mode:'info',tone:'success',eyebrow:'CUERPO TÉCNICO',title:'Entrenador guardado',message:'Los datos del entrenador se han guardado correctamente.',confirmLabel:'Aceptar'});
   }catch(err){
     console.error('Guardar entrenador',err);
     if(editingCoachId){

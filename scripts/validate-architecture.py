@@ -123,21 +123,17 @@ if app_path.is_file():
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
 
-# V96.6.27 — FeedbackUI es la implementación base; ModalUI delega sin ciclos.
+# V96.6.28 — inventario canónico de feedback: AppConfirm para confirmación/resultado; StatusPanel inline en ModalUI.
 _app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
-if "const FeedbackUI=" not in _app_js or "FeedbackUI.success('Entrenador guardado correctamente')" not in _app_js:
-    errors.append('V96.6.27: Guardar entrenador debe usar FeedbackUI común para confirmar éxito.')
+_styles_css = (ROOT / 'styles.css').read_text(encoding='utf-8')
+if "mode='confirm'" not in _app_js or "mode:'info'" not in _app_js or "tone:'success'" not in _app_js:
+    errors.append('V96.6.28: AppConfirm debe soportar modo informativo y tono success, y Guardar entrenador debe reutilizarlo.')
+if "FeedbackUI.success('Entrenador guardado correctamente')" in _app_js or 'app-feedback-region' in _styles_css or 'app-feedback-item' in _styles_css:
+    errors.append('V96.6.28: no debe sobrevivir la variante toast/global paralela de FeedbackUI.')
 if "setStatus(el,options={}){return FeedbackUI.setStatus(el,options)}" not in _app_js:
-    errors.append('V96.6.27: ModalUI.setStatus debe delegar unidireccionalmente en FeedbackUI.')
+    errors.append('V96.6.28: ModalUI.setStatus debe delegar en FeedbackUI.setStatus para StatusPanel inline.')
 feedback_start = _app_js.find('const FeedbackUI=')
-modal_start = _app_js.find('const ModalUI=')
-feedback_block = _app_js[feedback_start:modal_start] if feedback_start >= 0 and modal_start > feedback_start else ''
-if "FeedbackUI.setStatus(el,options)" in feedback_block or "this.setStatus(el,options)" in feedback_block:
-    errors.append('V96.6.27: FeedbackUI.setStatus no puede autorreferenciarse; provocaría recursión infinita.')
-if "el.className=`app-status-panel app-status-panel--${tone}`" not in feedback_block:
-    errors.append('V96.6.27: FeedbackUI debe poseer la implementación canónica de StatusPanel.')
-
-if errors:
- for e in errors: print('ERROR',e,file=sys.stderr)
- print(f'ARCHITECTURE FAIL: {len(errors)} issue(s)',file=sys.stderr); sys.exit(1)
-print('ARCHITECTURE PASS')
+feedback_end = _app_js.find('// V96.4.3:', feedback_start)
+feedback_block = _app_js[feedback_start:feedback_end] if feedback_start >= 0 and feedback_end > feedback_start else ''
+if 'app-status-panel' not in feedback_block or '.show(' in feedback_block or 'success(' in feedback_block:
+    errors.append('V96.6.28: FeedbackUI debe limitarse a la implementación inline de StatusPanel, sin superficie global paralela.')

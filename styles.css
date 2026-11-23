@@ -1067,6 +1067,7 @@ body{position:relative;background-color:#f5f7fa;background-image:linear-gradient
 .app-confirm-shell{padding:20px}
 .app-confirm-message{white-space:pre-line;line-height:1.55;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
 .app-confirm-modal[data-tone="warning"] .app-confirm-message{background:#fff7ed;border-color:#fed7aa;color:#7c2d12}
+.app-confirm-modal[data-tone="success"] .app-confirm-message{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
 .app-confirm-modal .modal-actions{margin-top:18px}
 @media(max-width:760px){body{background-image:linear-gradient(rgba(245,247,250,.97),rgba(245,247,250,.97)),url("assets/club-fabric-background.webp?v=96.4.21");background-attachment:scroll}.app-confirm-shell{padding:16px}}
 
@@ -1460,6 +1461,3 @@ button.ghost.small:hover{background:#f0f7fb}
 }
 
 /* V96.6.26 — FeedbackUI global: misma anatomía visual que StatusPanel. */
-.app-feedback-region{position:fixed;top:18px;right:18px;z-index:12000;width:min(92vw,420px);pointer-events:none}
-.app-feedback-region .app-feedback-item{box-shadow:0 14px 38px rgba(16,24,40,.20);background:#fff;pointer-events:auto}
-@media(max-width:640px){.app-feedback-region{top:12px;left:12px;right:12px;width:auto}}
