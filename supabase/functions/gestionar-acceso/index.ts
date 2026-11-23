@@ -22,13 +22,10 @@ async function findAuthUserByEmail(admin: any, email: string) {
   return null
 }
 
-async function activeRoleCodes(admin: any, personId: string, today: string) {
-  const { data, error } = await admin
-    .from('persona_roles')
-    .select('activo,fecha_desde,fecha_hasta,roles!inner(codigo)')
-    .eq('persona_id', personId)
+async function activeCapabilities(supabase: any) {
+  const { data, error } = await supabase.rpc('mis_capacidades')
   if (error) throw error
-  return (data || []).filter((row: any) => isCurrent(row, today)).map((row: any) => roleCode(row))
+  return new Set((data || []).map((row: any) => String(row?.capacidad_codigo || '')).filter(Boolean))
 }
 
 export default {
@@ -71,9 +68,8 @@ export default {
           return Response.json({ error: 'Indica un correo electrónico válido' }, { status: 400 })
         }
 
-        const callerRoles = await activeRoleCodes(ctx.supabaseAdmin, callerPerson.id, today)
-        const isAdmin = callerRoles.includes('administrador')
-        let authorized = personaId === callerPerson.id || isAdmin
+        const callerCapabilities = await activeCapabilities(ctx.supabase)
+        let authorized = personaId === callerPerson.id || callerCapabilities.has('people.manage')
 
         if (!authorized) {
           const { data: player, error: playerError } = await ctx.supabaseAdmin
@@ -144,17 +140,11 @@ export default {
         return Response.json({ error: 'Acción no reconocida' }, { status: 400 })
       }
 
-      const { data: callerRoles, error: callerRolesError } = await ctx.supabaseAdmin
-        .from('persona_roles')
-        .select('activo,fecha_desde,fecha_hasta,roles!inner(codigo)')
-        .eq('persona_id', callerPerson.id)
-      if (callerRolesError) throw callerRolesError
-      const isAdmin = (callerRoles || []).some((row: any) => roleCode(row) === 'administrador' && isCurrent(row, today))
-      const isClub = (callerRoles || []).some((row: any) => roleCode(row) === 'club' && isCurrent(row, today))
+      const callerCapabilities = await activeCapabilities(ctx.supabase)
       if (action === 'invite_coach_user') {
-        if (!isAdmin && !isClub) return Response.json({ error: 'Solo Club o Administrador pueden invitar entrenadores' }, { status: 403 })
-      } else if (!isAdmin) {
-        return Response.json({ error: 'Solo un administrador puede crear cuentas internas' }, { status: 403 })
+        if (!callerCapabilities.has('coaches.manage')) return Response.json({ error: 'No tienes permiso para gestionar accesos de entrenadores' }, { status: 403 })
+      } else if (!callerCapabilities.has('people.manage')) {
+        return Response.json({ error: 'No tienes permiso para gestionar accesos internos' }, { status: 403 })
       }
 
       const personaId = String(body?.persona_id || '')

@@ -91,9 +91,49 @@ if wdir.is_dir():
    err(f'CI runtime regression: download-artifact before v7 may target Node 20: {rel}')
   if re.search(r'\bruns-on\s*:\s*ubuntu-latest\b',txt):
    err(f'CI runner regression: ubuntu-latest is forbidden; pin the approved runner: {rel}')
+# Coach-domain frontend RBAC invariants (109): capability controls management UI,
+# and editing an existing coach must not implicitly provision Auth access.
+app_path=ROOT/'app.js'
+if app_path.is_file():
+ app=app_path.read_text(errors='ignore')
+ expected_button="openCoachModal.style.display=can('coaches.manage')?'inline-flex':'none'"
+ if expected_button not in app:
+  err('coach RBAC regression: + Add coach visibility must use coaches.manage')
+ expected_invite="if(isNewCoach&&!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user'"
+ if expected_invite not in app:
+  err('coach access regression: only a new coach may trigger implicit invite_coach_user during save')
+ if "openCoachModal.style.display=can('people.manage')" in app:
+  err('coach RBAC regression: + Add coach must not depend on people.manage')
+
+
+# Runtime business-data source invariants (V96.6.24): Supabase is canonical.
+# Browser storage may keep UI/session preferences, never a fallback business database.
+app_path=ROOT/'app.js'
+if app_path.is_file():
+ app=app_path.read_text(errors='ignore')
+ for forbidden in ['seedUsers','seedPlayers','seedTeams','seedInscriptions','seedReps','seedPlayerTeams','seedMedicals','seedCoaches','function initData(','function migrateLegacy(','function migrateV11(','function migrateV12(','function reloadCore(']:
+  if forbidden in app: err(f'legacy runtime business-data regression: forbidden {forbidden}')
+ if "initHiddenSupportMode();initData()" in app: err('legacy runtime business-data regression: bootstrap must not initialize local business data')
+ for required in ['function currentSeason(){','function categoryName(id){','function teamName(id){','function activeTeamAssignment(','function activeRepresentation(','function inscriptionFor(']:
+  if required not in app: err(f'pure domain helper regression after legacy removal: missing {required}')
+ if "else if(snap.view==='coachesView')await loadAndRenderCoachesView();" not in app: err('coach bootstrap regression: navigation restore must use canonical coach loader')
+ if "else if(view==='coachesView'){await loadAndRenderCoachesView();}" not in app: err('coach navigation regression: menu must use canonical coach loader')
+ if "if(currentUser?.source==='supabase'&&!dbCoachesLoaded)" not in app: err('coach loading regression: Supabase view must guard against rendering before remote load')
+
 print('Yebenes architecture guardrails')
 for n in notes: print('PASS',n)
-if errors:
- for e in errors: print('ERROR',e,file=sys.stderr)
- print(f'ARCHITECTURE FAIL: {len(errors)} issue(s)',file=sys.stderr); sys.exit(1)
-print('ARCHITECTURE PASS')
+
+# V96.6.28 — inventario canónico de feedback: AppConfirm para confirmación/resultado; StatusPanel inline en ModalUI.
+_app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
+_styles_css = (ROOT / 'styles.css').read_text(encoding='utf-8')
+if "mode='confirm'" not in _app_js or "mode:'info'" not in _app_js or "tone:'success'" not in _app_js:
+    errors.append('V96.6.28: AppConfirm debe soportar modo informativo y tono success, y Guardar entrenador debe reutilizarlo.')
+if "FeedbackUI.success('Entrenador guardado correctamente')" in _app_js or 'app-feedback-region' in _styles_css or 'app-feedback-item' in _styles_css:
+    errors.append('V96.6.28: no debe sobrevivir la variante toast/global paralela de FeedbackUI.')
+if "setStatus(el,options={}){return FeedbackUI.setStatus(el,options)}" not in _app_js:
+    errors.append('V96.6.28: ModalUI.setStatus debe delegar en FeedbackUI.setStatus para StatusPanel inline.')
+feedback_start = _app_js.find('const FeedbackUI=')
+feedback_end = _app_js.find('// V96.4.3:', feedback_start)
+feedback_block = _app_js[feedback_start:feedback_end] if feedback_start >= 0 and feedback_end > feedback_start else ''
+if 'app-status-panel' not in feedback_block or '.show(' in feedback_block or 'success(' in feedback_block:
+    errors.append('V96.6.28: FeedbackUI debe limitarse a la implementación inline de StatusPanel, sin superficie global paralela.')

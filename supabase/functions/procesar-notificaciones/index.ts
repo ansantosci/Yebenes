@@ -229,33 +229,16 @@ Deno.serve(async (req) => {
         return json({ error: "Persona no vinculada" }, 403);
       }
 
-      const { data: roleRows, error: roleError } = await admin
-        .from("persona_roles")
-        .select(
-          "activo,fecha_desde,fecha_hasta,roles!inner(codigo)",
-        )
-        .eq("persona_id", persona.id)
-        .eq("activo", true);
-
-      if (roleError) {
-        throw roleError;
-      }
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      const allowed = (roleRows || []).some((role: any) => {
-        const code = role.roles?.codigo;
-        const inDate =
-          (!role.fecha_desde || role.fecha_desde <= today) &&
-          (!role.fecha_hasta || role.fecha_hasta >= today);
-
-        return (
-          inDate &&
-          (code === "administrador" || code === "club")
-        );
+      const userClient = createClient(supabaseUrl, serviceRoleKey, {
+        global: { headers: { Authorization: `Bearer ${jwt}` } },
+        auth: { persistSession: false, autoRefreshToken: false },
       });
-
-      if (!allowed) {
+      const { data: capabilityRows, error: capabilityError } = await userClient.rpc("mis_capacidades");
+      if (capabilityError) throw capabilityError;
+      const capabilities = new Set(
+        (capabilityRows || []).map((row: any) => String(row?.capacidad_codigo || "")),
+      );
+      if (!capabilities.has("medical.manage") && !capabilities.has("players.manage")) {
         return json({ error: "No autorizado" }, 403);
       }
     }
