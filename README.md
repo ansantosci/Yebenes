@@ -1,3 +1,10 @@
+# V96.6.35 - UX-MODAL-04: retorno al contexto Persona > Relaciones
+
+- Al cerrar mediante X, Cancelar o Escape una ficha de entrenador abierta desde Persona > Relaciones, se restaura esa Persona en Relaciones.
+- Apertura directa desde Cuerpo técnico y flujo de guardado conservan su navegación previa.
+- Solo FRONT; sin cambios de backend, RBAC ni lógica de actualización de caché.
+- Versionado PATCH canónico 96.6.35.
+
 # V96.6.34 - UX-MODAL-03: administración de persona en ModalUI canónica
 
 - FRONT-only: migración estructural de la ficha completa de Persona a ModalUI.mount.
