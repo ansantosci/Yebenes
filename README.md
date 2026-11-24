@@ -1,3 +1,9 @@
+# V96.6.33 - UX-MODAL-02: prioridad de Escape sobre menu lateral
+
+- Cuando existe un dialogo abierto, Escape no cierra adicionalmente el menu lateral. El dialogo conserva su cierre nativo/canonico.
+- Cambio funcional limitado al manejador existente de Escape en app.js. Sin nuevos listeners ni modificaciones de permisos, backend o reglas de negocio.
+- Incremento PATCH canonico a 96.6.33, sin sufijos adicionales.
+
 # V96.6.32 - UX-MODAL-01: ficha completa de entrenador en ModalUI canonica
 
 - FRONT-only: composicion de la ficha de entrenador sobre ModalUI.mount, manteniendo los controles de negocio y las siete pestanas.

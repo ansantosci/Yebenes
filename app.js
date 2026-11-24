@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.32';
+const APP_VERSION='96.6.33';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3967,7 +3967,7 @@ $('#clubSidebar')?.addEventListener('click',e=>{
   if(!sidebarDesktop())closeClubSidebar(true);
 });
 window.addEventListener('resize',syncClubSidebar);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(true)});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.querySelector('dialog[open]'))return;closeClubSidebar(true)});
 setTimeout(syncClubSidebar,0);
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);
