@@ -1,3 +1,10 @@
+# V96.6.37 - ModalUI Mi cuenta + retirada de RPC legacy de mayoria de edad
+
+- FRONT-only: Mi cuenta adopta la shell ModalUI, preservando los nodos de perfil, disponibilidad, seguridad, formularios y handlers.
+- API-403-01: eliminadas llamadas del navegador a procesar_preparacion_mayoria_edad y procesar_mayorias_edad. Su ejecucion corresponde al mantenimiento programado del servidor.
+- No se cambian permisos, RLS, RBAC, SQL, Edge Functions ni la programacion del mantenimiento.
+- Version PATCH canonica 96.6.37. Pendiente smoke funcional en DEVELOP; no promocionar aun.
+
 # V96.6.36 - UX-MODAL-04B: retorno fluido Persona > Entrenador
 
 - Se mantiene abierta la ficha de Persona debajo de la ficha de Entrenador utilizando los dialogos nativos ya existentes.
