@@ -1,3 +1,12 @@
+# V96.6.34 - UX-MODAL-03: administración de persona en ModalUI canónica
+
+- FRONT-only: migración estructural de la ficha completa de Persona a ModalUI.mount.
+- Conserva Identidad, Acceso y roles, Relaciones, formularios, botones, IDs y navegación a Entrenador.
+- Cabecera y pestañas fuera del scroll; cuerpo desplazable y footer Cerrar.
+- Versionado PATCH canónico 96.6.34. Sin cambios de backend, RBAC o sistema de caché.
+- PERF-01 permanece pendiente de medición; sin optimizaciones especulativas.
+- Pendiente validación funcional y responsive en DEVELOP. No promocionar todavía.
+
 # V96.6.33 - UX-MODAL-02: prioridad de Escape sobre menu lateral
 
 - Cuando existe un dialogo abierto, Escape no cierra adicionalmente el menu lateral. El dialogo conserva su cierre nativo/canonico.

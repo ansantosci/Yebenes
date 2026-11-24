@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.33';
+const APP_VERSION='96.6.34';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3514,6 +3514,31 @@ function mountCanonicalCoachDetail(){
   form.querySelectorAll('[data-coach-panel]').forEach(panel=>{panel.id=`coach-panel-${panel.dataset.coachPanel}`;});
 }
 mountCanonicalCoachDetail();
+// UX-MODAL-03: canonical Person administration shell; preserve existing domain nodes.
+function mountCanonicalPersonAdmin(){
+  const dialog=$('#personAdminModal');
+  if(!dialog||dialog.classList.contains('modal-ui-shell'))return;
+  const source=dialog.querySelector('.person-admin-detail');
+  const head=source?.querySelector('.modal-head');
+  const tabs=source?.querySelector('#personAdminTabs');
+  if(!source||!head||!tabs)return;
+  const title=head.querySelector('#personAdminName');
+  const meta=head.querySelector('#personAdminMeta');
+  // Move the original tab nodes and panels, preserving IDs and event wiring.
+  head.remove();tabs.remove();
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Administración de persona',title:'Persona',
+    closeId:'closePersonAdminModal',actions:[{id:'closePersonAdminAction',label:'Cerrar'}]});
+  const identity=dialog.querySelector('.app-modal__identity');
+  identity.querySelector('h2').id='personAdminName';
+  identity.append(meta);
+  tabs.classList.add('app-modal__tabs');
+  dialog.querySelector('.app-modal__head').after(tabs);
+  const body=dialog.querySelector('.app-modal__body');
+  while(source.firstChild)body.append(source.firstChild);
+  source.remove();
+  dialog.querySelector('#closePersonAdminAction')?.addEventListener('click',()=>ModalUI.close(dialog));
+}
+mountCanonicalPersonAdmin();
 // V96.6.30: migrate the complete player detail without recreating its domain controls.
 function mountCanonicalPlayerDetail(){
   const dialog=$('#adminPlayerModal');
