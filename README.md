@@ -1,3 +1,9 @@
+# V96.6.31 - UX-ECO-01: ajuste visual revisado (r2)
+
+- En el caso sin pagos, el titulo es «Sin pagos» y se mantiene la etiqueta amarilla «Pendiente».
+- Se preservan las etiquetas en pago parcial, fraccionamiento validado y pagado.
+- Esta revision sustituye el parche inicial V96.6.31 antes de promocion a TEST.
+
 # V96.6.31 - UX-ECO-01: resumen economico sin estado duplicado
 
 - El estado pendiente se muestra una sola vez en la cabecera del resumen economico del jugador.
