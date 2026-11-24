@@ -1,3 +1,11 @@
+# V96.6.38 - PERF-01: instrumentacion temporal de interactividad
+
+- FRONT-only: mediciones opt-in en memoria de restauracion, renderizado, capa de carga, navegacion y primeros clics.
+- Activacion antes de actualizar: `sessionStorage.setItem('yebenes-perf-diagnostic','1')` en Console; consultar `window.yebenesPerfReport()` tras la actualizacion.
+- No registra nombres, identificadores de personas, credenciales ni contenidos de fichas. No usa telemetria remota ni persiste trazas.
+- Sin cambios en comportamiento de clics, proteccion de sesion, deteccion de version, cache, CSS, backend ni RBAC.
+- Instrumentacion temporal para diagnostico en DEVELOP; no promocionar sin revision y retirada/decision explicita.
+
 # V96.6.37 - ModalUI Mi cuenta + retirada de RPC legacy de mayoria de edad
 
 - FRONT-only: Mi cuenta adopta la shell ModalUI, preservando los nodos de perfil, disponibilidad, seguridad, formularios y handlers.
