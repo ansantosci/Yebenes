@@ -1,3 +1,11 @@
+# V96.6.32 - UX-MODAL-01: ficha completa de entrenador en ModalUI canonica
+
+- FRONT-only: composicion de la ficha de entrenador sobre ModalUI.mount, manteniendo los controles de negocio y las siete pestanas.
+- Scroll exclusivo del cuerpo, cabecera/pestanas y footer fuera del scroll.
+- Versionado PATCH canonico 96.6.32; se normalizan las referencias de recursos al numero oficial, sin sufijos de revision.
+- Sin modificaciones de backend, Edge Functions, capacidades RBAC ni reglas de negocio.
+- Pendiente smoke funcional en DEVELOP antes de promocion.
+
 # V96.6.31 - UX-ECO-01: ajuste visual revisado (r2)
 
 - En el caso sin pagos, el titulo es «Sin pagos» y se mantiene la etiqueta amarilla «Pendiente».

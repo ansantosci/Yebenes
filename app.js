@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.31';
+const APP_VERSION='96.6.32';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -3478,6 +3478,42 @@ $('#addPlayerButton').onclick=openPlayerForNew;$('#playerForm').onsubmit=async e
 const sponsorForm=$('#sponsorForm');if(sponsorForm){sponsorForm.onsubmit=async e=>{e.preventDefault();const submit=sponsorForm.querySelector('[type="submit"]');if(submit)submit.disabled=true;try{await saveSponsor(sponsorForm)}catch(err){console.error('Guardar patrocinador',err);alert(`No se ha podido guardar el patrocinador: ${err.message||err}`)}finally{if(submit)submit.disabled=false}};sponsorForm.elements.logo_file?.addEventListener('change',updateSponsorPreview);sponsorForm.elements.nombre?.addEventListener('input',updateSponsorPreview)}
 if($('#openSponsorModal'))$('#openSponsorModal').onclick=()=>openSponsorEditor();if($('#closeSponsorModal'))$('#closeSponsorModal').onclick=()=>$('#sponsorModal').close();if($('#cancelSponsor'))$('#cancelSponsor').onclick=()=>$('#sponsorModal').close();
 
+// UX-MODAL-01: compose coach detail over canonical ModalUI without rebuilding domain nodes.
+function mountCanonicalCoachDetail(){
+  const dialog=$('#coachModal');
+  if(!dialog||dialog.classList.contains('modal-ui-shell'))return;
+  const form=dialog.querySelector('#coachForm');
+  const tabs=form?.querySelector('#coachAdminTabs');
+  const head=form?.querySelector('.modal-head');
+  const actions=form?.querySelector('.modal-actions');
+  if(!form||!tabs||!head||!actions)return;
+  const title=head.querySelector('#coachModalTitle');
+  const selector=form.querySelector('#coachPersonSelectorWrap');
+  // Preserve the existing form, IDs, fields, panels and registered event handlers.
+  head.remove();tabs.remove();actions.remove();
+  const oldCancel=actions.querySelector('#cancelCoach');
+  const oldSubmit=actions.querySelector('button[type="submit"]');
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Cuerpo técnico',title:'Entrenador',
+    subtitle:'El entrenador siempre parte de una Persona existente. Sus otros roles y su usuario se conservan.',
+    closeId:'closeCoachModal',actions:[{id:'cancelCoach',label:'Cancelar'},{id:'saveCoachModalAction',label:'Guardar entrenador',primary:true}]});
+  const identity=dialog.querySelector('.app-modal__identity');
+  identity.querySelector('h2').id='coachModalTitle';
+  tabs.classList.add('app-modal__tabs');
+  dialog.querySelector('.app-modal__head').after(tabs);
+  dialog.querySelector('.app-modal__body').append(form);
+  // The footer belongs to ModalUI; submit stays on the original form.
+  dialog.querySelector('#saveCoachModalAction')?.addEventListener('click',()=>{
+    if(form.dataset.modalBusy==='1')return;
+    form.requestSubmit();
+  });
+  oldCancel?.remove();oldSubmit?.remove();
+  // Preserve existing create/edit tab visibility and server refresh logic.
+  tabs.querySelectorAll('[data-coach-tab]').forEach(button=>{
+    button.setAttribute('aria-controls',`coach-panel-${button.dataset.coachTab}`);
+  });
+  form.querySelectorAll('[data-coach-panel]').forEach(panel=>{panel.id=`coach-panel-${panel.dataset.coachPanel}`;});
+}
+mountCanonicalCoachDetail();
 // V96.6.30: migrate the complete player detail without recreating its domain controls.
 function mountCanonicalPlayerDetail(){
   const dialog=$('#adminPlayerModal');
