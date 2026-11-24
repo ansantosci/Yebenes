@@ -1,3 +1,9 @@
+# V96.6.31 - UX-ECO-01: resumen economico sin estado duplicado
+
+- El estado pendiente se muestra una sola vez en la cabecera del resumen economico del jugador.
+- El importe se presenta como cantidad por abonar; se conservan las cifras y reglas de negocio.
+- Cambio exclusivamente frontend, sin alterar capacidades RBAC, backend ni Edge Functions.
+
 # V96.6.30 - Ficha de jugador migrada a ModalUI canónica
 
 - Usa capacidades `economy.*` en las superficies económicas existentes.

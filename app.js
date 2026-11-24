@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.30';
+const APP_VERSION='96.6.31';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1240,9 +1240,9 @@ function economicState(player){
     if(e.fraccionamiento_clubber_validado)return {key:'installments',label:'Fraccionamiento Cluber validado',detail:`Cobrado ${moneyEUR(e.importe_pagado)} de ${moneyEUR(e.importe_total)} · domiciliación validada`,ok:true,warning:false};
   }
   if(e?.estado_economico==='parcial')return {key:'partial',label:'Pago parcial',detail:`${moneyEUR(e.importe_pagado)} de ${moneyEUR(e.importe_total)} · pendiente de completar o validar Cluber`,ok:false};
-  return {key:'pending',label:'Pendiente',detail:`Pendiente ${moneyEUR(e?.importe_total??cfg.importe_inscripcion)}`,ok:false};
+  return {key:'pending',label:'Pendiente',detail:`${moneyEUR(e?.importe_total??cfg.importe_inscripcion)} por abonar`,ok:false};
 }
-function economicSummaryHtml(player){const st=economicState(player),e=player?.economic,cfg=player?.economicConfig,total=Number(e?.importe_total??cfg?.importe_inscripcion??0),paid=Number(e?.importe_pagado||0),pending=Math.max(0,total-paid);return `<div class="economic-summary ${st.ok?'is-ready':'is-pending'}"><div class="row"><div><strong>${esc(st.label)}</strong><div class="meta">${esc(st.detail)}</div></div><span class="status ${st.ok?'complete':'pending'}">${st.ok?'✓ Habilitado':'Pendiente'}</span></div>${cfg?`<div class="economic-grid"><span>Importe <strong>${moneyEUR(total)}</strong></span><span>Pagado <strong>${moneyEUR(paid)}</strong></span><span>Pendiente <strong>${moneyEUR(pending)}</strong></span><span>Fraccionamiento <strong>${cfg.admite_fraccionamiento?'Permitido':'No'}</strong></span></div>`:''}</div>`}
+function economicSummaryHtml(player){const st=economicState(player),e=player?.economic,cfg=player?.economicConfig,total=Number(e?.importe_total??cfg?.importe_inscripcion??0),paid=Number(e?.importe_pagado||0),pending=Math.max(0,total-paid);return `<div class="economic-summary ${st.ok?'is-ready':'is-pending'}"><div class="row"><div><strong>${esc(st.label)}</strong><div class="meta">${esc(st.detail)}</div></div>${st.key==='pending'?'':`<span class="status ${st.ok?'complete':'pending'}">${st.ok?'✓ Habilitado':'Pendiente'}</span>`}</div>${cfg?`<div class="economic-grid"><span>Importe <strong>${moneyEUR(total)}</strong></span><span>Pagado <strong>${moneyEUR(paid)}</strong></span><span>Pendiente <strong>${moneyEUR(pending)}</strong></span><span>Fraccionamiento <strong>${cfg.admite_fraccionamiento?'Permitido':'No'}</strong></span></div>`:''}</div>`}
 function remoteFederationReadiness(player){
   const medical=player?.medical?medicalState({date:player.medical.fecha_reconocimiento,expiry:player.medical.fecha_valido_hasta}):medicalState(null);
   const payment=economicState(player);
