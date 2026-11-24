@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.29';
+const APP_VERSION='96.6.30';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1497,7 +1497,7 @@ async function loadRemoteHistory(inscriptionId){const {data,error}=await sb.from
 let activeAdminPlayerTab='summary';
 function setAdminPlayerTab(tab){
   activeAdminPlayerTab=tab||'summary';
-  $$('#adminPlayerTabs [data-player-tab]').forEach(b=>b.classList.toggle('active',b.dataset.playerTab===activeAdminPlayerTab));
+  $$('#adminPlayerTabs [data-player-tab]').forEach(b=>{const active=b.dataset.playerTab===activeAdminPlayerTab;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});
   $$('#adminPlayerModal [data-player-panel]').forEach(p=>p.classList.toggle('active',p.dataset.playerPanel===activeAdminPlayerTab));
   if(activeAdminPlayerTab==='economic')populateEconomicPlayerTab();
 }
@@ -3478,6 +3478,33 @@ $('#addPlayerButton').onclick=openPlayerForNew;$('#playerForm').onsubmit=async e
 const sponsorForm=$('#sponsorForm');if(sponsorForm){sponsorForm.onsubmit=async e=>{e.preventDefault();const submit=sponsorForm.querySelector('[type="submit"]');if(submit)submit.disabled=true;try{await saveSponsor(sponsorForm)}catch(err){console.error('Guardar patrocinador',err);alert(`No se ha podido guardar el patrocinador: ${err.message||err}`)}finally{if(submit)submit.disabled=false}};sponsorForm.elements.logo_file?.addEventListener('change',updateSponsorPreview);sponsorForm.elements.nombre?.addEventListener('input',updateSponsorPreview)}
 if($('#openSponsorModal'))$('#openSponsorModal').onclick=()=>openSponsorEditor();if($('#closeSponsorModal'))$('#closeSponsorModal').onclick=()=>$('#sponsorModal').close();if($('#cancelSponsor'))$('#cancelSponsor').onclick=()=>$('#sponsorModal').close();
 
+// V96.6.30: migrate the complete player detail without recreating its domain controls.
+function mountCanonicalPlayerDetail(){
+  const dialog=$('#adminPlayerModal');
+  if(!dialog||dialog.classList.contains('modal-ui-shell'))return;
+  const legacy=dialog.querySelector('.player-tabbed-detail');
+  const tabs=legacy?.querySelector('#adminPlayerTabs');
+  if(!legacy||!tabs)return;
+  const source=legacy.querySelector('#adminPlayerSource');
+  const panels=[...legacy.querySelectorAll('[data-player-panel]')];
+  // Detach original nodes to retain all IDs, forms and domain semantics.
+  tabs.remove();source?.remove();panels.forEach(panel=>panel.remove());
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Ficha del club',title:'Jugador',
+    actions:[{id:'closeAdminModalAction',label:'Cerrar'}],closeId:'closeAdminModal'});
+  const identity=dialog.querySelector('.app-modal__identity');
+  identity.querySelector('h2').id='adminPlayerName';
+  const category=document.createElement('div');category.className='meta';category.id='adminPlayerCategory';identity.append(category);
+  tabs.classList.add('app-modal__tabs');
+  tabs.querySelectorAll('[data-player-tab]').forEach(button=>{button.setAttribute('aria-controls',`player-panel-${button.dataset.playerTab}`);});
+  panels.forEach(panel=>{panel.id=`player-panel-${panel.dataset.playerPanel}`;});
+  dialog.querySelector('.app-modal__head').after(tabs);
+  const body=dialog.querySelector('.app-modal__body');
+  if(source)body.append(source);
+  panels.forEach(panel=>body.append(panel));
+  dialog.querySelector('#closeAdminModalAction')?.addEventListener('click',()=>ModalUI.close(dialog));
+  dialog.addEventListener('close',()=>{selectedRemotePlayerId=null;selectedPlayerId=null;});
+}
+mountCanonicalPlayerDetail();
 $('#searchInput').oninput=()=>{resetListPage('club');renderClub()};['statusFilter','clubCategoryFilter','clubActiveFilter'].forEach(id=>$('#'+id).onchange=()=>{resetListPage('club');renderClub()});$$('[data-club-quick]').forEach(el=>{const go=()=>{const v=el.dataset.clubQuick;clubQuickFilter=(clubQuickFilter===v&&v!=='all')?'all':v;resetListPage('club');renderClub()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#saveTeamAssignment').onclick=()=>currentUser?.source==='supabase'?saveRemoteTeamAssignment():saveTeamAssignment();$('#advanceStatus').onclick=()=>currentUser?.source==='supabase'?advanceRemoteSelected():advanceSelected();$('#saveWorkflow').onclick=()=>currentUser?.source==='supabase'?setRemoteWorkflowSelected():setWorkflowSelected();$('#returnToFamily').onclick=()=>currentUser?.source==='supabase'?returnRemoteSelected():returnSelected();$('#closeAdminModal').onclick=()=>$('#adminPlayerModal').close();$('#changeTutorButton').onclick=openChangeTutor;$('#selfRepresentationButton').onclick=openSelfRepresentation;
 function scrollActiveListToStart(view){
   const map={clubView:'clubPaginationTop',medicalView:'medicalPaginationTop',coachesView:'coachesPaginationTop',personsView:'personsPaginationTop'};

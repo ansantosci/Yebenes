@@ -1461,3 +1461,20 @@ button.ghost.small:hover{background:#f0f7fb}
 }
 
 /* V96.6.26 — FeedbackUI global: misma anatomía visual que StatusPanel. */
+
+/* V96.6.30 — Player detail consumes ModalUI shell; only body scrolls. */
+#adminPlayerModal.modal-ui-shell[open]{width:min(980px,calc(100vw - 24px));max-width:980px;max-height:calc(100dvh - 24px);height:auto;overflow:hidden;grid-template-rows:auto auto minmax(0,1fr) auto}
+#adminPlayerModal.modal-ui-shell[open]>.app-modal__head{position:relative;margin:0;padding:18px 24px 12px;top:auto}
+#adminPlayerModal.modal-ui-shell[open]>.app-modal__tabs{position:relative;top:auto;margin:0;padding:10px 24px;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;border-bottom:1px solid #edf1f4}
+#adminPlayerModal.modal-ui-shell[open]>.app-modal__body{min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding:16px 24px 24px}
+#adminPlayerModal.modal-ui-shell .entity-tab-panel{min-width:0;overflow-x:hidden}
+#adminPlayerModal.modal-ui-shell .entity-tab{flex:0 0 auto;min-height:44px;scroll-snap-align:start}
+#adminPlayerModal.modal-ui-shell .app-modal__identity{min-width:0}
+#adminPlayerModal.modal-ui-shell .app-modal__identity h2{overflow-wrap:anywhere}
+@media(max-width:720px){
+ #adminPlayerModal.modal-ui-shell[open]{width:calc(100vw - 12px);max-width:calc(100vw - 12px);height:auto;max-height:calc(100dvh - 12px);border-radius:16px}
+ #adminPlayerModal.modal-ui-shell[open]>.app-modal__head{margin:0;padding:14px 16px 10px}
+ #adminPlayerModal.modal-ui-shell[open]>.app-modal__tabs{top:auto;margin:0;padding:8px 16px}
+ #adminPlayerModal.modal-ui-shell[open]>.app-modal__body{padding:12px 16px 18px}
+ #adminPlayerModal.modal-ui-shell[open]>.app-modal__actions{padding:10px 16px}
+}

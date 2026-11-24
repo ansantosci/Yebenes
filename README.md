@@ -1,4 +1,4 @@
-# V96.6.29 - Convergencia frontend de Economía a capacidades 110
+# V96.6.30 - Ficha de jugador migrada a ModalUI canónica
 
 - Usa capacidades `economy.*` en las superficies económicas existentes.
 - Muestra saldo pendiente explícito en la ficha económica.
