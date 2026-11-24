@@ -1,3 +1,10 @@
+# V96.6.29 - Convergencia frontend de Economía a capacidades 110
+
+- Usa capacidades `economy.*` en las superficies económicas existentes.
+- Muestra saldo pendiente explícito en la ficha económica.
+- Reutiliza AppConfirm para feedback y confirmaciones económicas.
+- Mantiene la ficha de jugador legacy fuera de este corte; su migración integral a ModalUI queda separada.
+
 # V96.6.28 - Corrige autorrecursión de FeedbackUI y refuerza guardrail
 
 - FeedbackUI posee la implementación base de StatusPanel; ModalUI.setStatus delega unidireccionalmente.

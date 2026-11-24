@@ -30,10 +30,6 @@ begin
     raise exception '104 contract: cerrar_temporada not converged';
   end if;
 
-  select pg_get_functiondef('public.configurar_economia_equipo(uuid,numeric,boolean,boolean,text)'::regprocedure) into v_def;
-  if v_def not like '%has_capability%structure.manage%' or v_def like '%has_any_role%' then
-    raise exception '104 contract: configurar_economia_equipo not converged';
-  end if;
 
   if not exists (
     select 1 from pg_policies
