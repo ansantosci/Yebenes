@@ -137,3 +137,35 @@ feedback_end = _app_js.find('// V96.4.3:', feedback_start)
 feedback_block = _app_js[feedback_start:feedback_end] if feedback_start >= 0 and feedback_end > feedback_start else ''
 if 'app-status-panel' not in feedback_block or '.show(' in feedback_block or 'success(' in feedback_block:
     errors.append('V96.6.28: FeedbackUI debe limitarse a la implementación inline de StatusPanel, sin superficie global paralela.')
+
+
+# V96.6.29 - Economy frontend capability convergence.
+_app_js = (ROOT / 'app.js').read_text(encoding='utf-8')
+for forbidden in [
+    "if(!sb||!can('structure.manage')||!dbContextSeason())return []",
+    "if(!can('structure.manage')){body.innerHTML='<tr><td colspan=\"6\">Sin acceso a configuración económica.",
+    "if(!can('structure.manage'))return;selectedEconomicTeamId=teamId",
+    "if(!selectedEconomicTeamId||!can('structure.manage'))return",
+    "disabled=remote&&!can('structure.manage')",
+]:
+    if forbidden in _app_js:
+        errors.append('V96.6.29: Economy UI must not borrow structure.manage: ' + forbidden)
+for required in [
+    "can('economy.config.manage')",
+    "can('economy.read_all')",
+    "can('economy.payments.manage')",
+    "<span>Pendiente <strong>${moneyEUR(pending)}</strong></span>",
+    "title:'Pago registrado'",
+    "title:'Configuración guardada'",
+]:
+    if required not in _app_js:
+        errors.append('V96.6.29: missing economy convergence invariant: ' + required)
+if "confirm('Confirma que el club ha verificado en Cluber" in _app_js or "confirm('¿Revocar la validación del fraccionamiento Cluber?')" in _app_js:
+    errors.append('V96.6.29: Economy Cluber confirmation must reuse AppConfirm, not native confirm().')
+
+if errors:
+    print('Yebenes architecture guardrails FAILED', file=sys.stderr)
+    for e in errors:
+        print('FAIL', e, file=sys.stderr)
+    sys.exit(1)
+print('PASS V96.6.29 economy frontend capability convergence')
