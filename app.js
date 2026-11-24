@@ -1242,7 +1242,7 @@ function economicState(player){
   if(e?.estado_economico==='parcial')return {key:'partial',label:'Pago parcial',detail:`${moneyEUR(e.importe_pagado)} de ${moneyEUR(e.importe_total)} · pendiente de completar o validar Cluber`,ok:false};
   return {key:'pending',label:'Pendiente',detail:`Pendiente ${moneyEUR(e?.importe_total??cfg.importe_inscripcion)}`,ok:false};
 }
-function economicSummaryHtml(player){const st=economicState(player),e=player?.economic,cfg=player?.economicConfig;return `<div class="economic-summary ${st.ok?'is-ready':'is-pending'}"><div class="row"><div><strong>${esc(st.label)}</strong><div class="meta">${esc(st.detail)}</div></div><span class="status ${st.ok?'complete':'pending'}">${st.ok?'✓ Habilitado':'Pendiente'}</span></div>${cfg?`<div class="economic-grid"><span>Importe <strong>${moneyEUR(cfg.importe_inscripcion)}</strong></span><span>Pagado <strong>${moneyEUR(e?.importe_pagado||0)}</strong></span><span>Fraccionamiento <strong>${cfg.admite_fraccionamiento?'Permitido':'No'}</strong></span></div>`:''}</div>`}
+function economicSummaryHtml(player){const st=economicState(player),e=player?.economic,cfg=player?.economicConfig,total=Number(e?.importe_total??cfg?.importe_inscripcion??0),paid=Number(e?.importe_pagado||0),pending=Math.max(0,total-paid);return `<div class="economic-summary ${st.ok?'is-ready':'is-pending'}"><div class="row"><div><strong>${esc(st.label)}</strong><div class="meta">${esc(st.detail)}</div></div><span class="status ${st.ok?'complete':'pending'}">${st.ok?'✓ Habilitado':'Pendiente'}</span></div>${cfg?`<div class="economic-grid"><span>Importe <strong>${moneyEUR(total)}</strong></span><span>Pagado <strong>${moneyEUR(paid)}</strong></span><span>Pendiente <strong>${moneyEUR(pending)}</strong></span><span>Fraccionamiento <strong>${cfg.admite_fraccionamiento?'Permitido':'No'}</strong></span></div>`:''}</div>`}
 function remoteFederationReadiness(player){
   const medical=player?.medical?medicalState({date:player.medical.fecha_reconocimiento,expiry:player.medical.fecha_valido_hasta}):medicalState(null);
   const payment=economicState(player);
@@ -1507,21 +1507,21 @@ function updateAdminTabAlerts(v){
   const economicNeedsAttention=!paidInFull;
   const economicAmber=economicNeedsAttention&&economic.ok&&!!economic.warning;
   const set=(id,on,amber=false)=>{const el=$(id);if(!el)return;el.hidden=!on;el.classList.toggle('amber',!!amber)};
-  set('#tabAlertData',data);set('#tabAlertDocs',docs);set('#tabAlertMedical',!['ok'].includes(m.key),m.key==='soon');set('#tabAlertEconomic',can('players.manage')&&economicNeedsAttention,economicAmber);
+  set('#tabAlertData',data);set('#tabAlertDocs',docs);set('#tabAlertMedical',!['ok'].includes(m.key),m.key==='soon');set('#tabAlertEconomic',can('economy.read_all')&&economicNeedsAttention,economicAmber);
 }
 function populateEconomicPlayerTab(){
-  if(!can('players.manage'))return;
+  if(!can('economy.read_all'))return;
   const v=remoteClubPlayers.find(x=>x.id===selectedRemotePlayerId);if(!v)return;selectedEconomicPlayerId=v.id;const f=$('#economicPlayerForm');if(!f)return;
   $('#economicPlayerCurrent').innerHTML=economicSummaryHtml(v);f.elements.clubberPlayerId.value=v.clubberPlayer?.clubber_id||'';f.elements.clubberTutorId.value=v.clubberTutor?.clubber_id||'';f.elements.paymentAmount.value='';const paymentMethodSelect=f.elements.paymentMethod;paymentMethodSelect.innerHTML=PAYMENT_FEATURES.manualMethods.filter(m=>m.enabled).map(m=>`<option value="${esc(m.value)}">${esc(m.label)}</option>`).join('');paymentMethodSelect.value='efectivo';f.elements.paymentDate.value=isoToday();f.elements.paymentReference.value='';f.elements.paymentNotes.value='';const cfg=v.economicConfig;$('#installmentValidationSummary').textContent=v.economic?.fraccionamiento_clubber_validado?`✓ Validado el ${v.economic.fecha_validacion_fraccionamiento?formatDateTime(v.economic.fecha_validacion_fraccionamiento):''}`:(cfg?.admite_fraccionamiento?'Pendiente de validar en Cluber.':'Este equipo no admite fraccionamiento.');$('#validateClubberInstallments').disabled=!cfg?.admite_fraccionamiento||!!v.economic?.fraccionamiento_clubber_validado;$('#revokeClubberInstallments').disabled=!v.economic?.fraccionamiento_clubber_validado;$('#economicPaymentsHistory').innerHTML=(v.payments||[]).length?v.payments.map(p=>`<div class="history-item"><strong>${moneyEUR(p.importe)} · ${esc(p.metodo==='efectivo'?'Efectivo':p.metodo==='clubber'?'Cluber':'Otro')}</strong><span>${fmt(p.fecha_pago)} · ${esc(p.estado)}${p.referencia_externa?' · '+esc(p.referencia_externa):''}</span></div>`).join(''):'<div class="meta">Sin pagos registrados.</div>';
 }
 async function openRemoteAdminPlayer(id){
   const v=remoteClubPlayers.find(x=>x.id===id);if(!v)return;selectedRemotePlayerId=id;selectedPlayerId=id;
-  const readOnlyView=!can('players.manage');
+  const readOnlyView=!can('players.manage'),canReadEconomy=can('economy.read_all'),canManagePayments=can('economy.payments.manage');
   const economicTab=$('#economicPlayerTabButton'),economicPanel=$('#economicPlayerPanel'),workflowSection=$('#playerWorkflowSection'),returnSection=$('#playerReturnSection');
-  if(economicTab)economicTab.style.display=readOnlyView?'none':'';if(economicPanel)economicPanel.style.display=readOnlyView?'none':'';if(workflowSection)workflowSection.style.display=readOnlyView?'none':'';if(returnSection)returnSection.style.display=readOnlyView?'none':'';
+  if(economicTab)economicTab.style.display=canReadEconomy?'':'none';if(economicPanel)economicPanel.style.display=canReadEconomy?'':'none';if(workflowSection)workflowSection.style.display=readOnlyView?'none':'';if(returnSection)returnSection.style.display=readOnlyView?'none':'';
   if($('#openMedicalFromPlayer'))$('#openMedicalFromPlayer').style.display=readOnlyView?'none':'';
   if($('#togglePlayerActive'))$('#togglePlayerActive').style.display=readOnlyView?'none':'';
-  if(readOnlyView&&activeAdminPlayerTab==='economic')activeAdminPlayerTab='summary';
+  if(!canReadEconomy&&activeAdminPlayerTab==='economic')activeAdminPlayerTab='summary';
   $('#adminPlayerName').textContent=v.name;$('#adminPlayerCategory').textContent=`${v.categoryName} · ${dbActiveSeason()?.name||''}`;$('#adminPlayerSource').textContent='Datos reales de Supabase';$('#adminPlayerData').textContent='Completo';{const dp=federationDocsProgress(v);$('#adminPlayerDocs').textContent=`${dp.pct}% · ${dp.valid}/${dp.total} requisitos validados`;}{const ms=medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null);$('#adminPlayerMedical').textContent=ms.key==='ok'?`Vigente hasta ${fmt(v.medical.fecha_valido_hasta)}`:ms.key==='soon'?`${ms.label} · hasta ${fmt(v.medical.fecha_valido_hasta)}`:ms.key==='expired'?`Vencido · ${fmt(v.medical?.fecha_valido_hasta)}`:'Sin RRMM vigente';$('#adminPlayerMedical').className=ms.key==='ok'?'ok-text':ms.key==='soon'?'warn-text':'error-text';}$('#adminPlayerFed').textContent=remotePlayerStateLabel(v);$('#playerOperationalStatus').textContent=v.active?'Activo':'Inactivo';$('#togglePlayerActive').textContent=v.active?'Marcar como inactivo':'Reactivar jugador';
   $('#representationSummary').innerHTML=(v.representation?`<div><strong>${esc(v.tutorName)}</strong><div class="meta">Representación activa desde ${fmt(v.representation.fecha_desde)}${v.representation.excepcion_representacion_adulto?' · excepción jurídica':''}</div></div><span class="status complete">Activa</span>`:(v.birth&&ageOn(v.birth)>=18?'<div><strong>Autorrepresentación</strong><div class="meta">Jugador mayor de edad · gestiona directamente su ficha.</div></div><span class="status complete">Activa</span>':'<div><strong>⚠ Sin representante activo</strong></div>'))+`<div class="checklist compact-person-data"><div class="check"><span>Fecha de nacimiento</span><strong>${fmt(v.birth)}</strong></div><div class="check"><span>Correo</span><strong>${esc(v.playerEmail||'—')}</strong></div><div class="check"><span>Teléfono</span><strong>${esc(v.playerPhone||'—')}</strong></div><div class="check"><span>DNI/NIE</span><strong>${v.childDocumentNumber?esc(String(v.childDocumentType||'').toUpperCase()+' · '+v.childDocumentNumber):'—'}</strong></div></div>`;
   $('#changeTutorButton').style.display='none';$('#selfRepresentationButton').style.display='none';
@@ -2794,24 +2794,24 @@ async function linkPersonAuth(){if(!can('people.manage'))return;const p=dbPerson
 
 
 async function loadEconomicConfigs(){
-  if(!sb||!can('structure.manage')||!dbContextSeason())return [];
+  if(!sb||!can('economy.config.manage')||!dbContextSeason())return [];
   const {data,error}=await sb.from('configuracion_economica_equipo').select('id,temporada_id,equipo_id,importe_inscripcion,admite_fraccionamiento,requiere_pago_ficha,observaciones').eq('temporada_id',dbContextSeason().id);
   if(error)throw error;dbEconomicConfigs=data||[];return dbEconomicConfigs;
 }
 function renderEconomicTeamConfig(){
   const body=$('#economicTeamsTable');if(!body)return;
-  if(!can('structure.manage')){body.innerHTML='<tr><td colspan="6">Sin acceso a configuración económica.</td></tr>';return}
+  if(!can('economy.config.manage')){body.innerHTML='<tr><td colspan="6">Sin acceso a configuración económica.</td></tr>';return}
   loadEconomicConfigs().then(()=>{
     body.innerHTML=sortTeamsByCategoryAge(dbSeasonTeams(),true).map(t=>{const c=dbEconomicConfigs.find(x=>x.equipo_id===t.id);return `<tr><td><strong>${esc(t.name)}</strong><div class="meta">${esc(dbCategoryName(t.categoryId))}</div></td><td>${c?moneyEUR(c.importe_inscripcion):'Sin configurar'}</td><td>${c?(c.admite_fraccionamiento?'Sí':'No'):'—'}</td><td>${c?(c.requiere_pago_ficha?'Sí':'No'):'—'}</td><td><span class="status ${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'complete':'pending'}">${c&&(!c.requiere_pago_ficha||Number(c.importe_inscripcion)>0)?'Configurado':'Pendiente'}</span></td><td><button class="secondary tiny edit-economic-config" data-id="${t.id}">${c?'Editar':'Configurar'}</button></td></tr>`}).join('');
     $$('.edit-economic-config').forEach(b=>b.onclick=()=>openEconomicConfig(b.dataset.id));
   }).catch(err=>{body.innerHTML=`<tr><td colspan="6">No se pudo cargar la configuración: ${esc(err.message||err)}</td></tr>`});
 }
 function openEconomicConfig(teamId){
-  if(!can('structure.manage'))return;selectedEconomicTeamId=teamId;const t=dbTeams.find(x=>x.id===teamId),c=dbEconomicConfigs.find(x=>x.equipo_id===teamId),f=$('#economicConfigForm');if(!t||!f)return;
+  if(!can('economy.config.manage'))return;selectedEconomicTeamId=teamId;const t=dbTeams.find(x=>x.id===teamId),c=dbEconomicConfigs.find(x=>x.equipo_id===teamId),f=$('#economicConfigForm');if(!t||!f)return;
   $('#economicConfigTitle').textContent=t.name;f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';$('#economicConfigModal').showModal();
 }
 async function saveEconomicConfig(form){
-  if(!selectedEconomicTeamId||!can('structure.manage'))return;
+  if(!selectedEconomicTeamId||!can('economy.config.manage'))return;
   const fd=new FormData(form),amount=Number(fd.get('amount'));
   if(!Number.isFinite(amount)||amount<0){alert('Indica un importe válido.');return}
   const teamId=selectedEconomicTeamId;
@@ -2842,6 +2842,7 @@ async function saveEconomicConfig(form){
     refreshMs=Math.round(performance.now()-refreshStart);
 
     $('#economicConfigModal').close();
+    await showAppConfirm({mode:'info',tone:'success',eyebrow:'ECONOMÍA',title:'Configuración guardada',message:'La configuración económica del equipo se ha guardado correctamente.',confirmLabel:'Aceptar'});
     console.info('[Yebenes][PERF] Economía equipo',{
       team_id:teamId,
       rpc_ms:rpcMs,
@@ -2865,9 +2866,9 @@ function renderEconomicPlayerCurrent(v){const box=$('#economicPlayerCurrent');if
 function openEconomicPlayer(){setAdminPlayerTab('economic')}
 async function closeEconomicPlayerAndReturn(){setAdminPlayerTab('summary')}
 async function refreshEconomicPlayerModal(){await renderRemoteClub();const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId||x.id===selectedRemotePlayerId);if(v){selectedRemotePlayerId=v.id;selectedEconomicPlayerId=v.id;populateEconomicPlayerTab();updateAdminTabAlerts(v);$('#adminFederationReadiness').innerHTML=readinessProgressHtml(v)}}
-async function saveClubberIds(){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const b=$('#saveClubberIds');b.disabled=true;b.textContent='Guardando…';try{const {error}=await sb.rpc('actualizar_vinculos_clubber',{p_jugador_id:v.id,p_clubber_deportista_id:f.elements.clubberPlayerId.value.trim()||null,p_tutor_persona_id:v.representation?.representante_persona_id||null,p_clubber_tutor_id:f.elements.clubberTutorId.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se han podido guardar los IDs Cluber: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Guardar IDs Cluber'}}
-async function registerEconomicPayment(){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const amount=Number(f.elements.paymentAmount.value);if(!Number.isFinite(amount)||amount<=0){alert('Indica un importe mayor que cero.');return}const requestedMethod=f.elements.paymentMethod.value;const allowed=PAYMENT_FEATURES.manualMethods.some(m=>m.enabled&&m.value===requestedMethod);if(!allowed||requestedMethod!=='efectivo'){alert('Actualmente solo se permite registrar manualmente pagos en efectivo. Los pagos de Cluber se incorporarán mediante importación.');return}const b=$('#registerEconomicPayment');b.disabled=true;b.textContent='Registrando…';try{const {error}=await sb.rpc('registrar_pago_inscripcion',{p_inscripcion_id:v.inscription.id,p_importe:amount,p_metodo:'efectivo',p_fecha_pago:f.elements.paymentDate.value||isoToday(),p_referencia_externa:f.elements.paymentReference.value.trim()||null,p_clubber_pago_id:null,p_observaciones:f.elements.paymentNotes.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se ha podido registrar el pago: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Registrar pago en efectivo'}}
-async function setClubberInstallments(valid){const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId);if(!v)return;if(valid&&!confirm('Confirma que el club ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.'))return;if(!valid&&!confirm('¿Revocar la validación del fraccionamiento Cluber?'))return;try{const {error}=await sb.rpc('validar_fraccionamiento_clubber',{p_inscripcion_id:v.inscription.id,p_validado:valid,p_observaciones:null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se ha podido actualizar el fraccionamiento: ${err.message||err}`)}}
+async function saveClubberIds(){if(!can('economy.payments.manage'))return;const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const b=$('#saveClubberIds');b.disabled=true;b.textContent='Guardando…';try{const {error}=await sb.rpc('actualizar_vinculos_clubber',{p_jugador_id:v.id,p_clubber_deportista_id:f.elements.clubberPlayerId.value.trim()||null,p_tutor_persona_id:v.representation?.representante_persona_id||null,p_clubber_tutor_id:f.elements.clubberTutorId.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal()}catch(err){alert(`No se han podido guardar los IDs Cluber: ${err.message||err}`)}finally{b.disabled=false;b.textContent='Guardar IDs Cluber'}}
+async function registerEconomicPayment(){if(!can('economy.payments.manage'))return;const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId),f=$('#economicPlayerForm');if(!v)return;const amount=Number(f.elements.paymentAmount.value);if(!Number.isFinite(amount)||amount<=0){alert('Indica un importe mayor que cero.');return}const requestedMethod=f.elements.paymentMethod.value;const allowed=PAYMENT_FEATURES.manualMethods.some(m=>m.enabled&&m.value===requestedMethod);if(!allowed||requestedMethod!=='efectivo'){alert('Actualmente solo se permite registrar manualmente pagos en efectivo. Los pagos de Cluber se incorporarán mediante importación.');return}const b=$('#registerEconomicPayment');b.disabled=true;b.textContent='Registrando…';try{const {error}=await sb.rpc('registrar_pago_inscripcion',{p_inscripcion_id:v.inscription.id,p_importe:amount,p_metodo:'efectivo',p_fecha_pago:f.elements.paymentDate.value||isoToday(),p_referencia_externa:f.elements.paymentReference.value.trim()||null,p_clubber_pago_id:null,p_observaciones:f.elements.paymentNotes.value.trim()||null});if(error)throw error;await refreshEconomicPlayerModal();await showAppConfirm({mode:'info',tone:'success',eyebrow:'ECONOMÍA',title:'Pago registrado',message:`Se ha registrado correctamente un pago de ${moneyEUR(amount)}.`,confirmLabel:'Aceptar'})}catch(err){await showAppConfirm({mode:'info',tone:'warning',eyebrow:'ECONOMÍA',title:'No se ha podido registrar el pago',message:String(err.message||err),confirmLabel:'Cerrar'})}finally{b.disabled=false;b.textContent='Registrar pago en efectivo'}}
+async function setClubberInstallments(valid){if(!can('economy.payments.manage'))return;const v=remoteClubPlayers.find(x=>x.id===selectedEconomicPlayerId);if(!v)return;const confirmed=await showAppConfirm({eyebrow:'ECONOMÍA',title:valid?'Validar fraccionamiento Cluber':'Revocar validación Cluber',message:valid?'Confirma que el club ha verificado en Cluber la domiciliación/fraccionamiento de las cuotas.':'Se revocará la validación del fraccionamiento Cluber para esta inscripción.',confirmLabel:valid?'Validar':'Revocar',cancelLabel:'Cancelar',tone:valid?'default':'warning'});if(!confirmed)return;try{const {error}=await sb.rpc('validar_fraccionamiento_clubber',{p_inscripcion_id:v.inscription.id,p_validado:valid,p_observaciones:null});if(error)throw error;await refreshEconomicPlayerModal();await showAppConfirm({mode:'info',tone:'success',eyebrow:'ECONOMÍA',title:valid?'Fraccionamiento validado':'Validación revocada',message:valid?'La domiciliación/fraccionamiento Cluber ha quedado validada.':'La validación del fraccionamiento Cluber ha sido revocada.',confirmLabel:'Aceptar'})}catch(err){await showAppConfirm({mode:'info',tone:'warning',eyebrow:'ECONOMÍA',title:'No se ha podido actualizar el fraccionamiento',message:String(err.message||err),confirmLabel:'Cerrar'})}}
 let selectedRffmTeamId=null;
 let rffmResultsByTeam=new Map();
 let rffmLastBulkUpdate=null;
@@ -3331,7 +3332,7 @@ function openTeamEdit(id){
   f.elements.name.value=t.name||'';f.elements.categoryId.value=t.categoryId||'';f.elements.code.value=t.code||'';f.elements.modality.value=t.modality||'';f.elements.gender.value=t.gender||'';f.elements.active.value=t.active?'yes':'no';
   f.elements.amount.value=c?.importe_inscripcion??'';f.elements.installments.value=c?.admite_fraccionamiento===false?'no':'yes';f.elements.required.value=c?.requiere_pago_ficha===false?'no':'yes';f.elements.notes.value=c?.observaciones||'';
   const sportsEditable=can('structure.manage');['name','categoryId','code','modality','gender','active'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!sportsEditable});
-  ['amount','installments','required','notes'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!can('structure.manage')});
+  ['amount','installments','required','notes'].forEach(n=>{if(f.elements[n])f.elements[n].disabled=remote&&!can('economy.config.manage')});
   $('#teamModalSeason').textContent=remote?`Temporada ${dbContextSeason()?.name||''} · ${currentRole==='club'?'Gestión deportiva del club':'Administración'}`:`Temporada ${seasonName(currentSeasonId)}`;
   $('#teamModalTitle').textContent=t.name||'Editar equipo';
   const teamModal=$('#teamModal'),closeTeam=$('#closeTeamModal'),cancelTeam=$('#cancelTeam'),teamForm=$('#teamForm');
@@ -3354,11 +3355,11 @@ async function saveUnifiedTeam(form){
         const {error}=await sb.from('equipos').update(payload).eq('id',editingTeamId);if(error)throw error;
       }
       const amountRaw=String(fd.get('amount')??'').trim();
-      if(amountRaw!==''){
+      if(can('economy.config.manage')&&amountRaw!==''){
         const amount=Number(amountRaw);if(!Number.isFinite(amount)||amount<0){alert('Indica un importe válido.');return}
         const {error}=await sb.rpc('configurar_economia_equipo',{p_equipo_id:editingTeamId,p_importe_inscripcion:amount,p_admite_fraccionamiento:fd.get('installments')==='yes',p_requiere_pago_ficha:fd.get('required')==='yes',p_observaciones:String(fd.get('notes')||'').trim()||null});if(error)throw error;
       }
-      await loadSupabaseStructure();await loadEconomicConfigs();await renderRemoteClub();$('#teamModal').close();renderStructure();
+      await loadSupabaseStructure();if(can('economy.config.manage'))await loadEconomicConfigs();await renderRemoteClub();$('#teamModal').close();renderStructure();await showAppConfirm({mode:'info',tone:'success',eyebrow:'EQUIPO',title:'Equipo guardado',message:'Los cambios autorizados del equipo se han guardado correctamente.',confirmLabel:'Aceptar'});
     }catch(err){alert(`No se ha podido guardar el equipo: ${err.message||err}`)}finally{if(button){button.disabled=false;button.textContent='Guardar equipo'}}
     return;
   }
