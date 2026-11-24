@@ -1,3 +1,10 @@
+# V96.6.36 - UX-MODAL-04B: retorno fluido Persona > Entrenador
+
+- Se mantiene abierta la ficha de Persona debajo de la ficha de Entrenador utilizando los dialogos nativos ya existentes.
+- Al cerrar Entrenador con X, Cancelar o Escape, reaparece inmediatamente Persona > Relaciones, sin volver al listado ni recargar Persona.
+- Se conserva la apertura directa desde Cuerpo tecnico; sin cambios en backend, RBAC, CSS ni mecanismo de actualizacion.
+- Versionado PATCH canonico 96.6.36. Pendiente validacion funcional en DEVELOP antes de promocion.
+
 # V96.6.35 - UX-MODAL-04: retorno al contexto Persona > Relaciones
 
 - Al cerrar mediante X, Cancelar o Escape una ficha de entrenador abierta desde Persona > Relaciones, se restaura esa Persona en Relaciones.

@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.35';
+const APP_VERSION='96.6.36';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -2713,7 +2713,12 @@ async function openPersonAdmin(personId,tab='identity'){
   const resendBtn=$('#resendInternalInvitation');if(resendBtn){resendBtn.hidden=!linked||confirmed;resendBtn.disabled=!person.email_contacto}
   const teamNames=rel.assignments.map(a=>{const t=dbTeams.find(x=>x.id===a.equipo_id);return `${t?.name||'Equipo'} · ${coachRoleLabel(a.funcion)}${a.fecha_hasta?' · hasta '+fmt(a.fecha_hasta):''}`});
   $('#personRelationsPanel').innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Jugador</span>${rel.players.length?rel.players.map(x=>`<div class="relation-line"><strong>Ficha de jugador</strong><span>${x.activo!==false?'Activa':'Inactiva'}</span></div>`).join(''):'<div class="meta">No tiene ficha de jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Familia / representación</span>${rel.representations.length?`<div class="relation-line"><strong>${rel.representations.length} representación(es) activa(s)</strong><span>Perfil Familia derivado</span></div>`:'<div class="meta">No representa actualmente a ningún jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Entrenador</span>${rel.coach?`<div class="relation-line"><strong>${rel.coach.activo!==false?'Entrenador activo':'Entrenador inactivo'}</strong><span>${teamNames.join('<br>')||'Sin asignaciones activas'}</span></div><button type="button" class="secondary small" id="openCoachFromPerson">Abrir ficha de entrenador</button>`:'<div class="meta">No tiene extensión de entrenador.</div>'}</section>`;
-  const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id);coachReturnToPerson={personId,tab:'relations'};}};
+  const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){
+    // Keep Person in the native dialog top layer; Coach becomes the topmost dialog.
+    // Closing Coach reveals the same Person instance, tab and scroll position.
+    openCoachForEdit(c.id);
+    coachReturnToPerson={personId,tab:'relations'};
+  }};
   setPersonAdminTab(tab);if(!$('#personAdminModal').open)$('#personAdminModal').showModal();
 }
 let remotePersonsRenderPromise=null;
@@ -3516,14 +3521,9 @@ function mountCanonicalCoachDetail(){
   form.querySelectorAll('[data-coach-panel]').forEach(panel=>{panel.id=`coach-panel-${panel.dataset.coachPanel}`;});
 }
 mountCanonicalCoachDetail();
-// UX-MODAL-04: restore Person > Relaciones only after dismissing a coach opened from that Person.
-$('#coachModal')?.addEventListener('close',()=>{
-  const origin=coachReturnToPerson;
-  coachReturnToPerson=null;
-  if(!origin||!can('people.manage')||!$('#personsView'))return;
-  // Native dialog close has completed; never stack two open modal dialogs.
-  Promise.resolve().then(()=>openPersonAdmin(origin.personId,origin.tab)).catch(err=>console.error('No se pudo restaurar Administración de persona',err));
-});
+// UX-MODAL-04B: Person remains mounted underneath Coach; native dialog top-layer
+// restores the original Person view automatically, without fetching or repainting.
+$('#coachModal')?.addEventListener('close',()=>{coachReturnToPerson=null;});
 // UX-MODAL-03: canonical Person administration shell; preserve existing domain nodes.
 function mountCanonicalPersonAdmin(){
   const dialog=$('#personAdminModal');
