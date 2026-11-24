@@ -1,4 +1,4 @@
-const APP_VERSION='96.6.30';
+const APP_VERSION='96.6.36';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1240,7 +1240,7 @@ function economicState(player){
     if(e.fraccionamiento_clubber_validado)return {key:'installments',label:'Fraccionamiento Cluber validado',detail:`Cobrado ${moneyEUR(e.importe_pagado)} de ${moneyEUR(e.importe_total)} · domiciliación validada`,ok:true,warning:false};
   }
   if(e?.estado_economico==='parcial')return {key:'partial',label:'Pago parcial',detail:`${moneyEUR(e.importe_pagado)} de ${moneyEUR(e.importe_total)} · pendiente de completar o validar Cluber`,ok:false};
-  return {key:'pending',label:'Pendiente',detail:`Pendiente ${moneyEUR(e?.importe_total??cfg.importe_inscripcion)}`,ok:false};
+  return {key:'pending',label:'Sin pagos',detail:`${moneyEUR(e?.importe_total??cfg.importe_inscripcion)} por abonar`,ok:false};
 }
 function economicSummaryHtml(player){const st=economicState(player),e=player?.economic,cfg=player?.economicConfig,total=Number(e?.importe_total??cfg?.importe_inscripcion??0),paid=Number(e?.importe_pagado||0),pending=Math.max(0,total-paid);return `<div class="economic-summary ${st.ok?'is-ready':'is-pending'}"><div class="row"><div><strong>${esc(st.label)}</strong><div class="meta">${esc(st.detail)}</div></div><span class="status ${st.ok?'complete':'pending'}">${st.ok?'✓ Habilitado':'Pendiente'}</span></div>${cfg?`<div class="economic-grid"><span>Importe <strong>${moneyEUR(total)}</strong></span><span>Pagado <strong>${moneyEUR(paid)}</strong></span><span>Pendiente <strong>${moneyEUR(pending)}</strong></span><span>Fraccionamiento <strong>${cfg.admite_fraccionamiento?'Permitido':'No'}</strong></span></div>`:''}</div>`}
 function remoteFederationReadiness(player){
@@ -2631,7 +2631,8 @@ async function openCoachForNew(personId=null){
 function setCoachAssignmentGuard(message='',kind='warning'){
   const el=$('#coachAssignmentGuard');if(!el)return;el.textContent=message;el.hidden=!message;el.className=message?(kind==='ok'?'success-box':'warning-box'):'';
 }
-function openCoachForEdit(id){if(!can('coaches.manage'))return;const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);renderCoachAdminSummary(c);renderCoachAdminMedical(c);renderCoachAdminHistory(c);bindCoachAdminTabs();coachAdminTab('summary');$('#coachModal').showModal()}
+let coachReturnToPerson=null;
+function openCoachForEdit(id){if(!can('coaches.manage'))return;coachReturnToPerson=null;const c=coaches.find(x=>x.id===id);if(!c)return;setCoachAssignmentGuard('');editingCoachId=id;selectedCoachPersonId=c.personId;$('#coachPersonSelectorWrap').hidden=true;pendingCoachAssignments=(c.assignments||[]).filter(a=>assignmentState(a)!=='finished').map(a=>({...a}));const f=$('#coachForm');f.elements.firstName.value=c.firstName||String(c.name||'').split(' ')[0]||'';f.elements.lastName1.value=c.lastName1||String(c.name||'').split(' ').slice(1).join(' ');f.elements.lastName2.value=c.lastName2||'';f.elements.email.value=c.email||'';f.elements.phone.value=c.phone||'';f.elements.active.value=c.active?'yes':'no';fillAssignmentTeamSelect('#coachAssignmentTeam');renderCoachAssignments();['firstName','lastName1','lastName2','email','phone'].forEach(n=>{if(f.elements[n])f.elements[n].readOnly=true});$('#coachModalTitle').textContent='Editar entrenador';renderCoachMinorConsentPanel();renderCoachNormalizedSummary(c);renderCoachAvailabilityPanel('#coachAvailabilityPanel',c);renderCoachAdminSummary(c);renderCoachAdminMedical(c);renderCoachAdminHistory(c);bindCoachAdminTabs();coachAdminTab('summary');$('#coachModal').showModal()}
 async function saveRemoteCoach(form){
   if(!can('coaches.manage'))return;
   const isNewCoach=!editingCoachId,fd=new FormData(form),old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value,btn=form.querySelector('button[type="submit"]');
@@ -2645,6 +2646,7 @@ async function saveRemoteCoach(form){
     if(isNewCoach&&!linkedAuthUserId&&fd.get('active')==='yes')await invokeAccessManager({action:'invite_coach_user',persona_id:personId,redirect_to:AUTH_REDIRECT_URL});
     const payload=pendingCoachAssignments.map(a=>({team_id:a.teamId,funcion:a.coachRole,fecha_desde:a.startDate,fecha_hasta:a.endDate||null,reemplazar_principal:a.replacePrincipal===true}));
     const {error:aerr}=await sb.rpc('guardar_asignaciones_entrenador',{p_entrenador_id:coachId,p_asignaciones:payload});if(aerr)throw aerr;
+    coachReturnToPerson=null;
     await loadSupabaseCoaches();if((currentUser.roles||[]).includes('admin'))await loadSupabasePersons();editingCoachId=null;selectedCoachPersonId=null;pendingCoachAssignments=[];form.reset();$('#coachModal').close();renderCoaches();renderStructure();renderPersons();await showAppConfirm({mode:'info',tone:'success',eyebrow:'CUERPO TÉCNICO',title:'Entrenador guardado',message:'Los datos del entrenador se han guardado correctamente.',confirmLabel:'Aceptar'});
   }catch(err){
     console.error('Guardar entrenador',err);
@@ -2711,7 +2713,12 @@ async function openPersonAdmin(personId,tab='identity'){
   const resendBtn=$('#resendInternalInvitation');if(resendBtn){resendBtn.hidden=!linked||confirmed;resendBtn.disabled=!person.email_contacto}
   const teamNames=rel.assignments.map(a=>{const t=dbTeams.find(x=>x.id===a.equipo_id);return `${t?.name||'Equipo'} · ${coachRoleLabel(a.funcion)}${a.fecha_hasta?' · hasta '+fmt(a.fecha_hasta):''}`});
   $('#personRelationsPanel').innerHTML=`<section class="person-admin-card"><span class="eyebrow dark">Jugador</span>${rel.players.length?rel.players.map(x=>`<div class="relation-line"><strong>Ficha de jugador</strong><span>${x.activo!==false?'Activa':'Inactiva'}</span></div>`).join(''):'<div class="meta">No tiene ficha de jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Familia / representación</span>${rel.representations.length?`<div class="relation-line"><strong>${rel.representations.length} representación(es) activa(s)</strong><span>Perfil Familia derivado</span></div>`:'<div class="meta">No representa actualmente a ningún jugador.</div>'}</section><section class="person-admin-card"><span class="eyebrow dark">Entrenador</span>${rel.coach?`<div class="relation-line"><strong>${rel.coach.activo!==false?'Entrenador activo':'Entrenador inactivo'}</strong><span>${teamNames.join('<br>')||'Sin asignaciones activas'}</span></div><button type="button" class="secondary small" id="openCoachFromPerson">Abrir ficha de entrenador</button>`:'<div class="meta">No tiene extensión de entrenador.</div>'}</section>`;
-  const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){$('#personAdminModal').close();openCoachForEdit(c.id)}};
+  const coachBtn=$('#openCoachFromPerson');if(coachBtn)coachBtn.onclick=()=>{const c=coaches.find(x=>x.personId===personId);if(c){
+    // Keep Person in the native dialog top layer; Coach becomes the topmost dialog.
+    // Closing Coach reveals the same Person instance, tab and scroll position.
+    openCoachForEdit(c.id);
+    coachReturnToPerson={personId,tab:'relations'};
+  }};
   setPersonAdminTab(tab);if(!$('#personAdminModal').open)$('#personAdminModal').showModal();
 }
 let remotePersonsRenderPromise=null;
@@ -3478,6 +3485,70 @@ $('#addPlayerButton').onclick=openPlayerForNew;$('#playerForm').onsubmit=async e
 const sponsorForm=$('#sponsorForm');if(sponsorForm){sponsorForm.onsubmit=async e=>{e.preventDefault();const submit=sponsorForm.querySelector('[type="submit"]');if(submit)submit.disabled=true;try{await saveSponsor(sponsorForm)}catch(err){console.error('Guardar patrocinador',err);alert(`No se ha podido guardar el patrocinador: ${err.message||err}`)}finally{if(submit)submit.disabled=false}};sponsorForm.elements.logo_file?.addEventListener('change',updateSponsorPreview);sponsorForm.elements.nombre?.addEventListener('input',updateSponsorPreview)}
 if($('#openSponsorModal'))$('#openSponsorModal').onclick=()=>openSponsorEditor();if($('#closeSponsorModal'))$('#closeSponsorModal').onclick=()=>$('#sponsorModal').close();if($('#cancelSponsor'))$('#cancelSponsor').onclick=()=>$('#sponsorModal').close();
 
+// UX-MODAL-01: compose coach detail over canonical ModalUI without rebuilding domain nodes.
+function mountCanonicalCoachDetail(){
+  const dialog=$('#coachModal');
+  if(!dialog||dialog.classList.contains('modal-ui-shell'))return;
+  const form=dialog.querySelector('#coachForm');
+  const tabs=form?.querySelector('#coachAdminTabs');
+  const head=form?.querySelector('.modal-head');
+  const actions=form?.querySelector('.modal-actions');
+  if(!form||!tabs||!head||!actions)return;
+  const title=head.querySelector('#coachModalTitle');
+  const selector=form.querySelector('#coachPersonSelectorWrap');
+  // Preserve the existing form, IDs, fields, panels and registered event handlers.
+  head.remove();tabs.remove();actions.remove();
+  const oldCancel=actions.querySelector('#cancelCoach');
+  const oldSubmit=actions.querySelector('button[type="submit"]');
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Cuerpo técnico',title:'Entrenador',
+    subtitle:'El entrenador siempre parte de una Persona existente. Sus otros roles y su usuario se conservan.',
+    closeId:'closeCoachModal',actions:[{id:'cancelCoach',label:'Cancelar'},{id:'saveCoachModalAction',label:'Guardar entrenador',primary:true}]});
+  const identity=dialog.querySelector('.app-modal__identity');
+  identity.querySelector('h2').id='coachModalTitle';
+  tabs.classList.add('app-modal__tabs');
+  dialog.querySelector('.app-modal__head').after(tabs);
+  dialog.querySelector('.app-modal__body').append(form);
+  // The footer belongs to ModalUI; submit stays on the original form.
+  dialog.querySelector('#saveCoachModalAction')?.addEventListener('click',()=>{
+    if(form.dataset.modalBusy==='1')return;
+    form.requestSubmit();
+  });
+  oldCancel?.remove();oldSubmit?.remove();
+  // Preserve existing create/edit tab visibility and server refresh logic.
+  tabs.querySelectorAll('[data-coach-tab]').forEach(button=>{
+    button.setAttribute('aria-controls',`coach-panel-${button.dataset.coachTab}`);
+  });
+  form.querySelectorAll('[data-coach-panel]').forEach(panel=>{panel.id=`coach-panel-${panel.dataset.coachPanel}`;});
+}
+mountCanonicalCoachDetail();
+// UX-MODAL-04B: Person remains mounted underneath Coach; native dialog top-layer
+// restores the original Person view automatically, without fetching or repainting.
+$('#coachModal')?.addEventListener('close',()=>{coachReturnToPerson=null;});
+// UX-MODAL-03: canonical Person administration shell; preserve existing domain nodes.
+function mountCanonicalPersonAdmin(){
+  const dialog=$('#personAdminModal');
+  if(!dialog||dialog.classList.contains('modal-ui-shell'))return;
+  const source=dialog.querySelector('.person-admin-detail');
+  const head=source?.querySelector('.modal-head');
+  const tabs=source?.querySelector('#personAdminTabs');
+  if(!source||!head||!tabs)return;
+  const title=head.querySelector('#personAdminName');
+  const meta=head.querySelector('#personAdminMeta');
+  // Move the original tab nodes and panels, preserving IDs and event wiring.
+  head.remove();tabs.remove();
+  ModalUI.mount(dialog,{size:'wide',eyebrow:'Administración de persona',title:'Persona',
+    closeId:'closePersonAdminModal',actions:[{id:'closePersonAdminAction',label:'Cerrar'}]});
+  const identity=dialog.querySelector('.app-modal__identity');
+  identity.querySelector('h2').id='personAdminName';
+  identity.append(meta);
+  tabs.classList.add('app-modal__tabs');
+  dialog.querySelector('.app-modal__head').after(tabs);
+  const body=dialog.querySelector('.app-modal__body');
+  while(source.firstChild)body.append(source.firstChild);
+  source.remove();
+  dialog.querySelector('#closePersonAdminAction')?.addEventListener('click',()=>ModalUI.close(dialog));
+}
+mountCanonicalPersonAdmin();
 // V96.6.30: migrate the complete player detail without recreating its domain controls.
 function mountCanonicalPlayerDetail(){
   const dialog=$('#adminPlayerModal');
@@ -3553,7 +3624,7 @@ $('#closeSelfRepresentationModal').onclick=$('#cancelSelfRepresentation').onclic
 $('#openEconomicModal')&&($('#openEconomicModal').onclick=openEconomicPlayer);$('#closeEconomicPlayerModal')&&($('#closeEconomicPlayerModal').onclick=closeEconomicPlayerAndReturn);$('#economicPlayerModal')&&($('#economicPlayerModal').oncancel=e=>{e.preventDefault();closeEconomicPlayerAndReturn()});$$('#adminPlayerTabs [data-player-tab]').forEach(b=>b.onclick=()=>setAdminPlayerTab(b.dataset.playerTab));$('#openMedicalFromPlayer').onclick=()=>{const id=selectedRemotePlayerId;if(!id)return;$('#adminPlayerModal').close();openRemoteMedical(id)};$('#saveClubberIds').onclick=saveClubberIds;$('#registerEconomicPayment').onclick=registerEconomicPayment;$('#validateClubberInstallments').onclick=()=>setClubberInstallments(true);$('#revokeClubberInstallments').onclick=()=>setClubberInstallments(false);$('#closeEconomicConfigModal').onclick=$('#cancelEconomicConfig').onclick=()=>$('#economicConfigModal').close();$('#economicConfigForm').onsubmit=e=>{e.preventDefault();saveEconomicConfig(e.currentTarget)};
 $('#medicalSearch').oninput=()=>{resetListPage('medical');renderMedical()};$('#medicalFilter').onchange=()=>{resetListPage('medical');renderMedical()};$$('[data-medical-quick]').forEach(el=>{const go=()=>{const v=el.dataset.medicalQuick;medicalQuickFilter=(medicalQuickFilter===v&&v!=='all')?'all':v;resetListPage('medical');renderMedical()};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});$('#medicalForm [name="medicalDate"]').onchange=e=>{const f=$('#medicalForm');if(currentUser?.source==='supabase'&&e.target.value&&!f.elements.medicalExpiry.value)f.elements.medicalExpiry.value=addMonths(e.target.value,18)};$('#closeMedicalModal').onclick=$('#cancelMedical').onclick=()=>$('#medicalModal').close();$('#saveMedicalAppointment').onclick=saveRemoteMedicalAppointment;$('#editMedicalAppointment').onclick=()=>{const v=currentRemoteMedicalTarget();if(v)setMedicalAppointmentEditor(v,true)};$('#cancelMedicalAppointmentEdit').onclick=()=>{const v=currentRemoteMedicalTarget();if(v)setMedicalAppointmentEditor(v,false)};$('#cancelMedicalAppointment').onclick=cancelRemoteMedicalAppointment;$('#medicalForm').onsubmit=e=>{e.preventDefault();const form=e.currentTarget;if(currentUser?.source==='supabase')return saveRemoteMedical(form);const fd=new FormData(form);medicals.push({id:uid('m'),playerId:selectedMedicalPlayerId,date:fd.get('medicalDate')||'',expiry:fd.get('medicalExpiry')||'',validatedAt:isoToday()});saveMedicals();recordAudit('Reconocimiento médico registrado',selectedMedicalPlayerId,`${fmt(fd.get('medicalDate'))} → ${fmt(fd.get('medicalExpiry'))}`);$('#medicalModal').close();renderMedical();renderClub()};
 
-$$('#accountProfileModal [data-account-tab]').forEach(b=>b.onclick=()=>setSimpleTabs('#accountProfileModal',b.dataset.accountTab));$$('#medicalModal [data-medical-tab]').forEach(b=>b.onclick=()=>setMedicalTab(b.dataset.medicalTab));$$('#medicalModal .medical-close').forEach(b=>b.onclick=()=>$('#medicalModal').close());$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachMedicalFilter','coachLicenseFilter','coachDelegateFilter','coachBenchFilter','coachPlayerFilter','coachStatusFilter'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=()=>{resetListPage('coaches');renderCoaches()}});if($('#coachSearch'))$('#coachSearch').oninput=()=>{resetListPage('coaches');renderCoaches()};$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(!can('coaches.manage'))return;const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:old?.hasLicense||false,licenseType:old?.licenseType||'',licenseNumber:old?.licenseNumber||'',delegateCourse:old?.delegateCourse||false,notes:old?.notes||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();$('#coachModal').close();renderCoaches();renderStructure()};
+$$('#accountProfileModal [data-account-tab]').forEach(b=>b.onclick=()=>setSimpleTabs('#accountProfileModal',b.dataset.accountTab));$$('#medicalModal [data-medical-tab]').forEach(b=>b.onclick=()=>setMedicalTab(b.dataset.medicalTab));$$('#medicalModal .medical-close').forEach(b=>b.onclick=()=>$('#medicalModal').close());$('#openCoachModal').onclick=()=>openCoachForNew();if($('#coachPersonSelect'))$('#coachPersonSelect').onchange=e=>{const id=e.currentTarget.value;if(id)applyCoachPersonToForm(id)};$('#closeCoachModal').onclick=$('#cancelCoach').onclick=()=>$('#coachModal').close();['coachCategoryFilter','coachTeamFilter','coachRoleFilter','coachMedicalFilter','coachLicenseFilter','coachDelegateFilter','coachBenchFilter','coachPlayerFilter','coachStatusFilter'].forEach(id=>{const el=$('#'+id);if(el)el.onchange=()=>{resetListPage('coaches');renderCoaches()}});if($('#coachSearch'))$('#coachSearch').oninput=()=>{resetListPage('coaches');renderCoaches()};$('#coachForm').onsubmit=async e=>{e.preventDefault();if(currentUser?.source==='supabase')return saveRemoteCoach(e.currentTarget);if(!can('coaches.manage'))return;const fd=new FormData(e.currentTarget),old=coaches.find(c=>c.id===editingCoachId),fullName=[fd.get('firstName'),fd.get('lastName1'),fd.get('lastName2')].filter(Boolean).join(' '),item={id:editingCoachId||uid('c'),userId:old?.userId||null,name:fullName,firstName:fd.get('firstName'),lastName1:fd.get('lastName1'),lastName2:fd.get('lastName2'),email:fd.get('email')||'',phone:fd.get('phone')||'',assignments:pendingCoachAssignments.map(a=>({...a})),hasLicense:old?.hasLicense||false,licenseType:old?.licenseType||'',licenseNumber:old?.licenseNumber||'',delegateCourse:old?.delegateCourse||false,notes:old?.notes||'',active:fd.get('active')==='yes'};if(editingCoachId)coaches=coaches.map(c=>c.id===editingCoachId?item:c);else coaches.push(item);saveCoaches();recordAudit('Entrenador actualizado','',item.name);editingCoachId=null;pendingCoachAssignments=[];e.currentTarget.reset();coachReturnToPerson=null;$('#coachModal').close();renderCoaches();renderStructure()};
 $('#addCoachAssignment').onclick=async()=>{try{const old=coaches.find(c=>c.id===editingCoachId),personId=old?.personId||selectedCoachPersonId||$('#coachPersonSelect')?.value;if(currentUser?.source==='supabase'&&personId){const ok=await ensureMinorCoachAssignmentAllowed(personId);if(!ok){setCoachAssignmentGuard('No se puede añadir esta asignación. El entrenador es menor y todavía no consta la autorización expresa de su tutor.');return}}setCoachAssignmentGuard('');const team=$('#coachAssignmentTeam').value,role=$('#coachAssignmentRole').value,start=$('#coachAssignmentStart').value,endValue=$('#coachAssignmentEnd').value,end=endValue||'9999-12-31';if(!team||!start){alert('Selecciona equipo y completa la fecha de inicio.');return}if(endValue&&endValue<start){alert('La fecha de fin no puede ser anterior al inicio.');return}let replacePrincipal=false;if(role==='first'){const conflicts=coaches.filter(c=>c.id!==editingCoachId).flatMap(c=>(c.assignments||[]).filter(a=>a.teamId===team&&a.coachRole==='first'&&!a.cancelledAt&&!(end<(a.startDate||'0000-01-01')||start>(a.endDate||'9999-12-31'))).map(a=>({coach:c,assignment:a})));if(conflicts.length){const names=[...new Set(conflicts.map(x=>x.coach.name))].join(', ');if(!confirm(`${coachTeamName(team)} ya tiene como entrenador principal a ${names}. ¿Quieres finalizar esa etapa y asignar a este entrenador como nuevo principal desde ${fmt(start)}?`)){setCoachAssignmentGuard('La asignación no se ha añadido porque el equipo ya tiene entrenador principal en ese periodo.');return}replacePrincipal=true}}const ownIndex=pendingCoachAssignments.findIndex(a=>{const aEnd=a.endDate||'9999-12-31';return a.teamId===team&&!(end<(a.startDate||'0000-01-01')||start>aEnd)});if(ownIndex>=0){const previous=pendingCoachAssignments[ownIndex];if(previous.coachRole===role){alert('Ya existe una asignación solapada para ese equipo.');return}if(!confirm(`Este entrenador ya figura como ${coachRoleLabel(previous.coachRole)} de ${coachTeamName(team)} en ese periodo. ¿Quieres cambiar su función a ${coachRoleLabel(role)} desde ${fmt(start)}?`))return;const previousStart=previous.startDate||start;if(start<=previousStart){pendingCoachAssignments.splice(ownIndex,1,{teamId:team,coachRole:role,startDate:start,endDate:endValue||'',replacePrincipal});}else{const d=new Date(`${start}T12:00:00`);d.setDate(d.getDate()-1);const previousDay=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;pendingCoachAssignments[ownIndex]={...previous,endDate:previousDay};pendingCoachAssignments.push({teamId:team,coachRole:role,startDate:start,endDate:endValue||'',replacePrincipal});}renderCoachAssignments();setCoachAssignmentGuard(replacePrincipal?'Al guardar, se cambiará la función de este entrenador y se finalizará la etapa del entrenador principal anterior, conservando el histórico.':'Al guardar, se cambiará la función del entrenador conservando el histórico anterior cuando corresponda.','ok');return}const added=addAssignmentFrom('coachAssignment',pendingCoachAssignments,renderCoachAssignments);if(added&&replacePrincipal){pendingCoachAssignments[pendingCoachAssignments.length-1].replacePrincipal=true;renderCoachAssignments();setCoachAssignmentGuard('Al guardar, se finalizará la asignación del entrenador principal anterior y se conservará en el histórico.','ok')}}catch(err){setCoachAssignmentGuard(`No se ha podido comprobar la asignación: ${err.message||err}`)}};
 if($('#minorCoachConsentConfirm'))$('#minorCoachConsentConfirm').onclick=submitMinorCoachConsent;
 if($('#closeMinorCoachConsent'))$('#closeMinorCoachConsent').onclick=()=>{$('#minorCoachConsentModal').close();pendingMinorConsentAction=null};
@@ -3931,7 +4002,7 @@ $('#clubSidebar')?.addEventListener('click',e=>{
   if(!sidebarDesktop())closeClubSidebar(true);
 });
 window.addEventListener('resize',syncClubSidebar);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeClubSidebar(true)});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.querySelector('dialog[open]'))return;closeClubSidebar(true)});
 setTimeout(syncClubSidebar,0);
 
 blockPasteOnEmailConfirm(document);bindSpanishIdentityValidation(document);

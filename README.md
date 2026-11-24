@@ -1,3 +1,52 @@
+# V96.6.36 - UX-MODAL-04B: retorno fluido Persona > Entrenador
+
+- Se mantiene abierta la ficha de Persona debajo de la ficha de Entrenador utilizando los dialogos nativos ya existentes.
+- Al cerrar Entrenador con X, Cancelar o Escape, reaparece inmediatamente Persona > Relaciones, sin volver al listado ni recargar Persona.
+- Se conserva la apertura directa desde Cuerpo tecnico; sin cambios en backend, RBAC, CSS ni mecanismo de actualizacion.
+- Versionado PATCH canonico 96.6.36. Pendiente validacion funcional en DEVELOP antes de promocion.
+
+# V96.6.35 - UX-MODAL-04: retorno al contexto Persona > Relaciones
+
+- Al cerrar mediante X, Cancelar o Escape una ficha de entrenador abierta desde Persona > Relaciones, se restaura esa Persona en Relaciones.
+- Apertura directa desde Cuerpo técnico y flujo de guardado conservan su navegación previa.
+- Solo FRONT; sin cambios de backend, RBAC ni lógica de actualización de caché.
+- Versionado PATCH canónico 96.6.35.
+
+# V96.6.34 - UX-MODAL-03: administración de persona en ModalUI canónica
+
+- FRONT-only: migración estructural de la ficha completa de Persona a ModalUI.mount.
+- Conserva Identidad, Acceso y roles, Relaciones, formularios, botones, IDs y navegación a Entrenador.
+- Cabecera y pestañas fuera del scroll; cuerpo desplazable y footer Cerrar.
+- Versionado PATCH canónico 96.6.34. Sin cambios de backend, RBAC o sistema de caché.
+- PERF-01 permanece pendiente de medición; sin optimizaciones especulativas.
+- Pendiente validación funcional y responsive en DEVELOP. No promocionar todavía.
+
+# V96.6.33 - UX-MODAL-02: prioridad de Escape sobre menu lateral
+
+- Cuando existe un dialogo abierto, Escape no cierra adicionalmente el menu lateral. El dialogo conserva su cierre nativo/canonico.
+- Cambio funcional limitado al manejador existente de Escape en app.js. Sin nuevos listeners ni modificaciones de permisos, backend o reglas de negocio.
+- Incremento PATCH canonico a 96.6.33, sin sufijos adicionales.
+
+# V96.6.32 - UX-MODAL-01: ficha completa de entrenador en ModalUI canonica
+
+- FRONT-only: composicion de la ficha de entrenador sobre ModalUI.mount, manteniendo los controles de negocio y las siete pestanas.
+- Scroll exclusivo del cuerpo, cabecera/pestanas y footer fuera del scroll.
+- Versionado PATCH canonico 96.6.32; se normalizan las referencias de recursos al numero oficial, sin sufijos de revision.
+- Sin modificaciones de backend, Edge Functions, capacidades RBAC ni reglas de negocio.
+- Pendiente smoke funcional en DEVELOP antes de promocion.
+
+# V96.6.31 - UX-ECO-01: ajuste visual revisado (r2)
+
+- En el caso sin pagos, el titulo es «Sin pagos» y se mantiene la etiqueta amarilla «Pendiente».
+- Se preservan las etiquetas en pago parcial, fraccionamiento validado y pagado.
+- Esta revision sustituye el parche inicial V96.6.31 antes de promocion a TEST.
+
+# V96.6.31 - UX-ECO-01: resumen economico sin estado duplicado
+
+- El estado pendiente se muestra una sola vez en la cabecera del resumen economico del jugador.
+- El importe se presenta como cantidad por abonar; se conservan las cifras y reglas de negocio.
+- Cambio exclusivamente frontend, sin alterar capacidades RBAC, backend ni Edge Functions.
+
 # V96.6.30 - Ficha de jugador migrada a ModalUI canónica
 
 - Usa capacidades `economy.*` en las superficies económicas existentes.
