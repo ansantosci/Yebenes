@@ -1,3 +1,11 @@
+# V96.6.40 - Coordinacion conservadora de cargas de fichas (PERF-01)
+
+- Coalescencia de consultas equivalentes en curso para el mismo contexto de identidad, perfil y temporada.
+- Publicacion atomica de datos de jugadores, RRMM y configuracion economica al completar las consultas, evitando vaciar el listado antes de tiempo.
+- Rechazo de resultados obsoletos tras cambiar el contexto y proteccion del renderizado contra cambios de perfil durante esperas asincronas.
+- Sin cambios en consultas SQL, RBAC, backend, reglas de negocio ni mecanismos de actualizacion.
+- Requiere regresion de cargas, guardados, cambio de perfil y restauracion en DEVELOP antes de promocion.
+
 # V96.6.39 - Retirada de instrumentacion temporal PERF-01
 
 - Se retira exclusivamente el diagnostico opt-in de V96.6.38 (eventos, listener y reporte de rendimiento).
