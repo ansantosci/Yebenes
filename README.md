@@ -1,3 +1,10 @@
+# V96.6.39 - Retirada de instrumentacion temporal PERF-01
+
+- Se retira exclusivamente el diagnostico opt-in de V96.6.38 (eventos, listener y reporte de rendimiento).
+- Se mantienen intactos los flujos funcionales de V96.6.37: ModalUI Mi cuenta y retirada de RPC legacy de mayoria de edad.
+- PERF-01A (tiempo de carga) sigue pendiente; PERF-01B (interactividad tras actualizar) permanece en observacion.
+- Frontend only; sin cambios de backend, RBAC, SQL, Edge Functions ni logica de actualizacion.
+
 # V96.6.38 - PERF-01: instrumentacion temporal de interactividad
 
 - FRONT-only: mediciones opt-in en memoria de restauracion, renderizado, capa de carga, navegacion y primeros clics.

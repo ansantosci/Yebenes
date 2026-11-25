@@ -1,16 +1,4 @@
-const APP_VERSION='96.6.38';
-// PERF-01: diagnostic opt-in, session-only; no telemetry, personal data or persistent trace.
-const PERF_DIAG_ENABLED=(()=>{try{return sessionStorage.getItem('yebenes-perf-diagnostic')==='1'}catch{return false}})();
-const perfDiagStart=performance.now();
-const perfDiagEvents=[];
-let perfDiagClicks=0;
-function perfDiag(event,detail={}){
-  if(!PERF_DIAG_ENABLED)return;
-  perfDiagEvents.push({ms:Math.round(performance.now()-perfDiagStart),event,...detail});
-  if(perfDiagEvents.length>160)perfDiagEvents.shift();
-}
-window.yebenesPerfReport=()=>PERF_DIAG_ENABLED?perfDiagEvents.map(x=>({...x})):[];
-perfDiag('BOOT');
+const APP_VERSION='96.6.39';
 const DATA_VERSION='13';
 
 const YEBENES_CONFIG=window.YEBENES_CONFIG;
@@ -1477,7 +1465,6 @@ async function loadRemoteClubData(){
 }
 
 async function renderRemoteClub(options={}){
-  const perfStart=performance.now();perfDiag('CLUB_RENDER_START',{refresh:options?.refresh!==false});
   const silent=Boolean(options?.silent),refresh=options?.refresh!==false;
   if(refresh&&!silent)$('#adminTable').innerHTML='<tr><td colspan="10">Cargando fichas desde Supabase…</td></tr>';
   try{
@@ -1491,7 +1478,7 @@ async function renderRemoteClub(options={}){
     $$('.admin-row').forEach(r=>{r.onclick=()=>openRemoteAdminPlayer(r.dataset.id);r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRemoteAdminPlayer(r.dataset.id)}}});
     renderListPagination('club',rows.length,remoteClubPlayers.length,()=>renderRemoteClub({silent:true,refresh:false}));
     const operational=remoteClubPlayers.filter(v=>v.active);$('#statPlayers').textContent=operational.length;$('#statComplete').textContent=operational.filter(v=>remoteFederationReadiness(v).isReady).length;$('#statDocs').textContent=operational.filter(v=>!federationDocsComplete(v)).length;$('#statReview').textContent=operational.filter(v=>['pendiente_revision_inicial','devuelta_familia'].includes(v.inscription?.estado)||(v.requirements||[]).some(r=>['aportado','declarado_realizado'].includes(r.estado))).length;$('#statMedical90').textContent=operational.filter(v=>medicalState(v.medical?{date:v.medical.fecha_reconocimiento,expiry:v.medical.fecha_valido_hasta}:null).key==='soon').length;$('#statAdult30').textContent=operational.filter(v=>{const d=v.birth?dayDiff(isoToday(),addYears(v.birth,18)):null;return d!==null&&d>=0&&d<=30}).length;if(currentRole!=='coach')$('#statPaymentPending').textContent=operational.filter(v=>!economicState(v).ok).length;updateQuickFilterUI();
-  }catch(err){console.error('Carga fichas Supabase',err);if(!silent)$('#adminTable').innerHTML=`<tr><td colspan="10">No se pudieron cargar las fichas: ${esc(err.message||err)}</td></tr>`}finally{perfDiag('CLUB_RENDER_END',{duration_ms:Math.round(performance.now()-perfStart),count:remoteClubPlayers.length})}
+  }catch(err){console.error('Carga fichas Supabase',err);if(!silent)$('#adminTable').innerHTML=`<tr><td colspan="10">No se pudieron cargar las fichas: ${esc(err.message||err)}</td></tr>`}
 }
 
 async function recordRemoteHistory(inscriptionId,oldState,newState,comment){
@@ -1677,15 +1664,13 @@ async function resendInternalInvitationForSelectedPerson(){
 }
 
 function showSessionRestoring(message='Recuperando sesión…'){
-  perfDiag('RESTORE_OVERLAY_SHOW');
   const r=$('#sessionRestoreScreen');if(r){r.classList.remove('hidden');const t=$('#sessionRestoreText');if(t)t.textContent=message}
   $('#authScreen')?.classList.add('hidden');$('#appShell')?.classList.add('hidden');
 }
-function hideSessionRestoring(){perfDiag('RESTORE_OVERLAY_HIDE'); $('#sessionRestoreScreen')?.classList.add('hidden'); }
+function hideSessionRestoring(){ $('#sessionRestoreScreen')?.classList.add('hidden'); }
 function restorePerfMark(name,start){const ms=Math.round(performance.now()-start);authDiag('RESTORE_TIMING',{reason:name,hidden_ms:ms});return ms}
 
 async function restoreSupabaseSession(){
-  perfDiag('RESTORE_START');
   const t0=performance.now();showSessionRestoring();authDiag('RESTORE_BEGIN',{storage:authStorageSummary()});
   if(!sb){hideSessionRestoring();showAuth('login');alert('No se ha podido cargar el cliente de Supabase. Comprueba la conexión a Internet.');return;}
   try{
@@ -1708,7 +1693,7 @@ async function restoreSupabaseSession(){
     const tStructure=performance.now();await loadSupabaseStructure();restorePerfMark('structure',tStructure);
     hideSessionRestoring();
     if(roles.length>1&&!savedRole){showRoleChooser();}else{showApp({preserveView:true});await restoreNavigationSnapshot(true);}
-    restorePerfMark('total',t0);perfDiag('RESTORE_END',{duration_ms:Math.round(performance.now()-t0)});
+    restorePerfMark('total',t0);
     // Tareas no críticas fuera del camino de entrada: no deben bloquear la UI restaurada.
     Promise.resolve().then(()=>tryProcessNotifications()).catch(()=>{});
   }catch(err){
@@ -2259,7 +2244,7 @@ function showRoleChooser(force=false){
   $$('.role-choice').forEach(b=>b.onclick=async()=>{const previousRole=currentRole;currentRole=b.dataset.role;if(previousRole!==currentRole)resetSensitiveContextForIdentityChange(currentRole==='coach'?'Cargando tus jugadores…':'Cargando datos del perfil…');localStorage.setItem(K.sessionRole,currentRole);$('#roleChooserModal').close();recordAudit('Cambio de perfil','',roleLabel(currentRole));showApp();await restoreNavigationSnapshot()});$('#roleChooserModal').showModal()
 }
 function showApp(options={}){
-  perfDiag('APP_SHOW');hideSessionRestoring();const preserveView=Boolean(options.preserveView);
+  hideSessionRestoring();const preserveView=Boolean(options.preserveView);
   if(!currentRole||!roleAvailable(currentUser,currentRole)){currentRole=availableRoles(currentUser)[0]||null}if(!currentRole)return;
   if(currentUser?.source==='supabase'&&!activeCanonicalRoleCode()){console.warn('RBAC profile mismatch',{activeLegacyRole:currentRole,availableProfiles:(currentUser.profiles||[]).map(p=>p.roleCode)});}
   $('#authScreen').classList.add('hidden');$('#appShell').classList.remove('hidden');$('#currentRoleLabel').textContent=roleLabel(currentRole);setTimeout(syncClubSidebar,0);renderSeasonContextHeader();$('#roleSwitchButton').classList.toggle('hidden',availableRoles(currentUser).length<2);
@@ -3724,7 +3709,6 @@ function saveNavigationSnapshot(remoteVersion=''){
   try{const snap=navigationSnapshot(remoteVersion);if(!snap)return;localStorage.setItem(remoteVersion?K.navResume:K.navLive,JSON.stringify(snap));}catch{}
 }
 async function restoreNavigationSnapshot(allowLive=false){
-  perfDiag('NAV_RESTORE_START');
   let snap=null,source='';
   try{snap=JSON.parse(localStorage.getItem(K.navResume)||'null');source='version';if(!snap&&allowLive){snap=JSON.parse(localStorage.getItem(K.navLive)||'null');source='live'}}catch{}
   if(!snap)return false;
@@ -3735,7 +3719,7 @@ async function restoreNavigationSnapshot(allowLive=false){
     if(!['family','player'].includes(currentRole)&&snap.view&&$('#'+snap.view)){setView(snap.view);if(snap.view==='medicalView')await renderRemoteMedical();else if(snap.view==='coachesView')await loadAndRenderCoachesView();else if(snap.view==='structureView')renderStructure();else if(snap.view==='personsView'&&can('people.manage')){await loadSupabasePersons();renderPersons()}else if(snap.view==='usersView'&&can('people.manage'))renderClubUsers();else if(snap.view==='sponsorsView'&&can('sponsors.manage'))await loadSponsorAdmin();else if(snap.view==='equipmentView'&&equipmentAllowed()){setEquipmentTab(snap.equipmentTab||storedEquipmentTab(),{persist:true});await loadEquipmentData({preserveTab:true,tab:equipmentTab});}}
     if(snap.accountOpen){openAccountProfile();if(snap.accountTab)setSimpleTabs('#accountProfileModal',snap.accountTab);}
     if(snap.coachOpen&&snap.coachId&&coaches.some(c=>c.id===snap.coachId)){openCoachForEdit(snap.coachId);if(snap.coachTab)await coachAdminTab(snap.coachTab);}
-    perfDiag('NAV_RESTORE_END',{view:snap.view||'none'});authDiag('NAVIGATION_RESTORED',{source,view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
+    authDiag('NAVIGATION_RESTORED',{source,view:snap.view,account_tab:snap.accountTab,coach_id:snap.coachId,coach_tab:snap.coachTab});return true;
   }catch(err){authDiag('NAVIGATION_RESTORE_ERROR',{error:String(err?.message||err)});return false;}
 }
 async function checkPublishedVersion(){
@@ -3906,7 +3890,7 @@ window.addEventListener('focus',async()=>{
 });
 let suppressIdleWakeClickPending=false,idleWakeClickTimer=null;
 function armIdleWakeClickSuppression(trigger){
-  perfDiag('IDLE_SUPPRESSION_ARMED',{trigger});suppressIdleWakeClickPending=true;
+  suppressIdleWakeClickPending=true;
   if(idleWakeClickTimer)clearTimeout(idleWakeClickTimer);
   idleWakeClickTimer=setTimeout(()=>{suppressIdleWakeClickPending=false;idleWakeClickTimer=null},5000);
   authDiag('IDLE_WAKE_REVALIDATION',{trigger,idle_ms:Date.now()-sessionLastInteractionAt});
@@ -3916,7 +3900,7 @@ function suppressIdleWakeClick(e){
   suppressIdleWakeClickPending=false;
   if(idleWakeClickTimer){clearTimeout(idleWakeClickTimer);idleWakeClickTimer=null}
   e.preventDefault();e.stopImmediatePropagation();
-  perfDiag('IDLE_CLICK_SUPPRESSED');authDiag('IDLE_WAKE_CLICK_SUPPRESSED',{target_id:e.target?.id||null,target_tag:e.target?.tagName||null});
+  authDiag('IDLE_WAKE_CLICK_SUPPRESSED',{target_id:e.target?.id||null,target_tag:e.target?.tagName||null});
 }
 function registerRealUserActivity(e){
   if(!currentUser||currentUser.source!=='supabase'){persistSessionActivity();return}
@@ -3928,7 +3912,6 @@ function registerRealUserActivity(e){
   e.preventDefault();e.stopImmediatePropagation();
   revalidateActiveSession('idle-action').then(ok=>{if(ok)persistSessionActivity(Date.now(),true)});
 }
-document.addEventListener('click',e=>{if(PERF_DIAG_ENABLED&&perfDiagClicks++<16)perfDiag('CLICK_CAPTURE',{tag:String(e.target?.tagName||'unknown').toLowerCase(),overlay_visible:!$('#sessionRestoreScreen')?.classList.contains('hidden'),idle_suppression:suppressIdleWakeClickPending})},true);
 document.addEventListener('click',suppressIdleWakeClick,true);
 document.addEventListener('pointerdown',registerRealUserActivity,true);
 document.addEventListener('keydown',registerRealUserActivity,true);
