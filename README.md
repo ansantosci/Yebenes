@@ -1,3 +1,33 @@
+# V96.6.40 - Coordinacion conservadora de cargas de fichas (PERF-01)
+
+- Coalescencia de consultas equivalentes en curso para el mismo contexto de identidad, perfil y temporada.
+- Publicacion atomica de datos de jugadores, RRMM y configuracion economica al completar las consultas, evitando vaciar el listado antes de tiempo.
+- Rechazo de resultados obsoletos tras cambiar el contexto y proteccion del renderizado contra cambios de perfil durante esperas asincronas.
+- Sin cambios en consultas SQL, RBAC, backend, reglas de negocio ni mecanismos de actualizacion.
+- Requiere regresion de cargas, guardados, cambio de perfil y restauracion en DEVELOP antes de promocion.
+
+# V96.6.39 - Retirada de instrumentacion temporal PERF-01
+
+- Se retira exclusivamente el diagnostico opt-in de V96.6.38 (eventos, listener y reporte de rendimiento).
+- Se mantienen intactos los flujos funcionales de V96.6.37: ModalUI Mi cuenta y retirada de RPC legacy de mayoria de edad.
+- PERF-01A (tiempo de carga) sigue pendiente; PERF-01B (interactividad tras actualizar) permanece en observacion.
+- Frontend only; sin cambios de backend, RBAC, SQL, Edge Functions ni logica de actualizacion.
+
+# V96.6.38 - PERF-01: instrumentacion temporal de interactividad
+
+- FRONT-only: mediciones opt-in en memoria de restauracion, renderizado, capa de carga, navegacion y primeros clics.
+- Activacion antes de actualizar: `sessionStorage.setItem('yebenes-perf-diagnostic','1')` en Console; consultar `window.yebenesPerfReport()` tras la actualizacion.
+- No registra nombres, identificadores de personas, credenciales ni contenidos de fichas. No usa telemetria remota ni persiste trazas.
+- Sin cambios en comportamiento de clics, proteccion de sesion, deteccion de version, cache, CSS, backend ni RBAC.
+- Instrumentacion temporal para diagnostico en DEVELOP; no promocionar sin revision y retirada/decision explicita.
+
+# V96.6.37 - ModalUI Mi cuenta + retirada de RPC legacy de mayoria de edad
+
+- FRONT-only: Mi cuenta adopta la shell ModalUI, preservando los nodos de perfil, disponibilidad, seguridad, formularios y handlers.
+- API-403-01: eliminadas llamadas del navegador a procesar_preparacion_mayoria_edad y procesar_mayorias_edad. Su ejecucion corresponde al mantenimiento programado del servidor.
+- No se cambian permisos, RLS, RBAC, SQL, Edge Functions ni la programacion del mantenimiento.
+- Version PATCH canonica 96.6.37. Pendiente smoke funcional en DEVELOP; no promocionar aun.
+
 # V96.6.36 - UX-MODAL-04B: retorno fluido Persona > Entrenador
 
 - Se mantiene abierta la ficha de Persona debajo de la ficha de Entrenador utilizando los dialogos nativos ya existentes.
