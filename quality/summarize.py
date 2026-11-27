@@ -8,10 +8,10 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser()
-    for key in ('install', 'eslint', 'actionlint', 'shellcheck'):
+    for key in ('install', 'eslint', 'cognitive', 'actionlint', 'shellcheck'):
         parser.add_argument('--' + key, default='not-run')
     args = parser.parse_args()
-    print('# QUAL-01B — Informative code quality')
+    print('# QUAL-01C — Informative code quality')
     print('This run is observational and does not authorize or block promotion.\n')
     print(f'Analyzer installation: **{args.install}**')
     print('| Tool | Exit code | Findings |')
@@ -31,14 +31,25 @@ def main():
     else:
         eslint_info = 'No report generated'
     print(f'| ESLint | {args.eslint} | {eslint_info} |')
+    cognitive_report = Path('cognitive-report.json')
+    if cognitive_report.exists():
+        try:
+            items = json.loads(cognitive_report.read_text(encoding='utf-8'))
+            cognitive = sum(m.get('ruleId') == 'sonarjs/cognitive-complexity'
+                            for f in items for m in f.get('messages', []))
+            cognitive_info = f'{cognitive} cognitive-complexity findings (threshold 15)'
+        except (ValueError, OSError, TypeError):
+            cognitive_info = 'Report unreadable'
+    else:
+        cognitive_info = 'No report generated; inspect cognitive-stderr.txt'
+    print(f'| Cognitive complexity (optional) | {args.cognitive} | {cognitive_info} |')
     if report.exists():
         try:
             items = json.loads(report.read_text(encoding='utf-8'))
             cyclomatic = sum(m.get('ruleId') == 'complexity' for f in items for m in f.get('messages', []))
-            cognitive = sum(m.get('ruleId') == 'sonarjs/cognitive-complexity' for f in items for m in f.get('messages', []))
-            print(f'\nComplexity baseline: cyclomatic **{cyclomatic}**; cognitive **{cognitive}** (threshold 15 each).')
+            print(f'\nCyclomatic baseline: **{cyclomatic}** (threshold 15).')
         except (ValueError, OSError, TypeError):
-            print('\nComplexity baseline unavailable: invalid ESLint report.')
+            print('\nCyclomatic baseline unavailable: invalid ESLint report.')
     for tool in ('actionlint', 'shellcheck'):
         file = Path(f'{tool}-report.txt')
         lines = [line for line in file.read_text(encoding='utf-8', errors='replace').splitlines() if line.strip()] if file.exists() else []
