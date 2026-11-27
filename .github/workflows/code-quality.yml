@@ -19,23 +19,24 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout current commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22.14.0'
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.24.2'
+          cache: false
       - name: Install analyzers
         id: install
         continue-on-error: true
         shell: bash
         run: |
-          npm install --no-save --no-package-lock --ignore-scripts eslint@9.39.1
+          npm install --no-save --no-package-lock --ignore-scripts eslint@9.39.1 eslint-plugin-sonarjs@3.0.5
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck
@@ -61,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          "$(go env GOPATH)/bin/actionlint" -color=false .github/workflows/*.yml > actionlint-report.txt 2>&1
+          "$(go env GOPATH)/bin/actionlint" -color=false -ignore 'label "ubuntu-26\.04" is unknown' .github/workflows/*.yml > actionlint-report.txt 2>&1
           result=$?
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
@@ -81,6 +82,16 @@ jobs:
           result=$?
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
+      - name: Record analyzer versions
+        if: steps.install.outcome == 'success'
+        shell: bash
+        run: |
+          {
+            echo "Node: $(node --version)"
+            echo "ESLint: $(./node_modules/.bin/eslint --version)"
+            echo "actionlint: $("$(go env GOPATH)/bin/actionlint" -version | head -1)"
+            echo "ShellCheck: $(shellcheck --version | grep '^version:' || true)"
+          } > analyzer-versions.txt
       - name: Publish summary
         if: always()
         shell: bash
@@ -92,12 +103,13 @@ jobs:
             --shellcheck '${{ steps.shellcheck.outputs.exit_code }}' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload diagnostic reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: qual-01-reports
           path: |
             eslint-report.json
             actionlint-report.txt
             shellcheck-report.txt
+            analyzer-versions.txt
           if-no-files-found: ignore
           retention-days: 14

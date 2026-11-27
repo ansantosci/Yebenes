@@ -1,3 +1,5 @@
+import sonarjs from 'eslint-plugin-sonarjs';
+
 // QUAL-01A: observational rules; historical findings do not fail deployment.
 export default [
   {
@@ -7,7 +9,9 @@ export default [
       ecmaVersion: 'latest',
       sourceType: 'module',
     },
+    plugins: { sonarjs },
     rules: {
+      'sonarjs/cognitive-complexity': ['warn', 15],
       'no-unreachable': 'warn',
       'no-constant-condition': 'warn',
       'no-dupe-args': 'warn',
