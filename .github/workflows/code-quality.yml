@@ -1,0 +1,103 @@
+name: QUAL-01 - Code Quality (informative)
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qual-01-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Static quality report (non-blocking)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout current commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+      - name: Install analyzers
+        id: install
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts eslint@9.39.1
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          node --version
+          ./node_modules/.bin/eslint --version
+          "$(go env GOPATH)/bin/actionlint" -version
+          shellcheck --version
+      - name: ESLint JavaScript (report only)
+        id: eslint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          ./node_modules/.bin/eslint --no-config-lookup --config quality/eslint.config.mjs --format json app.js config.js scripts --output-file eslint-report.json
+          result=$?
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: actionlint workflows (report only)
+        id: actionlint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          "$(go env GOPATH)/bin/actionlint" -color=false .github/workflows/*.yml > actionlint-report.txt 2>&1
+          result=$?
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: ShellCheck shell scripts (report only)
+        id: shellcheck
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          mapfile -d '' files < <(find scripts -type f -name '*.sh' -print0)
+          if (( ${#files[@]} )); then
+            shellcheck --format=gcc "${files[@]}" > shellcheck-report.txt 2>&1
+          else
+            echo 'No .sh files found' > shellcheck-report.txt
+          fi
+          result=$?
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Publish summary
+        if: always()
+        shell: bash
+        run: |
+          python3 quality/summarize.py \
+            --install '${{ steps.install.outcome }}' \
+            --eslint '${{ steps.eslint.outputs.exit_code }}' \
+            --actionlint '${{ steps.actionlint.outputs.exit_code }}' \
+            --shellcheck '${{ steps.shellcheck.outputs.exit_code }}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qual-01-reports
+          path: |
+            eslint-report.json
+            actionlint-report.txt
+            shellcheck-report.txt
+          if-no-files-found: ignore
+          retention-days: 14
