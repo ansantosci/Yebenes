@@ -55,6 +55,42 @@ jobs:
           result=$?
           echo "exit_code=$result" >> "$GITHUB_OUTPUT"
           exit 0
+      - name: Compare cyclomatic complexity with QUAL-01C baseline (informative)
+        if: always()
+        shell: bash
+        run: |
+          python3 quality/compare_complexity.py \
+            --baseline quality/baselines/qual-02a-cyclomatic.json \
+            --report eslint-report.json \
+            --output qual-02-comparison.json
+          python3 - <<'PYREPORT' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          report = json.loads(Path('qual-02-comparison.json').read_text())
+          print('### QUAL-02A — Cyclomatic complexity comparison (informative)')
+          print(f"Status: **{report['status']}**")
+          print(f"Baseline findings: {report.get('baseline_findings', 'n/a')}; current: {report.get('current_findings', 'n/a')}")
+          print(f"Regressions: {len(report.get('regressions', []))}; improvements: {len(report.get('improvements', []))}; uncertain: {len(report.get('uncertain', []))}")
+          print('No promotion gate is enforced by this report.')
+          PYREPORT
+      - name: Compare cyclomatic complexity with QUAL-01C baseline (informative)
+        if: always()
+        shell: bash
+        run: |
+          python3 quality/compare_complexity.py \
+            --baseline quality/baselines/qual-02a-cyclomatic.json \
+            --report eslint-report.json \
+            --output qual-02-comparison.json
+          python3 - <<'PYREPORT' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          report = json.loads(Path('qual-02-comparison.json').read_text())
+          print('### QUAL-02A — Cyclomatic complexity comparison (informative)')
+          print(f"Status: **{report['status']}**")
+          print(f"Baseline findings: {report.get('baseline_findings', 'n/a')}; current: {report.get('current_findings', 'n/a')}")
+          print(f"Regressions: {len(report.get('regressions', []))}; improvements: {len(report.get('improvements', []))}; uncertain: {len(report.get('uncertain', []))}")
+          print('No promotion gate is enforced by this report.')
+          PYREPORT
       - name: Cognitive complexity (optional report)
         id: cognitive
         if: steps.install.outcome == 'success'
@@ -126,5 +162,7 @@ jobs:
             actionlint-report.txt
             shellcheck-report.txt
             analyzer-versions.txt
+            qual-02-comparison.json
+            qual-02-comparison.json
           if-no-files-found: ignore
           retention-days: 14

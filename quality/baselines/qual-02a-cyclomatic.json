@@ -1,0 +1,530 @@
+{
+  "schema": 1,
+  "source": "QUAL-01C eslint-report.json supplied 2026-11-28",
+  "eslint": "9.39.1",
+  "threshold": 15,
+  "findings": [
+    {
+      "file": "Yebenes/app.js",
+      "name": "mount",
+      "complexity": 22,
+      "line": 90
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadVisualTheme",
+      "complexity": 17,
+      "line": 238
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveSponsor",
+      "complexity": 27,
+      "line": 344
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "mergePersons",
+      "complexity": 30,
+      "line": 543
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "categoryForBirth",
+      "complexity": 19,
+      "line": 582
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadSupabaseCoaches",
+      "complexity": 42,
+      "line": 674
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 42,
+      "line": 716
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "ensureMinorCoachAssignmentAllowed",
+      "complexity": 16,
+      "line": 784
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "renderSeasonContextHeader",
+      "complexity": 19,
+      "line": 814
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadSupabaseIdentity",
+      "complexity": 33,
+      "line": 850
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadRemoteFamilyData",
+      "complexity": 44,
+      "line": 953
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 30,
+      "line": 993
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "familyAttentionFor",
+      "complexity": 18,
+      "line": 1053
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "familyPlayerTabbedCard",
+      "complexity": 41,
+      "line": 1079
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "economicState",
+      "complexity": 20,
+      "line": 1229
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "remoteFederationReadiness",
+      "complexity": 16,
+      "line": 1243
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "documentRequirementHtml",
+      "complexity": 25,
+      "line": 1268
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "uploadFederationDocument",
+      "complexity": 24,
+      "line": 1319
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 24,
+      "line": 1366
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadRemoteClubDataSnapshot",
+      "complexity": 84,
+      "line": 1403
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 47,
+      "line": 1462
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "renderRemoteClub",
+      "complexity": 23,
+      "line": 1493
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 29,
+      "line": 1503
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "populateEconomicPlayerTab",
+      "complexity": 19,
+      "line": 1537
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openRemoteAdminPlayer",
+      "complexity": 74,
+      "line": 1542
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveRemoteTeamAssignment",
+      "complexity": 17,
+      "line": 1563
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "returnRemoteSelected",
+      "complexity": 18,
+      "line": 1566
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "syncPlayerRequirements",
+      "complexity": 26,
+      "line": 1570
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openSelfPlayerEdit",
+      "complexity": 18,
+      "line": 1572
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 32,
+      "line": 1579
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openRemoteFamilyEdit",
+      "complexity": 37,
+      "line": 1582
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openAccountProfile",
+      "complexity": 17,
+      "line": 1659
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "restoreSupabaseSession",
+      "complexity": 22,
+      "line": 1701
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadEquipmentData",
+      "complexity": 19,
+      "line": 1753
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentDeliverSelected",
+      "complexity": 16,
+      "line": 1913
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 33,
+      "line": 2001
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 34,
+      "line": 2017
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentEditProvider",
+      "complexity": 25,
+      "line": 2105
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 18,
+      "line": 2107
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentRenderConfiguration",
+      "complexity": 24,
+      "line": 2115
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentEditArticle",
+      "complexity": 26,
+      "line": 2133
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentEditPack",
+      "complexity": 20,
+      "line": 2140
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "equipmentOpenOrderEditor",
+      "complexity": 17,
+      "line": 2167
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "renderEquipment",
+      "complexity": 23,
+      "line": 2194
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "showApp",
+      "complexity": 36,
+      "line": 2275
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 22,
+      "line": 2315
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "setMedicalAppointmentEditor",
+      "complexity": 30,
+      "line": 2348
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveRemoteMedicalAppointment",
+      "complexity": 32,
+      "line": 2401
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "cancelRemoteMedicalAppointment",
+      "complexity": 19,
+      "line": 2431
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "validateRemoteFederationGate",
+      "complexity": 16,
+      "line": 2447
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "renderCoaches",
+      "complexity": 37,
+      "line": 2482
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 31,
+      "line": 2497
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 16,
+      "line": 2499
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "renderCoachAvailabilityPanel",
+      "complexity": 21,
+      "line": 2534
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "refreshCoachAdminTabFromServer",
+      "complexity": 16,
+      "line": 2580
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveRemoteCoach",
+      "complexity": 44,
+      "line": 2682
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openPersonAdmin",
+      "complexity": 33,
+      "line": 2733
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 29,
+      "line": 2785
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "createRemotePerson",
+      "complexity": 29,
+      "line": 2814
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "savePersonAdminIdentity",
+      "complexity": 23,
+      "line": 2828
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "savePersonAdminRoles",
+      "complexity": 16,
+      "line": 2834
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveEconomicConfig",
+      "complexity": 17,
+      "line": 2866
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "invokeRffm",
+      "complexity": 23,
+      "line": 2932
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadRffmCachedResults",
+      "complexity": 20,
+      "line": 2946
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openRffmResultsView",
+      "complexity": 18,
+      "line": 2974
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openRffmConfig",
+      "complexity": 25,
+      "line": 2984
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveRffmConfig",
+      "complexity": 20,
+      "line": 2990
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "rffmFederationCategoryLabel",
+      "complexity": 18,
+      "line": 3052
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "rffmTeamCardHtml",
+      "complexity": 44,
+      "line": 3116
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "rffmFreshnessSummary",
+      "complexity": 17,
+      "line": 3122
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "loadRffmTeam",
+      "complexity": 25,
+      "line": 3153
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "rffmPdfTeamHtml",
+      "complexity": 19,
+      "line": 3210
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 17,
+      "line": 3349
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "fillTeamRffmPane",
+      "complexity": 26,
+      "line": 3377
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "openTeamEdit",
+      "complexity": 27,
+      "line": 3379
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "saveUnifiedTeam",
+      "complexity": 35,
+      "line": 3399
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 18,
+      "line": 3429
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 38,
+      "line": 3430
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 22,
+      "line": 3454
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "requestPasswordRecovery",
+      "complexity": 20,
+      "line": 3488
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 124,
+      "line": 3530
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 20,
+      "line": 3668
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 20,
+      "line": 3674
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 29,
+      "line": 3675
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "restoreNavigationSnapshot",
+      "complexity": 39,
+      "line": 3740
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": "refreshHotContextPreservingNavigation",
+      "complexity": 31,
+      "line": 3797
+    },
+    {
+      "file": "Yebenes/app.js",
+      "name": null,
+      "complexity": 24,
+      "line": 3850
+    }
+  ]
+}
