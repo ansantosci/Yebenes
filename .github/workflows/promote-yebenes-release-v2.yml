@@ -14,6 +14,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: write
   pages: write
   id-token: write
@@ -51,6 +52,41 @@ jobs:
       - env:
           MODE: ${{ inputs.mode }}
         run: bash scripts/release/analyze-promotion.sh "$MODE"
+      - name: QUAL-03A quality evidence (informative)
+        if: ${{ inputs.mode == 'DRY_RUN' || inputs.mode == 'DEVELOP_TO_TEST' || inputs.mode == 'TEST_TO_DEMO' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          QUAL_MODE: ${{ inputs.mode }}
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/quality/check_promotion_evidence.py --mode "$QUAL_MODE" --output qual-03-evidence.json
+          result=$?
+          if [ -f qual-03-evidence.json ]; then
+            python3 - <<'PYREPORT' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          r=json.loads(Path('qual-03-evidence.json').read_text())
+          print('### QUAL-03A - Quality evidence (informative)')
+          print(f"- State: **{r.get('status','ERROR')}**")
+          print(f"- Source: `{r.get('source','unknown')}`")
+          print(f"- Git tree: `{r.get('tree_sha','unknown')}`")
+          print(f"- Quality run: {r.get('run_url','not found')}")
+          print(f"- Reason: {r.get('reason','n/a')}")
+          print('This check does not authorize or block promotion.')
+          PYREPORT
+          fi
+          exit 0
+      - name: Upload QUAL-03A evidence
+        if: ${{ always() && (inputs.mode == 'DRY_RUN' || inputs.mode == 'DEVELOP_TO_TEST' || inputs.mode == 'TEST_TO_DEMO') }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: qual-03-evidence
+          path: qual-03-evidence.json
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Export promotion safety states
         id: safety
         shell: bash
