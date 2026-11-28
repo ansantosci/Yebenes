@@ -22,19 +22,43 @@ class EvidenceRequestError(Exception):
         super().__init__(f'GitHub evidence request failed at {stage}: HTTP {status}')
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Prevent automatic forwarding of API credentials to artifact storage."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def request(url, token, stage):
+    """Read GitHub API data, following artifact redirects without credentials."""
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != 'https' or parsed.hostname != 'api.github.com':
+        raise ValueError('Authenticated GitHub request must target api.github.com over HTTPS')
     req = urllib.request.Request(url, headers={
         'Authorization': 'Bearer ' + token,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         'User-Agent': 'yebenes-qual03a',
     })
+    opener = urllib.request.build_opener(NoRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
+        with opener.open(req, timeout=20) as response:
             return response.read()
     except urllib.error.HTTPError as exc:
-        # No token, signed URL or response body is exposed in diagnostics.
-        raise EvidenceRequestError(stage, exc.code) from exc
+        if stage == 'download_report_artifact' and exc.code in (301, 302, 303, 307, 308):
+            location = exc.headers.get('Location', '')
+            redirect = urllib.parse.urljoin(url, location)
+            target = urllib.parse.urlsplit(redirect)
+            if not location or target.scheme != 'https' or not target.hostname or target.username or target.password:
+                raise ValueError('Invalid HTTPS artifact redirect') from None
+            # Never send GitHub credentials, cookies or signed URLs to logs.
+            clean_req = urllib.request.Request(redirect, headers={'User-Agent': 'yebenes-qual03a'})
+            try:
+                with urllib.request.urlopen(clean_req, timeout=30) as response:
+                    return response.read()
+            except urllib.error.HTTPError as redirected_error:
+                raise EvidenceRequestError(stage, redirected_error.code) from None
+        raise EvidenceRequestError(stage, exc.code) from None
 
 
 def git(*args):
