@@ -15,15 +15,26 @@ import zipfile
 API = 'https://api.github.com'
 
 
-def request(url, token):
+class EvidenceRequestError(Exception):
+    def __init__(self, stage, status):
+        self.stage = stage
+        self.status = status
+        super().__init__(f'GitHub evidence request failed at {stage}: HTTP {status}')
+
+
+def request(url, token, stage):
     req = urllib.request.Request(url, headers={
         'Authorization': 'Bearer ' + token,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
         'User-Agent': 'yebenes-qual03a',
     })
-    with urllib.request.urlopen(req, timeout=20) as response:
-        return response.read()
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        # No token, signed URL or response body is exposed in diagnostics.
+        raise EvidenceRequestError(stage, exc.code) from exc
 
 
 def git(*args):
@@ -41,7 +52,7 @@ def evaluate(mode, repository, token):
     for page in range(1, 4):
         url = base + '/actions/workflows/code-quality.yml/runs?' + urllib.parse.urlencode({
             'branch': 'develop', 'event': 'push', 'per_page': 100, 'page': page})
-        runs = json.loads(request(url, token)).get('workflow_runs', [])
+        runs = json.loads(request(url, token, 'list_quality_runs')).get('workflow_runs', [])
         if not runs:
             break
         for run in runs:
@@ -50,15 +61,15 @@ def evaluate(mode, repository, token):
             commit = run.get('head_sha')
             if not commit:
                 continue
-            commit_data = json.loads(request(base + '/git/commits/' + commit, token))
+            commit_data = json.loads(request(base + '/git/commits/' + commit, token, 'read_commit_tree'))
             if commit_data.get('tree', {}).get('sha') != tree:
                 continue
-            artifacts = json.loads(request(base + f"/actions/runs/{run['id']}/artifacts?per_page=100", token)).get('artifacts', [])
+            artifacts = json.loads(request(base + f"/actions/runs/{run['id']}/artifacts?per_page=100", token, 'list_run_artifacts')).get('artifacts', [])
             match = next((a for a in artifacts if a.get('name') == 'qual-01-reports' and not a.get('expired')), None)
             if not match:
                 return {'status': 'INCONCLUSIVE', 'source': source, 'tree_sha': tree,
                         'run_url': run.get('html_url'), 'reason': 'Matching run has no available report artifact'}
-            data = request(match['archive_download_url'], token)
+            data = request(match['archive_download_url'], token, 'download_report_artifact')
             with zipfile.ZipFile(io.BytesIO(data)) as z:
                 names = z.namelist()
                 comparison_name = next((n for n in names if n.endswith('qual-02-comparison.json')), None)
@@ -86,7 +97,7 @@ def main():
     args = p.parse_args()
     try:
         result = evaluate(args.mode, os.getenv('GH_REPOSITORY', ''), os.getenv('GH_TOKEN', ''))
-    except (OSError, ValueError, KeyError, urllib.error.URLError, zipfile.BadZipFile, subprocess.CalledProcessError) as exc:
+    except (OSError, ValueError, KeyError, urllib.error.URLError, zipfile.BadZipFile, subprocess.CalledProcessError, EvidenceRequestError) as exc:
         result = {'status': 'ERROR', 'reason': str(exc)}
     Path(args.output).write_text(json.dumps(result, indent=2) + '\n')
     print('QUAL-03A:', result['status'], result.get('reason', ''))
